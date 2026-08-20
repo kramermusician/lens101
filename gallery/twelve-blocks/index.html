@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The 12 Blocks</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #f5f2e9; }
+  #stage { display: block; width: 100vw; height: 100vh; }
+  #overlay {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    background: rgba(245, 242, 233, 0.92); cursor: pointer; z-index: 10;
+    font-family: Futura, "Helvetica Neue", Arial, sans-serif; color: #163b4e;
+    text-align: center; padding: 20px;
+  }
+  #overlay h1 { margin: 0; font-size: clamp(30px, 6vw, 64px); letter-spacing: 0.14em; font-weight: 500; }
+  #overlay p { margin: 0; font-size: clamp(14px, 2vw, 19px); color: #3a5560; letter-spacing: 0.04em; }
+  #overlay .play {
+    margin-top: 10px; width: 84px; height: 84px; border-radius: 50%;
+    border: 3px solid #e23b22; display: flex; align-items: center; justify-content: center;
+  }
+  #overlay .play::after {
+    content: ""; display: block; margin-left: 8px;
+    border-left: 26px solid #e23b22; border-top: 16px solid transparent; border-bottom: 16px solid transparent;
+  }
+  #hud {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    display: none; align-items: center; justify-content: center; gap: 14px;
+    padding: 12px 16px; flex-wrap: wrap;
+    font-family: Futura, "Helvetica Neue", Arial, sans-serif; color: #163b4e;
+    background: linear-gradient(to top, rgba(245,242,233,0.96), rgba(245,242,233,0));
+  }
+  #bars { display: flex; gap: 5px; }
+  #bars span {
+    width: 20px; height: 10px; border-radius: 2px; opacity: 0.35;
+    transition: opacity 0.1s, transform 0.1s;
+  }
+  #bars span.on { opacity: 1; transform: scaleY(1.5); }
+  #chordlabel { font-size: 15px; letter-spacing: 0.06em; min-width: 210px; text-align: center; }
+  #hud button, #hud select {
+    font-family: inherit; font-size: 13px; letter-spacing: 0.08em;
+    background: #f5f2e9; border: 2px solid #163b4e; border-radius: 4px;
+    color: #163b4e; padding: 6px 10px; cursor: pointer;
+  }
+  #hud button:hover, #hud select:hover { border-color: #e23b22; color: #e23b22; }
+  #hud label { font-size: 12px; letter-spacing: 0.08em; color: #3a5560; display: flex; align-items: center; gap: 8px; }
+  #hud input[type=range] { accent-color: #e23b22; width: 100px; }
+  #fullscreen { font-size: 15px; line-height: 1; }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+
+<div id="overlay">
+  <h1>THE 12 BLOCKS</h1>
+  <p>The 12-bar blues as a walk around the neighborhood.<br>Each chord owns its blocks. The crosswalks are the barlines.</p>
+  <div class="play"></div>
+  <p style="font-size:13px;">Click anywhere to start walking. Sound on.</p>
+</div>
+
+<div id="hud">
+  <button id="playpause">PAUSE</button>
+  <button id="mode" title="Switch between the major and minor 12-bar blues">MAJOR</button>
+  <button id="view" title="See the whole 12-bar progression at once, four bars to a line">MAP</button>
+  <label>key
+    <select id="key"></select>
+  </label>
+  <label>feel
+    <select id="style">
+      <option value="shuffle" selected>shuffle</option>
+      <option value="rock">rock</option>
+      <option value="halftime">halftime</option>
+      <option value="reggae">reggae</option>
+      <option value="12/8">12/8</option>
+    </select>
+  </label>
+  <div id="bars"></div>
+  <div id="chordlabel"></div>
+  <label>tempo <input id="tempo" type="range" min="52" max="170" value="126" /> <span id="bpmval">126</span></label>
+  <div id="chorus" style="font-size:12px; color:#3a5560; letter-spacing:0.08em;"></div>
+  <button id="fullscreen" title="Fullscreen">⛶</button>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* ---------- the forms ---------- */
+// One chorus = 12 bars = 12 city blocks. A bar can hold one chord or split into two.
+const PROGS = {
+  major: [["I7"],["IV7"],["I7"],["I7"],["IV7"],["IV7"],["I7"],["I7"],["V7"],["IV7"],["I7"],["V7"]],
+  minor: [["im7"],["ivm7"],["im7"],["im7"],["ivm7"],["ivm7"],["im7"],["im7"],["bVI7"],["V7"],["im7"],["iim7b5","V7"]]
+};
+
+// Degree definitions: semitones above the key root, chord quality, and a visual identity.
+const DEGREES = {
+  I7:     { semi: 0,  quality: "dom7", color: "#3bb6e3", dark: "#1d7fb0", win: "square",  label: "I7" },
+  IV7:    { semi: 5,  quality: "dom7", color: "#e8b93e", dark: "#b8892a", win: "arch",    label: "IV7" },
+  V7:     { semi: 7,  quality: "dom7", color: "#e23b22", dark: "#a92715", win: "tall",    label: "V7" },
+  im7:    { semi: 0,  quality: "m7",   color: "#3bb6e3", dark: "#1d7fb0", win: "square",  label: "im7" },
+  ivm7:   { semi: 5,  quality: "m7",   color: "#e8b93e", dark: "#b8892a", win: "arch",    label: "ivm7" },
+  bVI7:   { semi: 8,  quality: "dom7", color: "#1d7fb0", dark: "#12556f", win: "round",   label: "♭VI7" },
+  iim7b5: { semi: 2,  quality: "m7b5", color: "#7c9a6d", dark: "#55704a", win: "diamond", label: "iiø7" }
+};
+const QUALITY = {
+  dom7: { intervals: [0, 4, 7, 10], walk: [0, 4, 7, 9],  suffix: "7" },
+  m7:   { intervals: [0, 3, 7, 10], walk: [0, 3, 7, 10], suffix: "m7" },
+  m7b5: { intervals: [0, 3, 6, 10], walk: [0, 3, 6, 10], suffix: "m7♭5" }
+};
+const NOTES = ["C","D♭","D","E♭","E","F","G♭","G","A♭","A","B♭","B"];
+const CREAM = "#f5f2e9", CREAM_DIM = "#ece7d8", INK = "#163b4e", INK_SOFT = "#3a5560";
+
+const STYLE_BPM = { shuffle: 126, rock: 132, halftime: 84, reggae: 100, "12/8": 63 };
+
+/* ---------- state ---------- */
+let mode = "major";
+let keySemi = 9;                 // A
+let style = "shuffle";
+let view = "street";             // "street" walks the blocks; "map" shows the whole chorus
+let bpm = 126;
+let PROG = PROGS[mode];
+
+const midiFreq = m => 440 * Math.pow(2, (m - 69) / 12);
+
+// Resolve a degree name into playable pitches for the current key.
+// Bass roots fold into G1..G2 so every key sits in a real bass register.
+function degSpec(name) {
+  const d = DEGREES[name];
+  const q = QUALITY[d.quality];
+  const rootSemi = (keySemi + d.semi) % 12;
+  let bassMidi = 31 + ((keySemi - 7 + 12) % 12) + d.semi;
+  while (bassMidi > 43) bassMidi -= 12;
+  while (bassMidi < 28) bassMidi += 12;
+  let compMidi = bassMidi + 24;
+  while (compMidi > 66) compMidi -= 12;
+  while (compMidi < 55) compMidi += 12;
+  return {
+    ...d,
+    intervals: q.intervals,
+    walk: q.walk,
+    // absolute pitch of each chord tone above the key root — the window floors
+    voicing: q.intervals.map(iv => d.semi + iv),
+    chordName: NOTES[rootSemi] + q.suffix,
+    bassFreq: midiFreq(bassMidi),
+    compFreq: midiFreq(compMidi)
+  };
+}
+let SPECS = {};
+function rebuildSpecs() {
+  SPECS = {};
+  Object.keys(DEGREES).forEach(n => { SPECS[n] = degSpec(n); });
+}
+rebuildSpecs();
+
+function chordCell(bar) { return PROG[((bar % 12) + 12) % 12]; }
+function chordAt(bar, beat) {
+  const cell = chordCell(bar);
+  return SPECS[cell.length === 2 ? (beat < 2 ? cell[0] : cell[1]) : cell[0]];
+}
+
+/* ---------- audio ---------- */
+let ctx = null, master = null, noiseBuf = null;
+const beatDur = () => 60 / bpm;
+let nextBeatTime = 0, nextBeatIndex = 0;
+let beatQueue = [];
+let playing = false, started = false;
+
+function initAudio() {
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  master = ctx.createGain(); master.gain.value = 0.9;
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -18; comp.ratio.value = 4;
+  master.connect(comp); comp.connect(ctx.destination);
+  const b = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate);
+  const d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  noiseBuf = b;
+}
+
+function playBass(freq, t, dur) {
+  const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+  o.type = "sawtooth"; o.frequency.value = freq;
+  f.type = "lowpass"; f.frequency.value = 420; f.Q.value = 0.8;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.5, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(f); f.connect(g); g.connect(master);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+
+function playChord(spec, t, gain, decay) {
+  spec.intervals.forEach(semi => {
+    const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+    o.type = "triangle";
+    o.frequency.value = spec.compFreq * Math.pow(2, semi / 12);
+    f.type = "lowpass"; f.frequency.value = 2400;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+    o.connect(f); f.connect(g); g.connect(master);
+    o.start(t); o.stop(t + decay + 0.08);
+  });
+}
+
+function playHat(t, loud) {
+  const s = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+  s.buffer = noiseBuf;
+  f.type = "highpass"; f.frequency.value = 6500;
+  g.gain.setValueAtTime(loud ? 0.09 : 0.05, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+  s.connect(f); f.connect(g); g.connect(master);
+  s.start(t);
+}
+
+function playKick(t) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = "sine";
+  o.frequency.setValueAtTime(120, t);
+  o.frequency.exponentialRampToValueAtTime(45, t + 0.09);
+  g.gain.setValueAtTime(0.5, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+  o.connect(g); g.connect(master);
+  o.start(t); o.stop(t + 0.2);
+}
+
+function playSnare(t, gain) {
+  const s = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+  s.buffer = noiseBuf;
+  f.type = "bandpass"; f.frequency.value = 1900; f.Q.value = 0.7;
+  g.gain.setValueAtTime(gain, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
+  s.connect(f); f.connect(g); g.connect(master);
+  s.start(t);
+  const o = ctx.createOscillator(), og = ctx.createGain();
+  o.type = "sine"; o.frequency.value = 185;
+  og.gain.setValueAtTime(gain * 0.7, t);
+  og.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+  o.connect(og); og.connect(master);
+  o.start(t); o.stop(t + 0.12);
+}
+
+function walkNote(spec, beat) {
+  return spec.bassFreq * Math.pow(2, spec.walk[beat] / 12);
+}
+const fifth = spec => spec.bassFreq * Math.pow(2, 7 / 12);
+
+/* Each feel decides what the band plays on a given beat. */
+function scheduleBeat(index, t) {
+  const bar = Math.floor(index / 4) % 12;
+  const beat = index % 4;
+  const spec = chordAt(bar, beat);
+  const bd = beatDur();
+  const off = t + bd / 2;          // straight offbeat
+  const swung = t + bd * 2 / 3;    // shuffled offbeat
+
+  if (style === "shuffle") {
+    playBass(walkNote(spec, beat), t, bd * 0.9);
+    if (beat === 0 || beat === 2) playKick(t);
+    if (beat === 1 || beat === 3) playChord(spec, t, 0.16, 0.22);
+    playHat(t, beat === 1 || beat === 3);
+    playHat(swung, false);
+  } else if (style === "rock") {
+    playBass(spec.bassFreq, t, bd * 0.45);
+    playBass(spec.bassFreq, off, bd * 0.45);
+    if (beat === 0 || beat === 2) { playKick(t); playChord(spec, t, 0.15, 0.32); }
+    if (beat === 1 || beat === 3) playSnare(t, 0.28);
+    playHat(t, true); playHat(off, false);
+  } else if (style === "halftime") {
+    if (beat === 0) { playKick(t); playBass(spec.bassFreq, t, bd * 1.8); }
+    if (beat === 2) { playSnare(t, 0.3); playChord(spec, t, 0.15, 0.4); }
+    if (beat === 3) playBass(walkNote(spec, 3), off, bd * 0.4);
+    playHat(t, beat === 0); playHat(off, false);
+  } else if (style === "reggae") {
+    if (beat === 0) playBass(spec.bassFreq, t, bd * 0.8);
+    if (beat === 2) { playKick(t); playSnare(t, 0.16); playBass(fifth(spec), t, bd * 0.8); }
+    playChord(spec, off, 0.13, 0.11);   // the skank, always on the offbeat
+    playHat(t, false);
+  } else {                              // 12/8, the slow blues
+    playBass(walkNote(spec, beat), t, bd * 0.9);
+    if (beat === 0 || beat === 2) playKick(t);
+    if (beat === 1 || beat === 3) { playSnare(t, 0.22); playChord(spec, t, 0.15, 0.3); }
+    playHat(t, true);
+    playHat(t + bd / 3, false);
+    playHat(t + bd * 2 / 3, false);
+  }
+
+  beatQueue.push({ index, time: t });
+  if (beatQueue.length > 64) beatQueue.splice(0, beatQueue.length - 64);
+}
+
+function scheduler() {
+  if (!playing) return;
+  while (nextBeatTime < ctx.currentTime + 0.12) {
+    scheduleBeat(nextBeatIndex, nextBeatTime);
+    nextBeatTime += beatDur();
+    nextBeatIndex += 1;
+  }
+}
+setInterval(scheduler, 25);
+
+function songBeat() {
+  if (!ctx || beatQueue.length === 0) return 0;
+  const now = ctx.currentTime;
+  let last = beatQueue[0];
+  for (let i = beatQueue.length - 1; i >= 0; i--) {
+    if (beatQueue[i].time <= now) { last = beatQueue[i]; break; }
+  }
+  return last.index + Math.min(1, Math.max(0, (now - last.time) / beatDur()));
+}
+
+/* ---------- drawing ---------- */
+const cv = document.getElementById("stage");
+const cx = cv.getContext("2d");
+let W = 0, H = 0, DPR = 1;
+
+function resize() {
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = W * DPR; cv.height = H * DPR;
+  cx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener("resize", resize);
+resize();
+
+const BLOCK_W = 460;
+
+function seeded(i, salt) {
+  const x = Math.sin(i * 127.1 + salt * 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function groundY() { return H * 0.78; }
+
+function drawSky(camX, t) {
+  cx.fillStyle = CREAM;
+  cx.fillRect(0, 0, W, H);
+
+  const sx = W * 0.82, sy = H * 0.18, sr = Math.min(W, H) * 0.09;
+  cx.save();
+  cx.translate(sx, sy);
+  cx.rotate(t * 0.6);
+  cx.fillStyle = INK;
+  cx.beginPath(); cx.arc(0, 0, sr, 0, Math.PI * 2); cx.fill();
+  cx.strokeStyle = "rgba(245,242,233,0.25)";
+  cx.lineWidth = 1;
+  for (let r = sr * 0.45; r < sr * 0.92; r += sr * 0.09) {
+    cx.beginPath(); cx.arc(0, 0, r, 0, Math.PI * 2); cx.stroke();
+  }
+  cx.fillStyle = "#e8b93e";
+  cx.beginPath(); cx.arc(0, 0, sr * 0.3, 0, Math.PI * 2); cx.fill();
+  cx.fillStyle = INK;
+  cx.beginPath(); cx.arc(0, 0, sr * 0.05, 0, Math.PI * 2); cx.fill();
+  cx.restore();
+
+  cx.fillStyle = "rgba(255,255,255,0.75)";
+  for (let i = 0; i < 5; i++) {
+    const cw = 130 + seeded(i, 9) * 120;
+    const cxp = ((i * 700 + seeded(i, 3) * 400 - camX * 0.15) % (W + 500) + W + 500) % (W + 500) - 250;
+    const cyp = H * (0.08 + seeded(i, 5) * 0.22);
+    cx.beginPath();
+    cx.ellipse(cxp, cyp, cw, 26 + seeded(i, 7) * 14, 0, 0, Math.PI * 2);
+    cx.fill();
+  }
+
+  cx.fillStyle = "rgba(58,85,96,0.16)";
+  const gy = groundY();
+  for (let k = -1; k < W / 130 + 2; k++) {
+    const wx = k * 130 - ((camX * 0.35) % 130);
+    const hh = 70 + seeded(Math.floor(k + camX * 0.35 / 130), 11) * 140;
+    cx.fillRect(wx, gy - hh - 60, 100, hh + 60);
+  }
+}
+
+/* Windows ARE the chord. One row of windows per chord tone, placed at its real
+   pitch height (one unit per semitone above the key root), labeled by its role.
+   A minor chord's third floor sits one semitone lower than a major one's, the
+   half-diminished drops its fifth too, and taller roots lift the whole voicing. */
+const ROLE = { 0: "R", 2: "9", 3: "♭3", 4: "3", 6: "♭5", 7: "5", 9: "6", 10: "♭7" };
+
+function drawNoteRow(spec, bx, bw, cy, lit, compact) {
+  cx.fillStyle = lit ? "#ffe9a3" : "rgba(245,242,233,0.85)";
+  const n = Math.max(2, Math.min(4, Math.floor(bw / 78)));
+  const left = bx + (compact ? 28 : 34), right = bx + bw - 14;
+  const slot = (right - left) / n;
+  const k = compact ? 0.62 : 1;                  // map cells shrink the glass, not the pitch
+  for (let c = 0; c < n; c++) {
+    const wx = left + c * slot + slot / 2;
+    if (spec.win === "arch") {
+      const ww = Math.min(34 * k, slot - 10);
+      cx.beginPath();
+      cx.moveTo(wx - ww / 2, cy + 11 * k); cx.lineTo(wx - ww / 2, cy - 3 * k);
+      cx.arc(wx, cy - 3 * k, ww / 2, Math.PI, 0);
+      cx.lineTo(wx + ww / 2, cy + 11 * k); cx.closePath(); cx.fill();
+    } else if (spec.win === "round") {
+      cx.beginPath(); cx.arc(wx, cy, Math.min(12 * k, slot / 2 - 5), 0, Math.PI * 2); cx.fill();
+    } else if (spec.win === "diamond") {
+      const s = Math.min(12 * k, slot / 2 - 4);
+      cx.beginPath();
+      cx.moveTo(wx, cy - s); cx.lineTo(wx + s, cy); cx.lineTo(wx, cy + s); cx.lineTo(wx - s, cy);
+      cx.closePath(); cx.fill();
+    } else if (spec.win === "tall") {
+      cx.fillRect(wx - Math.min(14 * k, slot / 2 - 5), cy - 13 * k, Math.min(28 * k, slot - 10), 26 * k);
+    } else {
+      cx.fillRect(wx - Math.min(16 * k, slot / 2 - 5), cy - 9 * k, Math.min(32 * k, slot - 10), 18 * k);
+    }
+  }
+}
+
+function drawVoicing(spec, bx, by, bw, floorY, lit, bassAbs, compact) {
+  spec.voicing.forEach((abs, i) => {
+    const rel = spec.intervals[i];
+    const cy = floorY(abs);
+    drawNoteRow(spec, bx, bw, cy, lit || abs === bassAbs, compact);
+    cx.fillStyle = "rgba(245,242,233,0.95)";
+    cx.font = "600 " + (compact ? 10 : 11) + "px Futura, 'Helvetica Neue', sans-serif";
+    cx.textAlign = "left"; cx.textBaseline = "middle";
+    cx.fillText(ROLE[rel] || String(rel), bx + 8, cy);
+  });
+}
+
+// Which chord tone the bass is on right now, as an absolute semitone (or null).
+function bassAbsSemiAt(spec, beat) {
+  let rel = null;
+  if (style === "shuffle" || style === "12/8") rel = spec.walk[beat];
+  else if (style === "rock") rel = 0;
+  else if (style === "halftime") rel = beat === 0 ? 0 : (beat === 3 ? spec.walk[3] : null);
+  else if (style === "reggae") rel = beat === 0 ? 0 : (beat === 2 ? 7 : null);
+  if (rel === null || !spec.intervals.includes(rel)) return null;
+  return spec.semi + rel;
+}
+
+function drawTexture(spec, bx, by, bw, bh) {
+  cx.save();
+  cx.beginPath(); cx.rect(bx, by, bw, bh); cx.clip();
+  cx.strokeStyle = "rgba(22,59,78,0.12)";
+  cx.lineWidth = 2;
+  if (spec.win === "square") {
+    for (let y = by + 14; y < by + bh; y += 16) {
+      cx.beginPath(); cx.moveTo(bx, y); cx.lineTo(bx + bw, y); cx.stroke();
+    }
+  } else if (spec.win === "arch" || spec.win === "diamond") {
+    for (let d = -bh; d < bw; d += 26) {
+      cx.beginPath(); cx.moveTo(bx + d, by + bh); cx.lineTo(bx + d + bh, by); cx.stroke();
+    }
+  } else if (spec.win === "round") {
+    for (let y = by + 20; y < by + bh; y += 30) {
+      cx.beginPath(); cx.moveTo(bx, y); cx.lineTo(bx + bw, y); cx.stroke();
+    }
+  } else {
+    for (let x = bx + 16; x < bx + bw; x += 22) {
+      cx.beginPath(); cx.moveTo(x, by); cx.lineTo(x, by + bh); cx.stroke();
+    }
+  }
+  cx.restore();
+}
+
+function stabLit(beat, beatPhase) {
+  if (style === "reggae") return beatPhase >= 0.5 && beatPhase < 0.85;
+  if (style === "rock") return (beat === 0 || beat === 2) && beatPhase < 0.4;
+  if (style === "halftime") return beat === 2 && beatPhase < 0.5;
+  return (beat === 1 || beat === 3) && beatPhase < 0.4;   // shuffle + 12/8
+}
+
+function drawOneBuilding(spec, bx, bw, barIdx, salt, isCurChord, beat, beatPhase) {
+  const gy = groundY();
+  // Height comes from the voicing: one unit per semitone, so the skyline is the harmony.
+  const UNIT = 13, DOOR = 52, HEAD = 34;
+  const maxSemi = spec.voicing[spec.voicing.length - 1];
+  const pulse = isCurChord ? Math.max(0, 1 - beatPhase * 3) * 8 : 0;
+  const bh = DOOR + maxSemi * UNIT + HEAD + pulse;
+  const by = gy - bh;
+
+  cx.fillStyle = spec.color;
+  cx.fillRect(bx, by, bw, bh);
+  drawTexture(spec, bx, by, bw, bh);
+  cx.strokeStyle = INK; cx.lineWidth = 3;
+  cx.strokeRect(bx, by, bw, bh);
+
+  cx.fillStyle = spec.dark;
+  if (seeded(barIdx, salt + 1) > 0.5) {
+    cx.fillRect(bx - 6, by - 14, bw + 12, 14);
+  } else {
+    cx.beginPath();
+    cx.moveTo(bx - 5, by); cx.lineTo(bx + bw / 2, by - 30); cx.lineTo(bx + bw + 5, by);
+    cx.closePath(); cx.fill();
+  }
+
+  const lit = isCurChord && stabLit(beat, beatPhase);
+  const bassAbs = isCurChord && beatPhase < 0.75 ? bassAbsSemiAt(spec, beat) : null;
+  drawVoicing(spec, bx, by, bw, abs => gy - DOOR - abs * UNIT, lit, bassAbs, false);
+
+  cx.fillStyle = spec.dark;
+  cx.fillRect(bx + bw / 2 - 15, gy - 44, 30, 44);
+
+  // chord sign
+  const signY = by - 50 - (isCurChord ? Math.max(0, 1 - beatPhase * 2.5) * 10 : 0);
+  const signW = Math.min(96, bw * 0.8), signX = bx + bw / 2 - signW / 2;
+  cx.fillStyle = CREAM;
+  cx.strokeStyle = INK; cx.lineWidth = 2.5;
+  cx.beginPath();
+  if (cx.roundRect) cx.roundRect(signX, signY, signW, 36, 6); else cx.rect(signX, signY, signW, 36);
+  cx.fill(); cx.stroke();
+  cx.fillStyle = isCurChord ? "#e23b22" : INK;
+  cx.font = "600 " + (spec.label.length > 3 ? 15 : 19) + "px Futura, 'Helvetica Neue', sans-serif";
+  cx.textAlign = "center"; cx.textBaseline = "middle";
+  cx.fillText(spec.label, bx + bw / 2, signY + 19);
+}
+
+function drawBlock(barIdx, screenX, beat, curBar, beatPhase) {
+  const gy = groundY();
+  const cell = chordCell(barIdx);
+  const isCur = barIdx === curBar;
+  const totalW = BLOCK_W * 0.72;
+  const startX = screenX + (BLOCK_W - totalW) / 2;
+
+  if (cell.length === 1) {
+    drawOneBuilding(SPECS[cell[0]], startX, totalW, barIdx, 1, isCur, beat, beatPhase);
+  } else {
+    // a split bar: two narrower buildings share the block
+    const bw = (totalW - 18) / 2;
+    cell.forEach((name, i) => {
+      const active = isCur && (i === 0 ? beat < 2 : beat >= 2);
+      drawOneBuilding(SPECS[name], startX + i * (bw + 18), bw, barIdx, 1 + i * 3, active, beat, beatPhase);
+    });
+  }
+
+  cx.fillStyle = INK_SOFT;
+  cx.font = "12px Futura, 'Helvetica Neue', sans-serif";
+  cx.textAlign = "center"; cx.textBaseline = "middle";
+  cx.fillText("bar " + (barIdx + 1), screenX + BLOCK_W / 2, gy + 26);
+
+  // the turnaround sign stands at the top of bar 9, where the home stretch begins
+  if (barIdx === 8) {
+    const px = screenX + 90, py = gy;   // clear of the streetlamp at the block edge
+    cx.strokeStyle = INK; cx.lineWidth = 3;
+    cx.beginPath(); cx.moveTo(px, py); cx.lineTo(px, py - 92); cx.stroke();
+    cx.fillStyle = "#e23b22";
+    cx.beginPath();
+    if (cx.roundRect) cx.roundRect(px - 66, py - 128, 132, 40, 5); else cx.rect(px - 66, py - 128, 132, 40);
+    cx.fill();
+    cx.fillStyle = CREAM;
+    cx.font = "600 13px Futura, 'Helvetica Neue', sans-serif";
+    cx.fillText("TURNAROUND", px, py - 108);
+    cx.fillStyle = INK;
+    cx.font = "600 18px Futura, 'Helvetica Neue', sans-serif";
+    cx.fillText("↺", px, py - 76);
+  }
+
+  cx.fillStyle = "rgba(245,242,233,0.9)";
+  for (let s = 0; s < 4; s++) {
+    cx.fillRect(screenX + BLOCK_W - 26, gy + 8 + s * 12, 22, 7);
+  }
+
+  const lx = screenX + 8;
+  cx.strokeStyle = INK; cx.lineWidth = 3;
+  cx.beginPath(); cx.moveTo(lx, gy); cx.lineTo(lx, gy - 120); cx.quadraticCurveTo(lx, gy - 138, lx + 18, gy - 138); cx.stroke();
+  cx.fillStyle = "#e8b93e";
+  cx.beginPath(); cx.arc(lx + 22, gy - 138, 6, 0, Math.PI * 2); cx.fill();
+}
+
+function drawStreet() {
+  const gy = groundY();
+  cx.fillStyle = CREAM_DIM;
+  cx.fillRect(0, gy, W, H - gy);
+  cx.fillStyle = INK;
+  cx.fillRect(0, gy, W, 5);
+  cx.fillStyle = "#2c4a5a";
+  cx.fillRect(0, gy + 44, W, H - gy - 44);
+  cx.fillStyle = "rgba(245,242,233,0.5)";
+  cx.fillRect(0, gy + 40, W, 4);
+}
+
+function drawWalker(x, y, beatPos, walking, t) {
+  // One full stride cycle per beat: footfalls land at the extremes of the swing,
+  // which cos() puts exactly on the beat and the offbeat — steps are 8th notes.
+  const swing = walking ? Math.cos(beatPos * Math.PI * 2) : 0;
+  const bob = walking ? Math.abs(Math.sin(beatPos * Math.PI * 2)) * 5 : Math.sin(t * 2) * 2;
+  const gy = y - bob;
+
+  cx.save();
+  cx.translate(x, gy);
+  cx.lineCap = "round";
+
+  cx.strokeStyle = INK; cx.lineWidth = 7;
+  cx.beginPath(); cx.moveTo(0, -46); cx.lineTo(swing * 15, -22); cx.lineTo(swing * 20, 0); cx.stroke();
+  cx.beginPath(); cx.moveTo(0, -46); cx.lineTo(-swing * 15, -22); cx.lineTo(-swing * 20, 0); cx.stroke();
+
+  cx.strokeStyle = "#dfd8c3"; cx.lineWidth = 13;
+  cx.beginPath(); cx.moveTo(0, -48); cx.lineTo(2, -84); cx.stroke();
+
+  cx.strokeStyle = "#dfd8c3"; cx.lineWidth = 6;
+  cx.beginPath(); cx.moveTo(1, -78); cx.lineTo(-swing * 13 + 4, -58); cx.stroke();
+  cx.beginPath(); cx.moveTo(1, -78); cx.lineTo(swing * 13 + 4, -58); cx.stroke();
+
+  cx.fillStyle = "#e8c39e";
+  cx.beginPath(); cx.arc(3, -96, 11, 0, Math.PI * 2); cx.fill();
+
+  cx.fillStyle = "#e23b22";
+  cx.beginPath(); cx.arc(3, -99, 11, Math.PI, 0); cx.fill();
+  cx.fillRect(-8, -101, 22, 5);
+
+  cx.restore();
+}
+
+/* ---------- map view: the whole chorus at once, four bars to a line ---------- */
+function mapGrid() {
+  const padX = Math.max(30, W * 0.05);
+  const top = Math.max(64, H * 0.1);
+  const bottom = 110;                       // room for the HUD
+  const gap = Math.max(12, W * 0.014);
+  const cellW = (W - padX * 2 - gap * 3) / 4;
+  const cellH = (H - top - bottom - gap * 2) / 3;
+  return { padX, top, gap, cellW, cellH };
+}
+
+function drawMapFacade(spec, x, y, w, h, active, beat, beatPhase) {
+  cx.fillStyle = spec.color;
+  cx.fillRect(x, y, w, h);
+  drawTexture(spec, x, y, w, h);
+
+  // voicing floors: the label strip up top stays clear, the root row sits at the bottom
+  const lit = active && stabLit(beat, beatPhase);
+  const bassAbs = active && beatPhase < 0.75 ? bassAbsSemiAt(spec, beat) : null;
+  const unit = (h - 64) / 18;
+  drawVoicing(spec, x, y, w, abs => y + h - 30 - abs * unit, lit, bassAbs, true);
+
+  cx.strokeStyle = active ? "#e23b22" : INK;
+  cx.lineWidth = active ? 5 : 3;
+  cx.strokeRect(x, y, w, h);
+
+  cx.textBaseline = "middle";
+  cx.fillStyle = active ? "#ffe9a3" : CREAM;
+  cx.font = "600 17px Futura, 'Helvetica Neue', sans-serif";
+  cx.textAlign = "left";
+  cx.fillText(spec.label, x + 10, y + 17);
+  if (w > 150) {
+    cx.font = "13px Futura, 'Helvetica Neue', sans-serif";
+    cx.textAlign = "right";
+    cx.fillText(spec.chordName, x + w - 10, y + 17);
+  }
+}
+
+function drawMap(t, beats, curBar, beat, beatPhase) {
+  cx.fillStyle = CREAM;
+  cx.fillRect(0, 0, W, H);
+
+  // the record sun keeps spinning up in the corner
+  const sr = Math.min(W, H) * 0.05;
+  cx.save();
+  cx.translate(W - sr - 24, sr + 24);
+  cx.rotate(t * 0.6);
+  cx.fillStyle = INK;
+  cx.beginPath(); cx.arc(0, 0, sr, 0, Math.PI * 2); cx.fill();
+  cx.fillStyle = "#e8b93e";
+  cx.beginPath(); cx.arc(0, 0, sr * 0.3, 0, Math.PI * 2); cx.fill();
+  cx.restore();
+
+  cx.fillStyle = INK_SOFT;
+  cx.font = "14px Futura, 'Helvetica Neue', sans-serif";
+  cx.textAlign = "left"; cx.textBaseline = "middle";
+  const g = mapGrid();
+  cx.fillText("one chorus · twelve bars · four to a line", g.padX, g.top - 26);
+
+  for (let i = 0; i < 12; i++) {
+    const r = Math.floor(i / 4), c = i % 4;
+    const x = g.padX + c * (g.cellW + g.gap);
+    const y = g.top + r * (g.cellH + g.gap);
+    const cell = chordCell(i);
+    const isCur = i === curBar;
+
+    if (cell.length === 1) {
+      drawMapFacade(SPECS[cell[0]], x, y, g.cellW, g.cellH, isCur, beat, beatPhase);
+    } else {
+      const half = (g.cellW - 8) / 2;
+      cell.forEach((name, hi) => {
+        const active = isCur && (hi === 0 ? beat < 2 : beat >= 2);
+        drawMapFacade(SPECS[name], x + hi * (half + 8), y, half, g.cellH, active, beat, beatPhase);
+      });
+    }
+
+    // bar number, top-left of the cell
+    cx.fillStyle = INK;
+    cx.font = "600 13px Futura, 'Helvetica Neue', sans-serif";
+    cx.textAlign = "left"; cx.textBaseline = "middle";
+    cx.fillText(String(i + 1), x + 8, y - 12);
+
+    // the turnaround tag at the top of bar 9, where the home stretch begins
+    if (i === 8) {
+      cx.fillStyle = "#e23b22";
+      cx.beginPath();
+      if (cx.roundRect) cx.roundRect(x + 22, y - 24, 104, 22, 4); else cx.rect(x + 22, y - 24, 104, 22);
+      cx.fill();
+      cx.fillStyle = CREAM;
+      cx.font = "600 11px Futura, 'Helvetica Neue', sans-serif";
+      cx.textAlign = "center";
+      cx.fillText("TURNAROUND", x + 74, y - 13);
+    }
+  }
+
+  // back to the top: bar 12 loops home to bar 1
+  const lastX = g.padX + 3 * (g.cellW + g.gap) + g.cellW;
+  const lastY = g.top + 2 * (g.cellH + g.gap) + g.cellH;
+  cx.fillStyle = "#e23b22";
+  cx.font = "600 13px Futura, 'Helvetica Neue', sans-serif";
+  cx.textAlign = "right"; cx.textBaseline = "middle";
+  cx.fillText("↺ back to bar 1", lastX, lastY + 16);
+
+  // the walker strolls the chart, one cell per bar, reading left to right
+  if (started) {
+    const r = Math.floor(curBar / 4), c = curBar % 4;
+    const frac = (beats % 4) / 4;
+    const wx = g.padX + c * (g.cellW + g.gap) + 14 + frac * (g.cellW - 28);
+    const wy = g.top + r * (g.cellH + g.gap) + g.cellH;
+    cx.save();
+    cx.translate(wx, wy);
+    cx.scale(0.6, 0.6);
+    drawWalker(0, 0, beats, playing, t);
+    cx.restore();
+  }
+}
+
+/* ---------- hud ---------- */
+const overlay = document.getElementById("overlay");
+const hud = document.getElementById("hud");
+const barsEl = document.getElementById("bars");
+const chordEl = document.getElementById("chordlabel");
+const chorusEl = document.getElementById("chorus");
+const ppBtn = document.getElementById("playpause");
+const modeBtn = document.getElementById("mode");
+const viewBtn = document.getElementById("view");
+const keySel = document.getElementById("key");
+const styleSel = document.getElementById("style");
+const tempoEl = document.getElementById("tempo");
+const bpmVal = document.getElementById("bpmval");
+const fsBtn = document.getElementById("fullscreen");
+
+NOTES.forEach((n, i) => {
+  const o = document.createElement("option");
+  o.value = i; o.textContent = n;
+  if (i === keySemi) o.selected = true;
+  keySel.appendChild(o);
+});
+
+let barCells = [];
+function rebuildBarStrip() {
+  barsEl.innerHTML = "";
+  barCells = PROG.map(cell => {
+    const s = document.createElement("span");
+    if (cell.length === 1) {
+      s.style.background = DEGREES[cell[0]].color;
+    } else {
+      s.style.background = "linear-gradient(90deg, " + DEGREES[cell[0]].color + " 50%, " + DEGREES[cell[1]].color + " 50%)";
+    }
+    barsEl.appendChild(s);
+    return s;
+  });
+}
+rebuildBarStrip();
+
+function setBpm(v) {
+  bpm = v;
+  tempoEl.value = v;
+  bpmVal.textContent = v;
+}
+
+tempoEl.addEventListener("input", () => setBpm(parseInt(tempoEl.value, 10)));
+
+viewBtn.addEventListener("click", () => {
+  view = view === "street" ? "map" : "street";
+  viewBtn.textContent = view === "street" ? "MAP" : "STREET";
+});
+
+modeBtn.addEventListener("click", () => {
+  mode = mode === "major" ? "minor" : "major";
+  PROG = PROGS[mode];
+  modeBtn.textContent = mode.toUpperCase();
+  rebuildBarStrip();
+});
+
+keySel.addEventListener("change", () => {
+  keySemi = parseInt(keySel.value, 10);
+  rebuildSpecs();
+});
+
+styleSel.addEventListener("change", () => {
+  style = styleSel.value;
+  setBpm(STYLE_BPM[style]);
+});
+
+ppBtn.addEventListener("click", () => {
+  if (!ctx) return;
+  if (playing) {
+    playing = false; ctx.suspend(); ppBtn.textContent = "WALK";
+  } else {
+    playing = true;
+    nextBeatTime = Math.max(nextBeatTime, ctx.currentTime + 0.06);
+    ctx.resume(); ppBtn.textContent = "PAUSE";
+  }
+});
+
+fsBtn.addEventListener("click", () => {
+  const el = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } else if (el.requestFullscreen) {
+    el.requestFullscreen().catch(() => {});
+  } else if (el.webkitRequestFullscreen) {
+    el.webkitRequestFullscreen();
+  }
+});
+
+overlay.addEventListener("click", () => {
+  if (started) return;
+  started = true;
+  initAudio();
+  nextBeatTime = ctx.currentTime + 0.15;
+  playing = true;
+  overlay.style.display = "none";
+  hud.style.display = "flex";
+});
+
+/* ---------- main loop ---------- */
+function frame(ms) {
+  const t = ms / 1000;
+  const beats = started ? songBeat() : 0;
+  const barsFloat = beats / 4;
+  const curBar = Math.floor(barsFloat) % 12;
+  const beat = Math.floor(beats) % 4;
+  const beatPhase = beats - Math.floor(beats);
+  const chorusNum = Math.floor(barsFloat / 12) + 1;
+
+  // The walker's world position IS the musical position: he stands at the left
+  // edge of block n exactly when bar n+1 begins, and steps onto the crosswalk
+  // exactly as the bar completes. No offset, or the eye reads him ahead of the band.
+  const walkerScreenX = W * 0.34;
+  const worldX = barsFloat * BLOCK_W;
+  const camX = worldX - walkerScreenX;
+
+  if (view === "map") {
+    drawMap(t, beats, curBar, beat, beatPhase);
+  } else {
+    drawSky(camX, t);
+    drawStreet();
+
+    const firstK = Math.floor(camX / BLOCK_W) - 1;
+    const lastK = Math.floor((camX + W) / BLOCK_W) + 1;
+    for (let k = firstK; k <= lastK; k++) {
+      const barIdx = ((k % 12) + 12) % 12;
+      drawBlock(barIdx, k * BLOCK_W - camX, beat, started && playing ? curBar : -1, beatPhase);
+    }
+
+    drawWalker(walkerScreenX, groundY() + 44, beats, started && playing, t);
+  }
+
+  if (started) {
+    barCells.forEach((s, i) => s.classList.toggle("on", i === curBar));
+    const cell = chordCell(curBar);
+    let label;
+    if (cell.length === 1) {
+      const sp = SPECS[cell[0]];
+      label = sp.label + " · " + sp.chordName;
+    } else {
+      const a = SPECS[cell[0]], b = SPECS[cell[1]];
+      label = a.label + "–" + b.label + " · " + a.chordName + "–" + b.chordName;
+    }
+    chordEl.textContent = "bar " + (curBar + 1) + " of 12 · " + label;
+    chorusEl.textContent = "chorus " + chorusNum;
+  }
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>

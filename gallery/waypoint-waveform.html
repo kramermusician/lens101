@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Waypoint / Waveform · LENS 101 Gallery</title>
+<meta name="description" content="Ten moments from one life, mapped, exported as data, and turned into an abstract animation. p5.js, one file. By Kramer Gibson." />
+<link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="../index.html"><span class="badge">LENS 101</span>ENGAGING WITH THE ARTISTIC SPACE</a>
+    <div class="nav-links">
+      <a href="belafonte.html">Gallery</a>
+      <a href="../guides/procreate-stop-motion.html">Guides</a>
+    </div>
+  </div>
+</nav>
+
+<article class="piece">
+  <div class="crumb"><a href="../index.html">LENS 101</a> &nbsp;/&nbsp; Gallery &nbsp;/&nbsp; Waypoint / Waveform</div>
+  <h1>Waypoint / Waveform, a life as a moving image.</h1>
+  <div class="meta">p5.js + OpenStreetMap data · Browser · 2026 · Kramer Gibson</div>
+
+  <div class="frame">
+    <iframe src="waypoint-waveform/index.html" title="Waypoint / Waveform, ten life moments as an abstract animation" allowfullscreen></iframe>
+  </div>
+
+  <div class="notes">
+    <h2>How to watch</h2>
+    <ul class="plain">
+      <li>Watch it once cold. Do not press anything. Circles arrive in a rhythm, then the whole constellation folds into a new shape and back. Let it be abstract for one full loop.</li>
+      <li>Then press SHOW THE KEY, or tap K. Every circle gets its name.</li>
+      <li>Watch it again. Same pixels, different film. That switch you just felt in your head is the assignment.</li>
+    </ul>
+
+    <h2>The key</h2>
+    <ul class="plain">
+      <li>Each circle is one moment from my life. Ten of them, each with a real place and a real date.</li>
+      <li>Circle size is how far I moved to get there. The scale is square root, so an eleven thousand kilometer move does not erase a five kilometer one.</li>
+      <li>The rhythm is time. A circle enters when its share of my life has passed, and in the waveform layout its position is days lived across, distance moved up.</li>
+      <li>Color is compass direction. Moves toward the west glow warm, moves toward the east glow cool. The first circle moved nowhere, so it stays cream.</li>
+      <li>The fold is the piece changing its mind about what the x axis means: first time, then longitude, then time again.</li>
+      <li>Three encodings, used the same way every time. That was the budget. Everything else on screen is craft, not data.</li>
+    </ul>
+
+    <h2>Statement</h2>
+    <p>
+      This started as a map. Ten pins: the town where I grew up, a dorm in Ohio, a classroom in Qingdao, a riverbank in Brighton, a trail in Spain. Then I threw the map away and kept the numbers.
+    </p>
+    <p style="margin-top:14px;">
+      Distance became size because the big moves are the ones that still feel big. The gaps in the rhythm are real gaps: eighteen years sitting in one town, then four circles landing inside five years. And the data argued with me once, which is my favorite part. The biggest move of my life reads almost colorless, because the shortest path from Boston to China points nearly due north, not east. I wanted you to watch it once without knowing any of this, an abstract thing with its own weather. The second time through, the spike in the middle is a year in Qingdao and the last two circles are a walk I finished this summer. Same shapes. Different film.
+    </p>
+
+    <h2>The pipeline</h2>
+    <ul class="plain">
+      <li>Ten points placed on a real map with uMap, on top of OpenStreetMap, then exported as data. My story stayed in my own layer. Their map stayed theirs.</li>
+      <li>A data table with calculated columns: days between moments, haversine distance, compass bearing, cumulative totals. The finished CSV and GeoJSON sit next to this piece if you want to inspect them.</li>
+      <li>One p5.js sketch, one file, no build step. The sketch is commented so you can read every decision, and it pastes straight into editor.p5js.org.</li>
+      <li>Map data &copy; OpenStreetMap contributors.</li>
+    </ul>
+
+    <h2>Why it is here</h2>
+    <p>
+      This is my take on the Waypoint / Waveform assignment before I hand it to you. You will pick ten moments of your own, map them, do the same math, and make your own translation decisions. There is no correct answer to why distance should become size. There is only your answer, and being able to say it out loud is the assignment.
+    </p>
+  </div>
+</article>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>LENS 101 · Engaging with the Artistic Space</div>
+    <div>Prof. Kramer Gibson · Berklee College of Music</div>
+  </div>
+</footer>
+
+</body>
+</html>

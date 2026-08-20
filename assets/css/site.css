@@ -1,0 +1,318 @@
+/* LENS 101 site - shared styles
+   Palette borrowed from the Belafonte: cream, Zissou blue, deep navy, signal red. */
+
+:root {
+  --cream: #f5f2e9;
+  --cream-dim: #ece7d8;
+  --ink: #163b4e;
+  --ink-soft: #3a5560;
+  --blue: #3bb6e3;
+  --blue-deep: #1d7fb0;
+  --red: #e23b22;
+  --line: rgba(22, 59, 78, 0.14);
+  --shadow: 0 8px 28px rgba(22, 59, 78, 0.12);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.55;
+}
+
+a {
+  color: var(--blue-deep);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(29, 127, 176, 0.35);
+  transition: color 0.15s, border-color 0.15s;
+}
+a:hover { color: var(--red); border-color: var(--red); }
+
+img { max-width: 100%; display: block; }
+
+/* ---- top nav ---- */
+
+.nav {
+  border-bottom: 1px solid var(--line);
+  background: var(--cream);
+}
+.nav-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 18px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.brand {
+  font-weight: 300;
+  letter-spacing: 0.32em;
+  font-size: 15px;
+  color: var(--ink);
+  border-bottom: none;
+}
+.brand .badge {
+  border: 1.5px solid var(--blue);
+  color: var(--blue-deep);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  margin-right: 10px;
+}
+.nav-links { display: flex; gap: 22px; }
+.nav-links a {
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border: none;
+}
+.nav-links a:hover { color: var(--red); }
+
+/* ---- hero ---- */
+
+.hero {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 72px 28px 40px;
+}
+.hero .eyebrow {
+  letter-spacing: 0.42em;
+  font-size: 12px;
+  color: var(--blue-deep);
+  margin-bottom: 18px;
+}
+.hero h1 {
+  font-weight: 300;
+  font-size: clamp(34px, 5.4vw, 60px);
+  letter-spacing: 0.04em;
+  margin: 0 0 18px;
+  color: var(--ink);
+}
+.hero p.lede {
+  max-width: 680px;
+  font-size: 18px;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* ---- section blocks ---- */
+
+.section {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 40px 28px;
+}
+.section h2 {
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--blue-deep);
+  margin: 0 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section h2::before {
+  content: "";
+  width: 28px;
+  height: 2px;
+  background: var(--red);
+  display: inline-block;
+}
+.section p { max-width: 720px; }
+
+/* ---- cards ---- */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 22px;
+}
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 22px 22px 24px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 38px rgba(22, 59, 78, 0.18);
+}
+.card .tag {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+.card h3 {
+  font-weight: 400;
+  font-size: 22px;
+  color: var(--ink);
+  margin: 0;
+}
+.card p {
+  color: var(--ink-soft);
+  margin: 0;
+  font-size: 15px;
+}
+.card .go {
+  margin-top: auto;
+  padding-top: 12px;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--blue-deep);
+  border: none;
+}
+
+/* ---- piece pages (gallery + guides) ---- */
+
+.piece {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 48px 28px 80px;
+}
+.piece .crumb {
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 16px;
+}
+.piece h1 {
+  font-weight: 300;
+  font-size: clamp(30px, 4.4vw, 48px);
+  letter-spacing: 0.04em;
+  margin: 0 0 8px;
+}
+.piece .meta {
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: var(--blue-deep);
+  text-transform: uppercase;
+  margin-bottom: 32px;
+}
+
+.frame {
+  border: 2px solid var(--blue);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--cream-dim);
+  box-shadow: var(--shadow);
+  aspect-ratio: 16 / 10;
+  width: 100%;
+}
+.frame iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.video-wrap {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  border: 2px solid var(--blue);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: var(--shadow);
+}
+.video-wrap iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.video-block { margin: 28px 0 38px; }
+.video-block .label {
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 6px;
+}
+.video-block h3 {
+  font-weight: 400;
+  font-size: 22px;
+  margin: 2px 0 6px;
+  color: var(--ink);
+}
+.video-block .note {
+  color: var(--ink-soft);
+  font-size: 15px;
+  margin: 0 0 14px;
+  max-width: 720px;
+}
+
+.notes {
+  margin-top: 36px;
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
+}
+.notes h2 {
+  font-weight: 400;
+  font-size: 16px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--blue-deep);
+  margin: 0 0 14px;
+}
+.notes p { max-width: 720px; }
+
+ul.plain {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px;
+}
+ul.plain li {
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+ul.plain li:last-child { border-bottom: none; }
+
+/* ---- footer ---- */
+
+.footer {
+  margin-top: 60px;
+  border-top: 1px solid var(--line);
+  background: var(--cream-dim);
+}
+.footer-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 28px;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .hero { padding-top: 48px; }
+  .nav-inner { padding: 14px 18px; }
+  .nav-links { gap: 14px; }
+}

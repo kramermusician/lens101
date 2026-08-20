@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Belafonte — A Living Cross-Section</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #f5f2e9; }
+  #title {
+    position: fixed; top: 5%; left: 50%; transform: translateX(-50%);
+    font-family: "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.42em;
+    font-size: clamp(20px, 4.2vw, 56px); color: #3bb6e3; font-weight: 300;
+    pointer-events: none; user-select: none; z-index: 10;
+    display: flex; align-items: center; gap: 0.4em;
+  }
+  #title .badge {
+    border: 2px solid #3bb6e3; border-radius: 4px; padding: 2px 6px;
+    font-size: 0.45em; letter-spacing: 0.05em; line-height: 1; color:#3bb6e3;
+  }
+  #hint {
+    position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+    font-family: "Helvetica Neue", Arial, sans-serif; font-size: 12px;
+    color: #6b7a82; letter-spacing: 0.12em; opacity: 0.7; z-index: 10;
+    pointer-events: none; user-select: none;
+  }
+  #heli-ui, #sub-ui {
+    position: fixed; top: 50%; left: 24px; transform: translateY(-50%);
+    display: none; z-index: 20; pointer-events: none; user-select: none;
+    font-family: "Helvetica Neue", Arial, sans-serif; color: #163b4e;
+    background: rgba(245,242,233,0.92); border: 2px solid #3bb6e3;
+    border-radius: 10px; padding: 16px 18px; max-width: 240px;
+    box-shadow: 0 6px 24px rgba(22,59,78,0.18);
+  }
+  #heli-ui h3, #sub-ui h3 {
+    margin: 0 0 10px; font-weight: 400; letter-spacing: 0.18em;
+    font-size: 13px; color: #1d7fb0; display:flex; align-items:center; gap:6px;
+  }
+  #heli-ui .badge, #sub-ui .badge { border:1.5px solid #1d7fb0; border-radius:3px; padding:1px 4px; font-size:10px; }
+  #heli-ui .row, #sub-ui .row { display:flex; justify-content:space-between; gap:12px; font-size:12.5px; margin:5px 0; }
+  #heli-ui .k, #sub-ui .k {
+    background:#163b4e; color:#f5f2e9; border-radius:4px; padding:1px 7px;
+    font-size:11px; letter-spacing:0.05em; white-space:nowrap;
+  }
+  #heli-ui .lbl, #sub-ui .lbl { color:#3a5560; }
+  #heli-ui .tip, #sub-ui .tip { margin-top:11px; font-size:11px; color:#6b7a82; line-height:1.45; }
+  #heli-ui .score, #sub-ui .score { margin-top:10px; font-size:12px; color:#1d7fb0; }
+  #heli-ui .score b, #sub-ui .score b { color:#e23b22; font-size:15px; }
+  #pilot-chip {
+    position: fixed; top: 16px; right: 16px; z-index: 20; pointer-events: none;
+    font-family: "Helvetica Neue", Arial, sans-serif; font-size: 12px;
+    letter-spacing: 0.08em; color: #163b4e; background: rgba(245,242,233,0.92);
+    border: 2px solid #3bb6e3; border-radius: 8px; padding: 7px 12px;
+  }
+  #pilot-chip b { color:#e23b22; }
+  #zoom-box {
+    position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+    z-index: 20; display: flex; align-items: center; gap: 10px;
+    font-family: "Helvetica Neue", Arial, sans-serif; font-size: 11px;
+    letter-spacing: 0.18em; color: #1d7fb0;
+    background: rgba(245,242,233,0.92); border: 2px solid #3bb6e3;
+    border-radius: 22px; padding: 8px 16px;
+  }
+  #zoom-box input[type=range] { width: 200px; accent-color: #e23b22; cursor: pointer; }
+  #zoom-box button {
+    border: 1.5px solid #1d7fb0; background: #163b4e; color: #f5f2e9;
+    border-radius: 12px; padding: 3px 10px; font-size: 10px; letter-spacing: 0.12em;
+    cursor: pointer; font-family: inherit;
+  }
+  #zoom-box button.active { background: #e23b22; border-color: #e23b22; }
+</style>
+</head>
+<body>
+<div id="title"><span class="badge">ZZ</span>BELAFONTE</div>
+<div id="hint">drag to look · zoom slider below · P fly the helicopter · B dive the submarine</div>
+
+<div id="heli-ui">
+  <h3><span class="badge">ZZ</span> SEA HAWK — PILOT</h3>
+  <div class="row"><span class="lbl">Ascend</span><span class="k">↑</span></div>
+  <div class="row"><span class="lbl">Descend</span><span class="k">↓</span></div>
+  <div class="row"><span class="lbl">Fly left</span><span class="k">←</span></div>
+  <div class="row"><span class="lbl">Fly right</span><span class="k">→</span></div>
+  <div class="row"><span class="lbl">Cockpit view</span><span class="k">C</span></div>
+  <div class="row"><span class="lbl">Release cargo</span><span class="k">SPACE</span></div>
+  <div class="row"><span class="lbl">Exit pilot</span><span class="k">ESC</span></div>
+  <div class="tip">Lower the hook over a floating crate to grab it, then drop it on the glowing deck drop-zone. The crew will carry it down into the hold.</div>
+  <div class="score">Stored in hold: <b id="heli-score">0</b></div>
+</div>
+
+<div id="sub-ui">
+  <h3><span class="badge">ZZ</span> DEEP SEARCH — DIVE</h3>
+  <div class="row"><span class="lbl">Rise</span><span class="k">↑</span></div>
+  <div class="row"><span class="lbl">Dive</span><span class="k">↓</span></div>
+  <div class="row"><span class="lbl">Forward / back</span><span class="k">← →</span></div>
+  <div class="row"><span class="lbl">Cockpit view</span><span class="k">C</span></div>
+  <div class="row"><span class="lbl">Surface (exit)</span><span class="k">ESC</span></div>
+  <div class="tip">Dive down to the seafloor and explore the coral reef. Your headlights light the way.</div>
+</div>
+
+<div id="pilot-chip">press <b>P</b> to fly · <b>B</b> to dive</div>
+
+<div id="zoom-box">
+  <label>ZOOM</label>
+  <input id="zoom-slider" type="range" min="0.45" max="2.4" step="0.01" value="1" />
+  <button id="zoom-auto" title="Auto-frame the whole boat + helicopter">AUTO</button>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/build/three.module.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ---------------------------------------------------------------------------
+   THE BELAFONTE — animated cutaway, after Ghilardi's cross-section poster
+   for "The Life Aquatic with Steve Zissou". A research vessel that mimics
+   Cousteau's Calypso. Same palette: cream ground, golden hull, navy keel,
+   cyan blue, signal red, teal stack.
+--------------------------------------------------------------------------- */
+
+const PAL = {
+  cream:   0xf5f2e9,
+  gold:    0xf6b41f,
+  goldHi:  0xf9c84a,
+  goldDk:  0xd99413,
+  navy:    0x163b4e,
+  navyDk:  0x102b39,
+  cyan:    0x3bb6e3,
+  cyanDk:  0x1d7fb0,
+  blue:    0x1a6f9c,
+  red:     0xe23b22,
+  redDk:   0xb52c18,
+  teal:    0x16545f,
+  tealDk:  0x0e3a43,
+  white:   0xf2efe4,
+  gray:    0xc7ccce,
+  grayDk:  0x9aa2a6,
+  steel:   0x4a6b78,
+};
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(PAL.cream);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+// Orthographic-ish look via a long-lens perspective camera kept side-on.
+const camera = new THREE.PerspectiveCamera(26, innerWidth / innerHeight, 0.1, 800);
+camera.position.set(8, 9, 150);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(8, 8, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.enableZoom = false;     // zoom is owned by the slider + smart-frame
+controls.enablePan = false;      // framing owns the target
+controls.maxPolarAngle = Math.PI * 0.62;
+controls.update();
+
+// ---- lighting (flat, poster-like) ----
+scene.add(new THREE.AmbientLight(0xffffff, 0.78));
+const key = new THREE.DirectionalLight(0xffffff, 0.85);
+key.position.set(20, 40, 60);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -70; key.shadow.camera.right = 70;
+key.shadow.camera.top = 60;  key.shadow.camera.bottom = -40;
+key.shadow.camera.near = 1;  key.shadow.camera.far = 200;
+scene.add(key);
+const fill = new THREE.DirectionalLight(PAL.cyan, 0.25);
+fill.position.set(-40, 10, 30);
+scene.add(fill);
+
+// ---- material helpers ----
+const mats = {};
+function mat(color, opts = {}) {
+  const key = color + JSON.stringify(opts);
+  if (!mats[key]) mats[key] = new THREE.MeshStandardMaterial({
+    color, roughness: opts.rough ?? 0.85, metalness: opts.metal ?? 0.0,
+    flatShading: true, ...opts.extra
+  });
+  return mats[key];
+}
+function box(w, h, d, color, opts = {}) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, opts));
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+function place(mesh, x, y, z = 0) { mesh.position.set(x, y, z); return mesh; }
+
+const ROOT = new THREE.Group();   // whole ship — rocks gently
+scene.add(ROOT);
+
+const DEPTH = 7;                  // ship "slab" thickness toward camera
+
+/* =========================================================================
+   1. HULL  — golden slab with navy keel, raked bow, transom stern
+   ========================================================================= */
+const hull = new THREE.Group();
+ROOT.add(hull);
+
+// Build the hull profile as an extruded shape (side silhouette).
+const hp = new THREE.Shape();
+hp.moveTo(-30, 0);
+hp.lineTo(28, 0);
+hp.lineTo(30, 1.2);          // stern transom top
+hp.lineTo(30, -3.2);         // stern down
+hp.quadraticCurveTo(30, -6.2, 26, -6.4);
+hp.lineTo(-22, -6.4);        // flat keel run
+hp.quadraticCurveTo(-31, -6.2, -33, -2.4); // bow forefoot
+hp.quadraticCurveTo(-34, 0.2, -30, 0);
+const hullGeo = new THREE.ExtrudeGeometry(hp, { depth: DEPTH, bevelEnabled: false });
+hullGeo.translate(0, 0, -DEPTH / 2);
+const hullMesh = new THREE.Mesh(hullGeo, mat(PAL.gold));
+hullMesh.castShadow = true; hullMesh.receiveShadow = true;
+hull.add(hullMesh);
+
+// Navy underbelly (keel band) — a slightly larger dark shape behind.
+const keel = new THREE.Shape();
+keel.moveTo(-33, -1.5);
+keel.quadraticCurveTo(-35, -4.5, -27, -7.4);
+keel.lineTo(27, -7.4);
+keel.quadraticCurveTo(32, -7.2, 31.5, -2.2);
+keel.lineTo(30, -2.2);
+keel.quadraticCurveTo(30.5, -6, 26, -6.2);
+keel.lineTo(-22, -6.2);
+keel.quadraticCurveTo(-30, -6, -31.5, -2.6);
+const keelGeo = new THREE.ExtrudeGeometry(keel, { depth: DEPTH + 0.4, bevelEnabled: false });
+keelGeo.translate(0, 0, -(DEPTH + 0.4) / 2);
+const keelMesh = new THREE.Mesh(keelGeo, mat(PAL.navy));
+keelMesh.position.z = -0.2;
+keelMesh.castShadow = true; keelMesh.receiveShadow = true;
+hull.add(keelMesh);
+
+// Red boot-stripe / waterline trim near the bow underside.
+const boot = box(8, 0.9, DEPTH + 0.5, PAL.red);
+hull.add(place(boot, -27, -5.4, 0));
+
+// Bulbous bow tip + rudder/prop hints
+hull.add(place(box(1.6, 2.6, DEPTH - 1, PAL.navyDk), -33.6, -3.4, 0));
+const prop = new THREE.Group();
+const propHub = box(0.6, 0.6, 0.6, PAL.steel, { metal: 0.6, rough: 0.4 });
+prop.add(propHub);
+for (let i = 0; i < 4; i++) {
+  const blade = box(0.35, 2.4, 0.6, PAL.gray, { metal: 0.5, rough: 0.4 });
+  blade.rotation.z = i * Math.PI / 2;
+  blade.position.y = 0; blade.geometry.translate(0, 1.0, 0);
+  prop.add(blade);
+}
+prop.position.set(30.4, -4.6, 0);
+hull.add(prop);
+
+// Stern skeg/rudder
+hull.add(place(box(0.8, 3.2, DEPTH - 1.5, PAL.navyDk), 31.4, -4.0, 0));
+
+/* =========================================================================
+   2. DECK LINE + cutaway grid of ROOMS
+   ========================================================================= */
+
+// A thin deck plate running the length, sitting on hull at y=0.
+const deck = box(60, 0.5, DEPTH, PAL.goldDk);
+hull.add(place(deck, -1, 0.25, 0));
+
+// Room interior face is recessed so we "see inside" (cutaway).
+const ROOM_Z = -DEPTH / 2 + 0.6;    // back wall plane
+const ROOM_DEPTH = DEPTH - 1.6;
+
+const peopleList = [];
+const spinners = [];   // {obj, speed, axis}
+const blinkers = [];   // {mesh, base, phase}
+
+// Make a person: red beanie, blue body. Returns group + walk metadata.
+const TZ_SHIRT = 0x8fc6dd;   // Team Zissou powder-blue uniform
+// Crew member: powder-blue collared shirt, navy shorts, bare legs, pointy red toque.
+function makePerson(skin = 0xe7b48c) {
+  const g = new THREE.Group();
+  const body = box(0.72, 1.05, 0.6, TZ_SHIRT); place(body, 0, 0.98, 0); g.add(body);   // shirt
+  g.add(place(box(0.74, 0.16, 0.62, PAL.white), 0, 1.46, 0));                            // collar
+  g.add(place(box(0.78, 0.42, 0.62, PAL.navy),  0, 0.5, 0));                             // shorts
+  const head = box(0.55, 0.55, 0.55, skin); place(head, 0, 1.78, 0); g.add(head);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.6, 8), mat(PAL.red));        // pointy toque
+  place(cap, 0, 2.22, 0); g.add(cap);
+  const legL = box(0.26, 0.6, 0.3, skin); place(legL, -0.18, 0.0, 0); g.add(legL);       // bare legs
+  const legR = box(0.26, 0.6, 0.3, skin); place(legR, 0.18, 0.0, 0); g.add(legR);
+  g.userData.legs = [legL, legR];
+  g.scale.setScalar(0.92);
+  return g;
+}
+
+// Seu Jorge as Pelé dos Santos — the seabound troubadour, seated with his guitar.
+function makeGuitarist() {
+  const g = new THREE.Group();
+  const skin = 0x6b4324;                 // Seu Jorge's complexion
+  g.add(place(box(0.84, 1.0, 0.62, TZ_SHIRT), 0, 1.0, 0));        // shirt
+  g.add(place(box(0.86, 0.16, 0.64, PAL.white), 0, 1.46, 0));     // collar
+  const head = box(0.56, 0.58, 0.56, skin); place(head, 0, 1.8, 0.02); g.add(head);
+  g.add(place(box(0.5, 0.16, 0.52, 0x2a1a0e), 0, 1.55, 0.06));    // beard
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.66, 8), mat(PAL.red));
+  place(cap, 0, 2.26, 0); g.add(cap);
+  // thighs forward (seated), bare shins hanging
+  g.add(place(box(0.72, 0.34, 1.0, PAL.navy), 0, 0.55, 0.5));
+  g.add(place(box(0.26, 0.6, 0.3, skin), -0.18, 0.0, 0.95));
+  g.add(place(box(0.26, 0.6, 0.3, skin),  0.18, 0.0, 0.95));
+  // acoustic guitar across the lap
+  const guitar = new THREE.Group();
+  const gbody = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), mat(0xd99413));
+  gbody.scale.set(1.05, 1.2, 0.42); guitar.add(gbody);
+  guitar.add(place(new THREE.Mesh(new THREE.CircleGeometry(0.16, 14), mat(0x2a1c0c)), 0, 0.04, 0.23));
+  guitar.add(place(box(0.15, 1.5, 0.15, 0x6b4a2a), 0, 0.95, 0));   // neck
+  guitar.add(place(box(0.26, 0.28, 0.17, 0x241608), 0, 1.72, 0));  // headstock
+  guitar.rotation.z = -0.5; guitar.position.set(0.05, 1.0, 0.62); g.add(guitar);
+  // arms
+  const armR = box(0.2, 0.66, 0.2, TZ_SHIRT); place(armR, 0.42, 1.12, 0.6); g.add(armR);
+  g.add(place(box(0.2, 0.6, 0.2, TZ_SHIRT), -0.46, 1.18, 0.32));
+  g.userData.strum = armR; g.userData.head = head;
+  return g;
+}
+
+// A room: walls/floor + slot for contents. x,y = lower-left corner.
+function room(x, y, w, h, opts = {}) {
+  const g = new THREE.Group();
+  g.position.set(x, y, 0);
+  // back wall
+  const back = box(w, h, 0.3, opts.wall ?? PAL.goldHi);
+  place(back, w/2, h/2, ROOM_Z); g.add(back);
+  // floor plate
+  const floor = box(w, 0.25, ROOM_DEPTH, opts.floor ?? PAL.goldDk);
+  place(floor, w/2, 0.12, 0); g.add(floor);
+  // dividers (left/right thin bulkheads)
+  const bl = box(0.22, h, ROOM_DEPTH, PAL.goldDk); place(bl, 0.11, h/2, 0); g.add(bl);
+  const br = box(0.22, h, ROOM_DEPTH, PAL.goldDk); place(br, w-0.11, h/2, 0); g.add(br);
+  hull.add(g);
+  return g;
+}
+
+// small helpers for furnishing rooms
+function panel(parent, x, y, w, h, color, opts) {  // wall-mounted console
+  const p = box(w, h, 0.5, color, opts); place(p, x, y, ROOM_Z + 0.5); parent.add(p); return p;
+}
+function light(parent, x, y, color = PAL.red, size = 0.18) {
+  const l = box(size, size, 0.4, color, { extra: { emissive: color, emissiveIntensity: 0.6 } });
+  place(l, x, y, ROOM_Z + 0.7); parent.add(l);
+  blinkers.push({ mesh: l, phase: Math.random() * 6.28, color });
+  return l;
+}
+function crate(parent, x, y, s = 1.0, color = PAL.red) {
+  const c = box(s, s, Math.min(s, ROOM_DEPTH - 0.5), color); place(c, x, y + s/2, 0); parent.add(c); return c;
+}
+function addPerson(parent, x, y, range = 1.5, suit = PAL.blue) {
+  const p = makePerson(0xe7b48c, suit);
+  p.position.set(x, y, 0);
+  parent.add(p);
+  peopleList.push({ obj: p, x0: x, range, speed: 0.4 + Math.random() * 0.5, phase: Math.random()*6.28, dir: 1 });
+  return p;
+}
+
+/* ---- LOWER DECK ROW (engine, storage, lab, quarters) ---- */
+
+// Engine room (stern) — red machinery, big flywheel that spins
+const eng = room(18, 0.5, 11, 5.2, { wall: PAL.goldHi });
+panel(eng, 2.4, 2.6, 3.2, 3.6, PAL.red);
+panel(eng, 6.2, 2.2, 2.2, 2.8, PAL.steel, { metal: 0.4, rough: 0.5 });
+const flywheel = new THREE.Group();
+for (let i=0;i<6;i++){ const s=box(0.3,1.7,0.3,PAL.navy); s.rotation.z=i*Math.PI/3; s.geometry.translate(0,0,0); flywheel.add(s);}
+flywheel.add(box(1.9,1.9,0.4,PAL.gray,{metal:0.4,rough:0.5}));
+flywheel.add(box(0.5,0.5,0.6,PAL.redDk));
+flywheel.position.set(20+8.6, 2.7, ROOM_Z+0.8); hull.add(flywheel);
+spinners.push({ obj: flywheel, speed: 2.2, axis: 'z' });
+light(eng, 2.0, 4.2); light(eng, 3.0, 4.2, PAL.cyan);
+addPerson(eng, 8.5, 0.7, 1.2, PAL.red);
+
+// Storage / cargo (mid-stern) — stacked crates
+const cargo = room(8, 0.5, 9.6, 5.0, { wall: PAL.gold });
+crate(cargo, 1.8, 0.25, 1.4, PAL.red);
+crate(cargo, 1.8, 1.65, 1.2, PAL.cyanDk);
+crate(cargo, 3.6, 0.25, 1.5, PAL.gray);
+crate(cargo, 5.6, 0.25, 1.3, PAL.red);
+crate(cargo, 7.2, 0.25, 1.6, PAL.navy);
+crate(cargo, 7.0, 1.95, 1.0, PAL.cyan);
+
+// Lab / science bay (mid) — cyan consoles, screens blink
+const lab = room(-3, 0.5, 10.6, 5.0, { wall: PAL.white });
+panel(lab, 2.2, 2.4, 2.6, 2.6, PAL.cyanDk);
+panel(lab, 5.0, 2.6, 2.0, 2.2, PAL.navy);
+panel(lab, 7.6, 2.2, 2.2, 2.4, PAL.steel, { metal: 0.4, rough: 0.5 });
+light(lab, 1.6,3.9,PAL.cyan); light(lab,2.4,3.9,PAL.red); light(lab,3.2,3.9,PAL.cyan);
+light(lab, 5.0,3.9,PAL.red); light(lab,7.0,3.6,PAL.cyan); light(lab,8.0,3.6,PAL.red);
+addPerson(lab, 4.5, 0.7, 2.2, PAL.blue);
+addPerson(lab, 9.0, 0.7, 0.9, PAL.red);
+
+// Crew quarters / mess (forward-mid) — bunks + table, red doors
+const mess = room(-14, 0.5, 11, 5.0, { wall: PAL.goldHi });
+panel(mess, 2.0, 1.3, 1.6, 2.4, PAL.red);            // door
+const bunkA = box(3.2,0.3,ROOM_DEPTH-0.6,PAL.cyanDk); place(bunkA,7.5,1.1,0); mess.add(bunkA);
+const bunkB = box(3.2,0.3,ROOM_DEPTH-0.6,PAL.cyanDk); place(bunkB,7.5,2.5,0); mess.add(bunkB);
+mess.add(place(box(2.4,1.0,2.0,PAL.gray),4.5,0.7,0)); // table
+addPerson(mess, 4.5, 0.7, 1.6, PAL.red);
+light(mess, 9.0, 4.0, PAL.cyan);
+
+// Forepeak / dive prep (bow) — diving suits, narrowing room
+const fore = room(-24.5, 0.5, 9.6, 4.6, { wall: PAL.gold });
+fore.add(place(box(0.9,2.2,0.6,PAL.navy),2.0,1.3,ROOM_Z+0.6)); // wetsuit
+fore.add(place(box(0.9,2.2,0.6,PAL.cyanDk),3.2,1.3,ROOM_Z+0.6));
+fore.add(place(box(0.9,2.2,0.6,PAL.red),4.4,1.3,ROOM_Z+0.6));
+crate(fore, 6.5, 0.25, 1.1, PAL.cyan);
+addPerson(fore, 7.5, 0.7, 1.0, PAL.blue);
+
+/* ---- UPPER DECK ROW (bridge, library, sauna, observation) ---- */
+
+const U = 6.0;  // upper deck floor height
+
+// Galley / kitchen (stern-upper) — steel counters
+const galley = room(19, U, 9.5, 4.4, { wall: PAL.white });
+panel(galley, 2.4, 1.6, 3.2, 1.0, PAL.steel, { metal: 0.5, rough: 0.4 });
+panel(galley, 6.4, 2.2, 2.6, 2.2, PAL.red);
+light(galley, 5.0, 3.6, PAL.cyan);
+addPerson(galley, 4.5, U+0.2, 1.4, PAL.red);
+
+// Editing / film room — Zissou makes documentaries (cyan screens)
+const edit = room(8.5, U, 9.6, 4.4, { wall: PAL.goldHi });
+panel(edit, 2.4, 2.4, 3.0, 2.4, PAL.navy);
+light(edit,1.6,2.4,PAL.cyan); light(edit,2.4,2.4,PAL.red); light(edit,3.2,2.4,PAL.cyan);
+panel(edit, 6.4, 2.2, 2.4, 2.2, PAL.cyanDk);
+addPerson(edit, 7.2, U+0.2, 1.1, PAL.blue);
+
+// Library / lounge — bookshelves (multicolor spines)
+const lib = room(-2, U, 9.6, 4.4, { wall: PAL.gold });
+const spineCols = [PAL.red, PAL.cyan, PAL.navy, PAL.gold, PAL.teal, PAL.redDk, PAL.cyanDk];
+for (let r=0;r<2;r++) for (let c=0;c<10;c++){
+  const b = box(0.32, 1.0, 0.5, spineCols[(r*10+c)%spineCols.length]);
+  place(b, 1.6 + c*0.42, 1.2 + r*1.4, ROOM_Z+0.6); lib.add(b);
+}
+lib.add(place(box(2.0,0.9,1.6,PAL.red),7.6,0.7,0)); // armchair
+addPerson(lib, 6.0, U+0.2, 1.4, PAL.red);
+
+// Sauna (Zissou's famous sauna) — teal panel + warm light
+const sauna = room(-12.6, U, 5.0, 4.4, { wall: PAL.tealDk });
+panel(sauna, 1.5, 1.6, 1.0, 2.4, PAL.red);  // door
+sauna.add(place(box(2.2,0.3,ROOM_DEPTH-0.8,PAL.gold),3.2,1.0,0)); // bench
+sauna.add(place(box(2.2,0.3,ROOM_DEPTH-0.8,PAL.gold),3.2,2.1,0));
+light(sauna, 3.0, 3.4, 0xff7b3a, 0.3);
+addPerson(sauna, 3.2, U+0.2, 0.5, PAL.cyan);
+
+// Bridge / wheelhouse (forward-upper) — windows, captain
+const bridge = room(-22.5, U, 9.4, 4.4, { wall: PAL.white });
+// window band
+const win = box(6.0, 1.6, 0.3, PAL.cyan, { extra:{ emissive: PAL.cyan, emissiveIntensity: 0.15 } });
+place(win, 4.7, 3.0, ROOM_Z+0.2); bridge.add(win);
+bridge.add(place(box(1.0,1.2,1.0,PAL.navy),2.2,0.85,0)); // helm console
+const wheel = box(1.1,1.1,0.2,PAL.redDk); place(wheel,2.2,1.7,ROOM_Z+0.9); bridge.add(wheel);
+spinners.push({ obj: wheel, speed: 0.5, axis: 'z' });
+addPerson(bridge, 2.4, U+0.2, 0.6, PAL.red);
+addPerson(bridge, 6.5, U+0.2, 1.6, PAL.blue);
+
+/* =========================================================================
+   3. SUPERSTRUCTURE — stack, mast/flag, radar, observation bubble, antennae
+   ========================================================================= */
+const TOP = U + 4.4 + 0.5;  // top deck level ~10.9
+
+// Top deck plate
+hull.add(place(box(40, 0.5, DEPTH, PAL.goldDk), 0, TOP - 0.25, 0));
+
+// Smokestack (teal, raked) with ZZ band
+const stackGrp = new THREE.Group();
+const stack = box(4.4, 7.0, 4.4, PAL.teal);
+place(stack, 0, 3.5, 0); stackGrp.add(stack);
+stackGrp.add(place(box(4.6,1.1,4.6,PAL.white),0,4.6,0));      // white band
+stackGrp.add(place(box(0.9,0.9,0.2,PAL.teal),-0.5,4.6,2.32)); // Z
+stackGrp.add(place(box(0.9,0.9,0.2,PAL.teal), 0.5,4.6,2.32)); // Z
+stackGrp.add(place(box(4.8,0.4,4.8,PAL.tealDk),0,7.0,0));     // rim
+stackGrp.position.set(-7, TOP, 0);
+hull.add(stackGrp);
+
+// Smoke particle puffs from the stack
+const smoke = [];
+const smokeGeo = new THREE.SphereGeometry(0.8, 8, 8);
+const smokeMat = new THREE.MeshStandardMaterial({ color: 0xdfe4e2, transparent: true, opacity: 0.55, flatShading: true });
+for (let i=0;i<14;i++){
+  const s = new THREE.Mesh(smokeGeo, smokeMat.clone());
+  s.position.set(-7, TOP + 7, 0);
+  hull.add(s);
+  smoke.push({ mesh: s, t: i / 14, drift: (Math.random()-0.5)*0.4 });
+}
+
+// Mast + BELAFONTE flag
+const mast = box(0.35, 9, 0.35, PAL.navy); place(mast, 2, TOP + 4.5, 0); hull.add(mast);
+const flag = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 2.2, 16, 1),
+  new THREE.MeshStandardMaterial({ color: PAL.cyan, side: THREE.DoubleSide, flatShading: true }));
+flag.position.set(2 + 2.4, TOP + 8.2, 0);
+hull.add(flag);
+const flagBase = flag.geometry.attributes.position.array.slice();
+
+// Radar dish (rotates) on a small tower
+const radarTower = box(0.4, 2.4, 0.4, PAL.gray); place(radarTower, 8, TOP+1.2, 0); hull.add(radarTower);
+const dish = new THREE.Group();
+const dishMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 1.6, 0.4, 20, 1, true),
+  new THREE.MeshStandardMaterial({ color: PAL.white, side: THREE.DoubleSide, flatShading: true }));
+dishMesh.rotation.z = Math.PI/2; dishMesh.position.x = 0.6; dish.add(dishMesh);
+dish.position.set(8, TOP+2.6, 0); hull.add(dish);
+spinners.push({ obj: dish, speed: 0.9, axis: 'y' });
+
+// Observation balloon/sphere antenna (the white globe in the poster)
+const globe = new THREE.Mesh(new THREE.SphereGeometry(1.3, 16, 12), mat(PAL.white));
+globe.castShadow = true; place(globe, 5, TOP + 3.2, 0); hull.add(globe);
+hull.add(place(box(0.25,2.0,0.25,PAL.gray),5,TOP+1.3,0));
+
+// Antennae masts (thin red-tipped)
+[12, 14, -12].forEach((x,i)=>{
+  hull.add(place(box(0.18, 3+ i, 0.18, PAL.gray), x, TOP + (3+i)/2, 0));
+  const tip = box(0.3,0.3,0.3,PAL.red); place(tip, x, TOP + (3+i), 0); hull.add(tip);
+});
+
+// Bow railing platform (the high observation prow, stern-right in poster)
+hull.add(place(box(5, 0.4, DEPTH, PAL.goldDk), 26.5, U + 2.2, 0));
+for (let i=0;i<4;i++) hull.add(place(box(0.15,1.4,0.15,PAL.navy), 24.5+i*1.4, U+2.9, DEPTH/2-0.6));
+hull.add(place(box(5,0.15,0.15,PAL.navy), 26.5, U+3.6, DEPTH/2-0.6));
+addPerson(hull, 26.5, U+2.4, 1.4, PAL.red).userData.onDeck = true;
+
+// Seu Jorge (Pelé dos Santos) on the top deck with his guitar, by the stack
+const seuCrate = box(1.7, 1.1, DEPTH - 2.2, PAL.red);   // a crate to sit on
+hull.add(place(seuCrate, 16, TOP + 0.55, 0));
+const seuJorge = makeGuitarist();
+seuJorge.position.set(16, TOP + 1.1, 0);
+hull.add(seuJorge);
+
+/* =========================================================================
+   4. CRANE + HELICOPTER + DIVING BELL (forward deck machinery)
+   ========================================================================= */
+
+// Yellow deck crane (swings slowly)
+const craneBase = box(2, 2, DEPTH-1, PAL.gold); place(craneBase, -18, TOP+1, 0); hull.add(craneBase);
+const craneArm = new THREE.Group();
+craneArm.position.set(-18, TOP + 2, 0);
+const jib = box(11, 0.6, 0.6, PAL.gold); place(jib, 4.2, 0, 0); craneArm.add(jib);
+craneArm.add(place(box(0.6,3,0.6,PAL.gold), 0, 1.4, 0)); // A-frame
+craneArm.add(place(box(0.4,2.6,0.4,PAL.navy), 0, 0, 0));
+hull.add(craneArm);
+
+// Cable + diving bell hanging from jib tip, bobbing down toward water
+const cable = box(0.08, 6, 0.08, PAL.navyDk);
+const bell = new THREE.Group();
+bell.add(box(1.6,1.8,1.6,PAL.red));
+bell.add(place(box(1.0,0.5,1.0,PAL.gold),0,1.1,0));
+bell.add(place(new THREE.Mesh(new THREE.SphereGeometry(0.4,12,10), mat(PAL.cyan,{extra:{emissive:PAL.cyan,emissiveIntensity:0.2}})),0,0,0.81)); // porthole
+const bellRig = new THREE.Group();
+bellRig.add(place(cable, 0, -3, 0));
+bell.position.y = -6.5; bellRig.add(bell);
+bellRig.position.set(-18 + 9.0, TOP + 2, 0);  // under jib tip
+hull.add(bellRig);
+
+// Helicopter on the forward pad (rotor spins) — the yellow "Sea Hawk"
+const heli = new THREE.Group();
+heli.add(place(box(3.2,1.4,1.6,PAL.gold), 0, 0, 0));            // fuselage
+heli.add(place(box(2.2,1.0,1.5,PAL.cyan,{extra:{emissive:PAL.cyan,emissiveIntensity:0.12}}), 0.3, 0.5, 0)); // cockpit glass
+heli.add(place(box(3.0,0.4,0.4,PAL.gold), -2.4, 0.3, 0));       // tail boom
+heli.add(place(box(0.4,1.2,0.3,PAL.red), -3.7, 0.6, 0));        // tail fin
+heli.add(place(box(2.4,0.18,0.6,PAL.navy), 0, -0.9, 0));        // skids bar
+heli.add(place(box(0.18,0.6,0.6,PAL.navy), -0.9,-0.6,0));
+heli.add(place(box(0.18,0.6,0.6,PAL.navy),  0.9,-0.6,0));
+const rotorMast = box(0.2,0.7,0.2,PAL.gray); place(rotorMast,0,1.0,0); heli.add(rotorMast);
+const rotor = new THREE.Group();
+rotor.add(box(7.5,0.08,0.4,PAL.navyDk));
+rotor.add(box(0.4,0.08,7.5,PAL.navyDk));
+rotor.position.set(0,1.4,0); heli.add(rotor);
+spinners.push({ obj: rotor, speed: 14, axis: 'y' });
+const tailRotor = box(0.08,1.4,0.08,PAL.gray); place(tailRotor,-3.9,0.6,0.3); heli.add(tailRotor);
+spinners.push({ obj: tailRotor, speed: 16, axis: 'x' });
+// Helicopter lives in WORLD space (scene) so it can fly free of the ship bob.
+const HELI_START = new THREE.Vector3(-17, 12.4, 0);
+heli.position.copy(HELI_START);
+scene.add(heli);
+// landing pad stays on the ship
+hull.add(place(box(7,0.3,DEPTH-0.5,PAL.navy), -25, TOP-0.1, 0));
+hull.add(place(box(2,0.05,2,PAL.white), -25, TOP+0.06, 0));
+
+// Hook + cable that dangles below the helicopter for cargo lifting
+const heliHook = new THREE.Group();
+const hookCable = box(0.07, 2.4, 0.07, PAL.navyDk); place(hookCable, 0, -1.2, 0); heliHook.add(hookCable);
+const hookClaw = box(0.5, 0.5, 0.5, PAL.steel, { metal: 0.6, rough: 0.4 }); place(hookClaw, 0, -2.5, 0); heliHook.add(hookClaw);
+heliHook.position.set(0, -0.9, 0);
+heli.add(heliHook);
+
+// Generous invisible hit-box so the helicopter is easy to click.
+const heliHit = new THREE.Mesh(new THREE.BoxGeometry(10, 6, 5),
+  new THREE.MeshBasicMaterial({ visible: false }));
+heliHit.name = 'heliHit';
+heli.add(heliHit);
+
+/* =========================================================================
+   5. SEA  — translucent wave plane the hull rides in, with bubbles
+   ========================================================================= */
+const seaGeo = new THREE.PlaneGeometry(320, 90, 80, 24);
+seaGeo.rotateX(-Math.PI/2);
+const sea = new THREE.Mesh(seaGeo, new THREE.MeshStandardMaterial({
+  color: PAL.cyanDk, transparent: true, opacity: 0.5, flatShading: true,
+  metalness: 0.1, roughness: 0.6
+}));
+sea.position.set(0, -5.2, 0);
+sea.receiveShadow = true;
+scene.add(sea);
+const seaBase = seaGeo.attributes.position.array.slice();
+
+// deeper water slab (solid) for body
+const deepSea = new THREE.Mesh(new THREE.BoxGeometry(320, 40, 90),
+  new THREE.MeshStandardMaterial({ color: PAL.navy, transparent:true, opacity:0.35, flatShading:true }));
+deepSea.position.set(0, -25.4, 0); scene.add(deepSea);
+
+// rising bubbles around the hull
+const bubbles = [];
+const bubGeo = new THREE.SphereGeometry(0.22, 8, 6);
+const bubMat = new THREE.MeshStandardMaterial({ color: 0xeaf6fb, transparent:true, opacity:0.6 });
+for (let i=0;i<60;i++){
+  const b = new THREE.Mesh(bubGeo, bubMat);
+  b.position.set(-34 + Math.random()*68, -6 - Math.random()*14, (Math.random()-0.5)*8);
+  b.scale.setScalar(0.4 + Math.random());
+  scene.add(b);
+  bubbles.push({ mesh:b, speed: 1.2 + Math.random()*2.2, x: b.position.x, sway: Math.random()*6.28 });
+}
+
+/* =========================================================================
+   6. FLOATING CARGO  + helicopter control + cockpit camera
+   ========================================================================= */
+const SEA_Y = -4.6;        // surface where loose cargo floats
+const DECK_Y = TOP - 0.25; // world deck height (ship bob is tiny)
+const cargoColors = [PAL.red, PAL.cyan, PAL.gold, PAL.teal, PAL.redDk];
+const cargoes = [];        // {mesh, state:'float'|'carried'|'falling'|'landed', vy, bob}
+function spawnCargo(x, color) {
+  const c = box(2.0, 2.0, 2.0, color);
+  c.add(place(box(2.05, 0.3, 2.05, PAL.gold), 0, 0.85, 0));   // banded lid
+  c.position.set(x, SEA_Y + 1.0, 0);
+  scene.add(c);
+  cargoes.push({ mesh: c, state: 'float', vy: 0, bob: Math.random() * 6.28 });
+}
+[-46, -38, 40, 48, 56].forEach((x, i) => spawnCargo(x, cargoColors[i % cargoColors.length]));
+
+/* ---- DECK DROP-ZONE + crew that carry stored boxes down into the hold ----
+   The zone, carriers and stored crates all live under `hull` so they ride the
+   deck. Coordinates below are hull-local (deck surface = TOP). */
+const ZONE_X = 0, ZONE_HALF = 3.6;
+const DECK_LOCAL_Y = TOP;            // deck surface in hull-local space
+const HATCH_X = 11.5;                // hatch above the cargo hold
+const HOLD_X = 13.2, HOLD_Y = 2.2;   // deposit point inside the hold
+let storedCount = 0, holdStack = 0;
+const deliveries = [];
+const _tmp = new THREE.Vector3();
+
+// glowing drop-zone pad
+const zone = new THREE.Group();
+const pad = box(ZONE_HALF * 2, 0.12, DEPTH - 1.4, PAL.cyan,
+  { extra: { emissive: PAL.cyan, emissiveIntensity: 0.45, transparent: true, opacity: 0.9 } });
+place(pad, 0, 0.07, 0); zone.add(pad);
+for (let i = -1; i <= 1; i++) { const ch = box(0.5, 0.15, 1.6, PAL.gold); place(ch, i * 1.5, 0.15, 0); zone.add(ch); }
+[[-ZONE_HALF, DEPTH/2-0.9],[ZONE_HALF, DEPTH/2-0.9],[-ZONE_HALF,-(DEPTH/2-0.9)],[ZONE_HALF,-(DEPTH/2-0.9)]]
+.forEach(([px, pz]) => {
+  zone.add(place(box(0.18, 1.1, 0.18, PAL.navy), px, 0.55, pz));
+  const beacon = box(0.3, 0.3, 0.3, PAL.red, { extra: { emissive: PAL.red, emissiveIntensity: 0.7 } });
+  place(beacon, px, 1.15, pz); zone.add(beacon);
+  blinkers.push({ mesh: beacon, phase: Math.random() * 6.28, color: PAL.red });
+});
+zone.position.set(ZONE_X, DECK_LOCAL_Y, 0);
+hull.add(zone);
+
+function startDelivery(c) {
+  hull.attach(c.mesh);                 // box keeps world pose but now rides the deck
+  c.state = 'delivering';
+  const carrier = makePerson();
+  carrier.position.set(c.mesh.position.x, DECK_LOCAL_Y, 0);
+  hull.add(carrier);
+  deliveries.push({ box: c.mesh, carrier, phase: 'toHatch', legPhase: Math.random() * 6.28 });
+}
+
+function updateDeliveries(t) {
+  for (let i = deliveries.length - 1; i >= 0; i--) {
+    const d = deliveries[i], cr = d.carrier, bx = d.box;
+    const hold = () => { bx.position.set(cr.position.x, cr.position.y + 2.6, 0); bx.rotation.set(0, 0, 0); };
+    const W = 0.018;   // walk/glide easing — slow, deliberate dock-worker pace
+    if (d.phase === 'toHatch') {
+      cr.position.x = THREE.MathUtils.lerp(cr.position.x, HATCH_X, W);
+      cr.position.y = DECK_LOCAL_Y; hold();
+      if (Math.abs(cr.position.x - HATCH_X) < 0.5) d.phase = 'descend';
+    } else if (d.phase === 'descend') {
+      cr.position.x = THREE.MathUtils.lerp(cr.position.x, HOLD_X, W);
+      cr.position.y = THREE.MathUtils.lerp(cr.position.y, HOLD_Y, W); hold();
+      if (Math.abs(cr.position.y - HOLD_Y) < 0.35) {
+        const fx = 9.4 + (holdStack % 4) * 1.5, fy = 1.4 + Math.floor(holdStack / 4) * 1.5;
+        bx.position.set(fx, fy, (Math.random() - 0.5) * 1.2);
+        holdStack++; storedCount++; updateScore();
+        d.phase = 'return';
+      }
+    } else if (d.phase === 'return') {
+      cr.position.y = THREE.MathUtils.lerp(cr.position.y, DECK_LOCAL_Y, W);
+      if (Math.abs(cr.position.y - DECK_LOCAL_Y) < 0.6) {
+        cr.position.x = THREE.MathUtils.lerp(cr.position.x, 24, W);
+        if (cr.position.x > 22.5) { hull.remove(cr); deliveries.splice(i, 1); }
+      }
+    }
+    if (cr.userData.legs) { const sw = Math.sin(t * 6 + d.legPhase) * 0.45;
+      cr.userData.legs[0].rotation.x = sw; cr.userData.legs[1].rotation.x = -sw; }
+  }
+}
+
+/* =========================================================================
+   7. CORAL REEF on the seafloor + reef fish (Cousteau's diving ground)
+   ========================================================================= */
+const SEAFLOOR_Y = -34;
+const PAL_SAND = 0xd9c79a;
+
+// sandy seafloor
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(360, 90, 1, 1),
+  new THREE.MeshStandardMaterial({ color: PAL_SAND, flatShading: true, roughness: 1 }));
+floor.rotation.x = -Math.PI / 2; floor.position.set(0, SEAFLOOR_Y, 0);
+floor.receiveShadow = true; scene.add(floor);
+
+const reef = new THREE.Group(); scene.add(reef);
+const reefSway = [];   // {obj, phase, amp}
+const coralCols = [PAL.red, PAL.redDk, PAL.cyan, PAL.cyanDk, PAL.gold, PAL.teal, PAL.white, PAL.blue];
+function coralAt(x, z) {
+  const g = new THREE.Group();
+  const col = coralCols[(Math.random() * coralCols.length) | 0];
+  const kind = Math.random();
+  if (kind < 0.4) {                       // branching coral (stacked stalks)
+    const stalks = 2 + (Math.random() * 3 | 0);
+    for (let s = 0; s < stalks; s++) {
+      const h = 2 + Math.random() * 3;
+      const b = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.35, h, 6), mat(col));
+      b.position.set((s - stalks/2) * 0.7, h/2, (Math.random()-0.5)*0.8);
+      b.rotation.z = (Math.random()-0.5)*0.4; b.castShadow = true; g.add(b);
+      g.add(place(new THREE.Mesh(new THREE.SphereGeometry(0.4, 7, 6), mat(col)), b.position.x, h, b.position.z));
+    }
+  } else if (kind < 0.7) {                 // fan coral (flattened cone)
+    const fan = new THREE.Mesh(new THREE.ConeGeometry(2.2, 3.4, 7), mat(col));
+    fan.scale.z = 0.25; fan.position.y = 1.7; fan.castShadow = true; g.add(fan);
+  } else if (kind < 0.88) {                // brain coral (lumpy dome)
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(1.6, 9, 7, 0, Math.PI*2, 0, Math.PI/2), mat(col));
+    dome.position.y = 0.1; dome.castShadow = true; g.add(dome);
+  } else {                                 // tube cluster + anemone tips
+    for (let s = 0; s < 5; s++) {
+      const h = 1.5 + Math.random() * 2;
+      const t = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, h, 6), mat(col));
+      t.position.set((Math.random()-0.5)*1.6, h/2, (Math.random()-0.5)*1.6); g.add(t);
+      g.add(place(new THREE.Mesh(new THREE.SphereGeometry(0.3,6,5),
+        mat(PAL.cyan, { extra:{ emissive: PAL.cyan, emissiveIntensity: 0.2 } })), t.position.x, h, t.position.z));
+    }
+  }
+  g.position.set(x, SEAFLOOR_Y, z);
+  g.scale.setScalar(0.7 + Math.random() * 0.9);
+  reef.add(g);
+  reefSway.push({ obj: g, phase: Math.random() * 6.28, amp: 0.02 + Math.random() * 0.04 });
+}
+for (let i = 0; i < 46; i++) coralAt(-78 + Math.random() * 156, (Math.random() - 0.5) * 9);
+
+// little rocks
+for (let i = 0; i < 14; i++) {
+  const r = new THREE.Mesh(new THREE.DodecahedronGeometry(0.6 + Math.random()*1.4, 0), mat(PAL.grayDk));
+  r.position.set(-78 + Math.random()*156, SEAFLOOR_Y + 0.4, (Math.random()-0.5)*9);
+  r.castShadow = true; scene.add(r);
+}
+
+// reef fish — small flat bodies that cruise and wrap around
+const fishList = [];
+const fishCols = [PAL.red, PAL.cyan, PAL.gold, PAL.white, PAL.teal];
+function makeFish(col) {
+  const f = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), mat(col));
+  body.scale.set(1.4, 0.9, 0.5); f.add(body);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.7, 4), mat(col));
+  tail.rotation.z = Math.PI / 2; tail.position.x = -0.9; tail.scale.z = 0.4; f.add(tail);
+  f.add(place(new THREE.Mesh(new THREE.SphereGeometry(0.08,5,5), mat(PAL.navyDk)), 0.5, 0.12, 0.22));
+  return f;
+}
+for (let i = 0; i < 22; i++) {
+  const f = makeFish(fishCols[i % fishCols.length]);
+  const y = SEAFLOOR_Y + 2 + Math.random() * 22;
+  f.position.set(-78 + Math.random()*156, y, (Math.random()-0.5)*8);
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  f.scale.x = dir;
+  scene.add(f);
+  fishList.push({ obj: f, y0: y, dir, speed: 2 + Math.random()*4, phase: Math.random()*6.28 });
+}
+
+/* =========================================================================
+   8. DEEP SEARCH submersible — bright yellow, bubble dome, drivable
+   ========================================================================= */
+const sub = new THREE.Group();
+// hull (capsule: cylinder + sphere caps)
+const subBody = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 4.4, 16), mat(PAL.gold));
+subBody.rotation.z = Math.PI / 2; sub.add(subBody);
+sub.add(place(new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 12), mat(PAL.gold)),  2.2, 0, 0));
+const subNose = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 12), mat(PAL.gold)); place(subNose, -2.2, 0, 0); sub.add(subNose);
+// red trim band
+const subBand = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.55, 0.5, 16), mat(PAL.red));
+subBand.rotation.z = Math.PI / 2; sub.add(subBand);
+// bubble dome cockpit
+const dome = new THREE.Mesh(new THREE.SphereGeometry(1.1, 16, 12),
+  new THREE.MeshStandardMaterial({ color: PAL.cyan, transparent: true, opacity: 0.55, flatShading: true,
+    emissive: PAL.cyan, emissiveIntensity: 0.12 }));
+place(dome, 0.4, 1.2, 0); sub.add(dome);
+sub.add(place(box(1.6, 0.4, 1.6, PAL.goldDk), 0.4, 0.6, 0));   // dome collar
+// portholes
+[-0.8, 0.0].forEach(px => sub.add(place(new THREE.Mesh(new THREE.CircleGeometry(0.35, 14),
+  mat(PAL.cyanDk, { extra: { emissive: PAL.cyan, emissiveIntensity: 0.25 } })), px, 0.1, 1.51)));
+// tail fins
+sub.add(place(box(0.5, 2.4, 0.2, PAL.red), -3.6, 0, 0));
+sub.add(place(box(0.5, 0.2, 2.4, PAL.red), -3.6, 0, 0));
+// propeller (spins)
+const subProp = new THREE.Group();
+for (let i = 0; i < 4; i++) { const bl = box(0.15, 1.3, 0.4, PAL.navy); bl.rotation.x = i * Math.PI/2; bl.geometry.translate(0,0.65,0); subProp.add(bl); }
+subProp.position.set(-4.1, 0, 0); subProp.rotation.y = Math.PI/2; sub.add(subProp);
+spinners.push({ obj: subProp, speed: 8, axis: 'x' });
+// twin headlights (forward, emissive)
+const subLight = box(0.4, 0.4, 0.4, PAL.white, { extra: { emissive: 0xfff2c2, emissiveIntensity: 0.9 } });
+place(subLight, 3.4, 0.2, 0.6); sub.add(subLight);
+sub.add(place(box(0.4,0.4,0.4,PAL.white,{ extra:{ emissive:0xfff2c2, emissiveIntensity:0.9 } }), 3.4, 0.2, -0.6));
+// a real cone of light from the sub
+const subSpot = new THREE.SpotLight(0xfff2c2, 2.2, 40, Math.PI/7, 0.5, 1.2);
+subSpot.position.set(3.4, 0.2, 0);
+subSpot.target.position.set(14, -2, 0);
+sub.add(subSpot); sub.add(subSpot.target);
+
+const SUB_START = new THREE.Vector3(-10, -14, 0);
+sub.position.copy(SUB_START);
+scene.add(sub);
+
+// big invisible hit-box for easy clicking
+sub.add(new THREE.Mesh(new THREE.BoxGeometry(11, 7, 6), new THREE.MeshBasicMaterial({ visible: false })));
+
+// Cockpit cameras — one in the heli nose, one in the sub dome
+const cockpitCam = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.05, 800);
+heli.add(cockpitCam);
+cockpitCam.position.set(1.6, 0.5, 0);
+cockpitCam.lookAt(new THREE.Vector3(8, 0.2, 0));
+
+const subCam = new THREE.PerspectiveCamera(66, innerWidth / innerHeight, 0.05, 800);
+sub.add(subCam);
+subCam.position.set(1.2, 1.0, 0);
+subCam.lookAt(new THREE.Vector3(10, -1, 0));
+
+let activeCam = camera;          // orbit by default
+let pilot = null;                // null | 'heli' | 'sub'
+const heliVel = new THREE.Vector3();
+const subVel = new THREE.Vector3();
+let zoomMul = 1.0;               // slider multiplier on top of smart-fit (1 = fit)
+const keys = {};
+
+// Smart framing: keep the whole boat AND the helicopter in view; the slider
+// scales the auto-fit distance so the user can push in or pull back at will.
+// We DON'T move the camera ourselves (that fought OrbitControls and broke
+// drag-to-rotate). Instead we lock the orbit radius to a smoothed target
+// distance, so OrbitControls keeps full ownership of rotation.
+const _camCenter = new THREE.Vector3();
+let camDist = 150;
+function frameCamera() {
+  let minX, maxX, minY, maxY;
+  if (pilot === 'sub') {           // underwater: frame the sub + the reef around it
+    minX = sub.position.x - 26; maxX = sub.position.x + 26;
+    minY = Math.min(SEAFLOOR_Y - 2, sub.position.y - 12);
+    maxY = Math.max(-2, sub.position.y + 12);
+  } else {                         // surface: keep the whole boat + helicopter in view
+    minX = Math.min(-28, heli.position.x - 7); maxX = Math.max(42, heli.position.x + 7);
+    minY = Math.min(-8,  heli.position.y - 6); maxY = Math.max(24, heli.position.y + 6);
+  }
+  const halfW = (maxX - minX) / 2, halfH = (maxY - minY) / 2;
+  const vFov = THREE.MathUtils.degToRad(camera.fov);
+  const distH = halfH / Math.tan(vFov / 2);
+  const distW = halfW / (Math.tan(vFov / 2) * camera.aspect);
+  const target = Math.max(distH, distW) * 1.12 * zoomMul;
+  camDist += (target - camDist) * 0.08;
+  _camCenter.set((minX + maxX) / 2, (minY + maxY) / 2, 0);
+  controls.target.lerp(_camCenter, 0.08);
+  controls.minDistance = controls.maxDistance = camDist;  // lock radius; rotation stays free
+}
+
+// zoom slider + auto button
+const zoomSlider = document.getElementById('zoom-slider');
+const zoomAuto = document.getElementById('zoom-auto');
+zoomSlider.addEventListener('input', () => { zoomMul = parseFloat(zoomSlider.value);
+  zoomAuto.classList.toggle('active', Math.abs(zoomMul - 1) < 0.02); });
+zoomAuto.addEventListener('click', () => { zoomMul = 1.0; zoomSlider.value = '1'; zoomAuto.classList.add('active'); });
+zoomAuto.classList.add('active');
+let carried = null;              // cargo currently on the hook
+
+const heliUI = document.getElementById('heli-ui');
+const subUI  = document.getElementById('sub-ui');
+const chip = document.getElementById('pilot-chip');
+function setPilot(v) {              // v: null | 'heli' | 'sub'
+  pilot = v;
+  activeCam = camera;              // always return to the framed orbit cam on switch
+  heliUI.style.display = v === 'heli' ? 'block' : 'none';
+  subUI.style.display  = v === 'sub'  ? 'block' : 'none';
+  chip.innerHTML =
+    v === 'heli' ? 'FLYING the Sea Hawk &nbsp;·&nbsp; arrows · C cockpit · ESC exit'
+  : v === 'sub'  ? 'DIVING the Deep Search &nbsp;·&nbsp; arrows · C cockpit · ESC exit'
+  : 'press <b>P</b> to fly · <b>B</b> to dive';
+}
+
+// click to select either vehicle
+const ray = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+function pointToNdc(e) {
+  ndc.x = (e.clientX / innerWidth) * 2 - 1;
+  ndc.y = -(e.clientY / innerHeight) * 2 + 1;
+}
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  pointToNdc(e);
+  ray.setFromCamera(ndc, activeCam);
+  if (ray.intersectObject(heli, true).length) setPilot('heli');
+  else if (ray.intersectObject(sub, true).length) setPilot('sub');
+});
+// cursor feedback on hover
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (pilot) { renderer.domElement.style.cursor = 'default'; return; }
+  pointToNdc(e);
+  ray.setFromCamera(ndc, camera);
+  const over = ray.intersectObject(heli, true).length || ray.intersectObject(sub, true).length;
+  renderer.domElement.style.cursor = over ? 'pointer' : 'default';
+});
+
+addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (e.code === 'KeyP') { setPilot(pilot === 'heli' ? null : 'heli'); return; }
+  if (e.code === 'KeyB') { setPilot(pilot === 'sub'  ? null : 'sub');  return; }
+  if (!pilot) return;
+  if (e.code === 'KeyC') {          // toggle cockpit / framed view
+    const cock = pilot === 'heli' ? cockpitCam : subCam;
+    activeCam = (activeCam === camera) ? cock : camera;
+  }
+  if (e.code === 'Space' && pilot === 'heli') { e.preventDefault(); dropCargo(); }
+  if (e.code === 'Escape') { setPilot(null); }
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+});
+addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+function dropCargo() {
+  if (!carried) return;
+  carried.state = 'falling';
+  carried.vy = 0;
+  carried.mesh.position.copy(heliHook.getWorldPosition(new THREE.Vector3()));
+  carried.mesh.position.y -= 0.5;
+  carried = null;
+}
+
+const _wp = new THREE.Vector3();
+function updateHeli(dt) {
+  // ---- flight input ----
+  if (pilot === 'heli') {
+    const acc = 260 * dt;
+    if (keys['ArrowUp'])    heliVel.y += acc;
+    if (keys['ArrowDown'])  heliVel.y -= acc;
+    if (keys['ArrowLeft'])  heliVel.x -= acc;
+    if (keys['ArrowRight']) heliVel.x += acc;
+  }
+  heliVel.multiplyScalar(0.92);                 // drag
+  heliVel.clampLength(0, 55);                    // top speed
+  heli.position.addScaledVector(heliVel, dt);
+  // bank slightly into horizontal motion
+  heli.rotation.z = THREE.MathUtils.lerp(heli.rotation.z, -heliVel.x * 0.03, 0.1);
+  heli.rotation.x = THREE.MathUtils.lerp(heli.rotation.x, 0, 0.1);
+  // soft world bounds
+  heli.position.x = THREE.MathUtils.clamp(heli.position.x, -120, 120);
+  heli.position.y = THREE.MathUtils.clamp(heli.position.y, SEA_Y + 2.5, 110);
+  heli.position.z = 0;
+
+  // ---- pickup: hook near a floating box ----
+  if (!carried) {
+    const hookPos = heliHook.getWorldPosition(_wp);
+    for (const c of cargoes) {
+      if (c.state !== 'float') continue;
+      if (hookPos.distanceTo(c.mesh.position) < 2.2) {
+        c.state = 'carried'; carried = c; break;
+      }
+    }
+  }
+  // carried box tracks under the hook
+  if (carried) {
+    const hookPos = heliHook.getWorldPosition(_wp);
+    carried.mesh.position.lerp(new THREE.Vector3(hookPos.x, hookPos.y - 1.3, 0), 0.4);
+    carried.mesh.rotation.z = heli.rotation.z * 0.5;
+  }
+
+}
+
+function updateSub(dt) {
+  if (pilot === 'sub') {
+    const acc = 150 * dt;            // a touch heavier than the heli — submersible feel
+    if (keys['ArrowUp'])    subVel.y += acc;
+    if (keys['ArrowDown'])  subVel.y -= acc;
+    if (keys['ArrowLeft'])  subVel.x -= acc;
+    if (keys['ArrowRight']) subVel.x += acc;
+  }
+  subVel.multiplyScalar(0.93);       // water drag
+  subVel.clampLength(0, 34);
+  sub.position.addScaledVector(subVel, dt);
+  // pitch with vertical motion, point nose where it's heading
+  sub.rotation.z = THREE.MathUtils.lerp(sub.rotation.z, subVel.y * 0.02, 0.08);
+  sub.rotation.y = subVel.x < -0.2 ? Math.PI : (subVel.x > 0.2 ? 0 : sub.rotation.y);
+  // stay submerged, above the seafloor, within the world
+  sub.position.x = THREE.MathUtils.clamp(sub.position.x, -120, 120);
+  sub.position.y = THREE.MathUtils.clamp(sub.position.y, SEAFLOOR_Y + 2.2, SEA_Y - 1.2);
+  sub.position.z = 0;
+  // idle bob when not driving
+  if (pilot !== 'sub' && subVel.lengthSq() < 0.4) sub.position.y += Math.sin(performance.now() * 0.0012) * 0.01;
+}
+
+function updateCargo(t, dt) {
+  for (const c of cargoes) {
+    if (c.state === 'float') {
+      c.mesh.position.y = SEA_Y + 1.0 + Math.sin(t * 1.4 + c.bob) * 0.35;
+      c.mesh.rotation.z = Math.sin(t * 0.8 + c.bob) * 0.08;
+    } else if (c.state === 'falling') {
+      c.vy -= 30 * dt;
+      c.mesh.position.y += c.vy * dt;
+      const overShip = c.mesh.position.x > -40 && c.mesh.position.x < 33;
+      const ground = overShip ? DECK_Y + 1.2 : SEA_Y + 1.0;
+      if (c.mesh.position.y <= ground) {
+        c.mesh.position.y = ground;
+        c.vy = 0; c.mesh.rotation.z = 0;
+        const zoneX = hull.localToWorld(_tmp.set(ZONE_X, 0, 0)).x;
+        if (overShip && Math.abs(c.mesh.position.x - zoneX) < ZONE_HALF) {
+          startDelivery(c);            // landed on the drop-zone -> crew take it below
+        } else {
+          c.state = overShip ? 'landed' : 'float';   // sits on deck, or floats away
+        }
+      }
+    }
+  }
+}
+
+const scoreEl = document.getElementById('heli-score');
+function updateScore(){ if (scoreEl) scoreEl.textContent = storedCount; }
+
+/* =========================================================================
+   ANIMATE
+   ========================================================================= */
+const clock = new THREE.Clock();
+
+function animate() {
+ try {
+  // NOTE: getDelta() also advances clock.elapsedTime, so read dt FIRST,
+  // then take t from elapsedTime. Calling getElapsedTime() before getDelta()
+  // consumes the delta and leaves dt ~0 (which froze the helicopter).
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  // whole ship gentle bob + roll
+  ROOT.position.y = Math.sin(t * 0.6) * 0.5;
+  ROOT.rotation.z = Math.sin(t * 0.45) * 0.018;
+  ROOT.position.x = 8 + Math.sin(t * 0.3) * 0.4;
+
+  // spinners
+  for (const s of spinners) s.obj.rotation[s.axis] += s.speed * 0.016;
+
+  // people walk + leg sway
+  for (const p of peopleList) {
+    const o = p.obj;
+    o.position.x = p.x0 + Math.sin(t * p.speed + p.phase) * p.range;
+    const facing = Math.cos(t * p.speed + p.phase);
+    o.rotation.y = facing >= 0 ? 0.25 : -0.25;
+    const sw = Math.sin(t * p.speed * 4 + p.phase) * 0.5;
+    if (o.userData.legs) { o.userData.legs[0].rotation.x = sw; o.userData.legs[1].rotation.x = -sw; }
+    o.position.y = (o.position.y || 0); // keep
+    o.position.y = (p.obj.userData.onDeck ? U+2.4 : o.position.y);
+  }
+
+  // blinking console lights
+  for (const b of blinkers) {
+    const v = (Math.sin(t * 3 + b.phase) + 1) * 0.5;
+    b.mesh.material.emissiveIntensity = 0.15 + v * 0.85;
+  }
+
+  // smoke rising
+  for (const s of smoke) {
+    s.t += 0.0025;
+    if (s.t > 1) s.t -= 1;
+    const h = s.t * 9;
+    s.mesh.position.y = TOP + 7 + h;
+    s.mesh.position.x = -7 + s.drift * h * 0.4 + Math.sin(t + s.t*6) * 0.3;
+    s.mesh.scale.setScalar(0.5 + s.t * 1.8);
+    s.mesh.material.opacity = 0.55 * (1 - s.t);
+  }
+
+  // flag wave (vertex displacement)
+  {
+    const pos = flag.geometry.attributes.position;
+    for (let i=0;i<pos.count;i++){
+      const ix = i*3;
+      const bx = flagBase[ix], by = flagBase[ix+1];
+      const wave = Math.sin(bx*1.5 - t*5) * 0.35 * ((bx+2.25)/4.5);
+      pos.array[ix+2] = wave;
+      pos.array[ix+1] = by + Math.sin(bx*2 - t*4)*0.05*((bx+2.25)/4.5);
+    }
+    pos.needsUpdate = true;
+  }
+
+  // diving bell bobs down then up
+  bellRig.children[1].position.y = -6.5 + Math.sin(t*0.4) * 3.0;
+
+  // crane slow swing
+  craneArm.rotation.z = Math.sin(t * 0.25) * 0.12;
+  bellRig.rotation.z = Math.sin(t * 0.25) * 0.04;
+
+  // sea waves
+  {
+    const pos = sea.geometry.attributes.position;
+    for (let i=0;i<pos.count;i++){
+      const ix=i*3; const x=seaBase[ix], z=seaBase[ix+2];
+      pos.array[ix+1] = Math.sin(x*0.15 + t*1.2)*0.5 + Math.cos(z*0.2 + t*0.9)*0.4;
+    }
+    pos.needsUpdate = true; pos.array && sea.geometry.computeVertexNormals();
+  }
+
+  // bubbles rise
+  for (const b of bubbles){
+    b.mesh.position.y += b.speed * 0.03;
+    b.mesh.position.x = b.x + Math.sin(t*1.5 + b.sway) * 0.5;
+    if (b.mesh.position.y > -5.4){ b.mesh.position.y = -20 + Math.random()*4; b.x = -34 + Math.random()*68; }
+  }
+
+  updateHeli(dt);
+  updateSub(dt);
+  updateCargo(t, dt);
+  updateDeliveries(t);
+
+  // Seu Jorge strums and sways
+  seuJorge.userData.strum.rotation.x = Math.sin(t * 7) * 0.55 - 0.15;
+  seuJorge.userData.head.rotation.z = Math.sin(t * 1.6) * 0.09;
+  seuJorge.rotation.z = Math.sin(t * 1.6 + 1) * 0.02;
+
+  // coral sways in the current
+  for (const c of reefSway) c.obj.rotation.z = Math.sin(t * 0.8 + c.phase) * c.amp;
+
+  // reef fish cruise and wrap around
+  for (const f of fishList) {
+    f.obj.position.x += f.dir * f.speed * dt;
+    f.obj.position.y = f.y0 + Math.sin(t * 1.2 + f.phase) * 0.8;
+    f.obj.rotation.z = Math.sin(t * 6 + f.phase) * 0.12;
+    if (f.dir > 0 && f.obj.position.x > 84) f.obj.position.x = -84;
+    if (f.dir < 0 && f.obj.position.x < -84) f.obj.position.x = 84;
+  }
+
+  // camera: smart-frame (drag still rotates, slider zooms)
+  if (activeCam === camera) { frameCamera(); controls.update(); }
+
+  renderer.render(scene, activeCam);
+ } catch (err) {
+  console.error(err);
+  return; // stop re-queuing on fatal error
+ }
+  requestAnimationFrame(animate);
+}
+animate();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  cockpitCam.aspect = innerWidth / innerHeight;
+  cockpitCam.updateProjectionMatrix();
+  subCam.aspect = innerWidth / innerHeight;
+  subCam.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+.DS_Store
+*.swp
+node_modules/
+
+# Internal working notes, not part of the public site
+CLAUDE.md
+
+# Dev scratch pages
+gallery/belafonte-aquatic/heli-test.html

@@ -1,0 +1,11 @@
+name,lat,lon,date,interval_days,distance_km,bearing,cumulative_days,cumulative_km,note
+"Where it starts, Massachusetts",42.2793,-71.4162,1989-06-15,0,0.0,0.0,0,0.0,EDIT-ME: hometown center + real birth date
+"Miami University, Oxford, Ohio",39.5119,-84.7346,2007-08-20,6640,1159.6,259.1,6640,1159.6,"EDIT-ME date: freshman year, chemistry then economics before music"
+"Berklee, 150 Mass Ave, Boston",42.3466,-71.0876,2008-09-01,378,1187.5,70.2,7018,2347.1,EDIT-ME date: the transfer into music education
+The honest one (you pick),42.355,-71.0656,2010-01-01,487,2.0,62.7,7505,2349.2,EDIT-ME entirely: the point that would not go on a resume. Only Kramer can choose this one.
+"First classroom, a charter school",42.3918,-71.0328,2012-09-01,974,4.9,33.4,8479,2354.1,"EDIT-ME place + date: first job, general music for English learners"
+"Qingdao, China",36.0671,120.3826,2014-08-15,713,11214.2,350.6,9192,13568.2,EDIT-ME date: the year teaching music abroad
+A K-8 in Boston,42.3251,-71.095,2015-09-08,389,11220.6,8.6,9581,24788.8,"EDIT-ME place + date: the twelve BPS years, mapped to the neighborhood"
+"The Charles River, Brighton",42.3639,-71.1338,2020-06-01,1728,5.4,323.5,11309,24794.2,"EDIT-ME date: home now, mapped to the riverbank on purpose"
+"San Sebastian, Spain",43.3183,-1.9812,2026-07-02,2222,5469.3,63.9,13531,30263.5,"Camino del Norte, first steps"
+"Bilbao, Spain",43.263,-2.935,2026-07-10,8,77.4,265.8,13539,30340.9,"Camino del Norte, the arrival"
