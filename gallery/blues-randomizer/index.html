@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blues Randomizer</title>
+<style>
+  :root{
+    --ink:#f6efe3;
+    --bg:#241d1a;
+    --bg2:#312722;
+    --sage:#8fa680;
+    --ocean:#6f95a8;
+    --clay:#c9784f;
+    --cream:#f6efe3;
+    --dim:rgba(246,239,227,.55);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:radial-gradient(120% 90% at 50% 0%, var(--bg2) 0%, var(--bg) 70%);
+    color:var(--ink);
+    font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;
+    /* justify-content:center on a too-tall page pushes the top out of reach,
+       which is what made the pool panel unclickable. Center with auto margins
+       inside a normally-scrolling column instead. */
+    display:flex;flex-direction:column;align-items:center;
+    min-height:100vh;padding:2.5vh 4vw;gap:2.2vh;
+    overflow-x:hidden;overflow-y:auto;
+  }
+  h1{margin:0;font-size:clamp(20px,2.8vw,36px);font-weight:600;letter-spacing:.04em}
+  .sub{margin:0;color:var(--dim);font-size:clamp(13px,1.4vw,19px)}
+
+  .stage{display:flex;gap:clamp(20px,5vw,80px);align-items:flex-start;justify-content:center;flex-wrap:wrap}
+  .slot{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .slot .cap{font-size:clamp(12px,1.2vw,17px);letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+
+  /* The die is a drum that turns on its horizontal axis. A cube only ever has
+     six faces; this shape takes as many as the teacher's pool has, and every
+     face stays full width so a long word like "Straight swing" still fits. */
+  .scene{
+    width:clamp(150px,17vw,230px);height:clamp(150px,17vw,230px);
+    perspective:900px;position:relative;cursor:pointer;
+  }
+  .shade{
+    position:absolute;inset:0;pointer-events:none;z-index:5;border-radius:16px;
+    background:linear-gradient(180deg,
+      rgba(0,0,0,.62) 0%, rgba(0,0,0,.16) 22%, rgba(0,0,0,0) 44%,
+      rgba(0,0,0,0) 56%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.62) 100%);
+  }
+  .die{width:100%;height:100%;position:relative;transform-style:preserve-3d}
+  .die.rolling{transition:transform var(--dur,2.4s) cubic-bezier(.16,.85,.24,1)}
+  .face{
+    position:absolute;left:50%;top:50%;
+    display:flex;align-items:center;justify-content:center;
+    text-align:center;padding:2px 8px;border-radius:9px;
+    border:1px solid rgba(246,239,227,.22);
+    background:#3a2f28;
+    backface-visibility:hidden;-webkit-backface-visibility:hidden;
+    font-weight:600;line-height:1.02;white-space:nowrap;
+    box-shadow:inset 0 0 26px rgba(0,0,0,.4);
+    text-shadow:0 2px 8px rgba(0,0,0,.55);
+    overflow:hidden;
+  }
+  .slot.key   .face{background:linear-gradient(150deg,#5c3626,#3a2119);border-color:rgba(201,120,79,.7)}
+  .slot.tempo .face{background:linear-gradient(150deg,#2c414c,#1b2a32);border-color:rgba(111,149,168,.7)}
+  .slot.feel  .face{background:linear-gradient(150deg,#3b4834,#232c20);border-color:rgba(143,166,128,.75)}
+  .slot.key   .glow{background:var(--clay)}
+  .slot.tempo .glow{background:var(--ocean)}
+  .slot.feel  .glow{background:var(--sage)}
+  .glow{width:60%;height:10px;border-radius:50%;filter:blur(14px);opacity:.5;
+        transition:opacity .6s, transform .6s;transform:scaleX(1)}
+  .slot.rolling .glow{opacity:.18;transform:scaleX(.6)}
+
+  .picker{display:flex;align-items:center;gap:9px;justify-content:center}
+  .arrow{
+    font:inherit;font-size:17px;font-weight:600;line-height:1;
+    background:transparent;color:var(--ink);border:1px solid rgba(246,239,227,.28);
+    border-radius:50%;width:31px;height:31px;padding:0;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:background .15s;
+  }
+  .arrow:hover{background:rgba(246,239,227,.14);transform:none}
+  .arrow:active{transform:scale(.92)}
+  .picker .n{font-size:11.5px;letter-spacing:.1em;color:var(--dim);min-width:78px;text-align:center}
+
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:4px;
+    border-radius:2px;background:rgba(246,239,227,.22);outline:none;cursor:pointer;margin:0;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;
+    background:var(--ocean);border:2px solid var(--cream);cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:18px;height:18px;border-radius:50%;background:var(--ocean);
+    border:2px solid var(--cream);cursor:pointer;
+  }
+  .slot.tempo input[type=range]{width:clamp(150px,17vw,230px)}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center}
+  button{
+    font:inherit;font-size:clamp(15px,1.5vw,20px);font-weight:600;
+    color:var(--bg);background:var(--cream);border:none;border-radius:999px;
+    padding:.65em 1.5em;cursor:pointer;transition:transform .12s, background .2s;
+  }
+  button:hover{transform:translateY(-2px)}
+  button:active{transform:translateY(0)}
+  button:disabled{opacity:.35;cursor:default;transform:none}
+  button.ghost{background:transparent;color:var(--ink);border:2px solid rgba(246,239,227,.3)}
+  button.ghost.on{background:var(--sage);color:var(--bg);border-color:var(--sage)}
+  .hint{color:var(--dim);font-size:13px;letter-spacing:.05em;margin:0;text-align:center}
+
+  .transport{
+    width:min(940px,94vw);border-radius:16px;padding:14px 18px;
+    border:1px solid rgba(246,239,227,.14);background:rgba(246,239,227,.04);
+    display:flex;flex-direction:column;gap:12px;
+  }
+  .readout{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .status{font-size:clamp(15px,1.6vw,21px);font-weight:600;letter-spacing:.02em}
+  .status.counting{color:var(--clay)}
+  .chordnow{font-size:clamp(20px,2.4vw,32px);font-weight:600;color:var(--sage)}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:5px}
+  .bar{
+    border-radius:7px;padding:7px 2px;text-align:center;
+    font-size:clamp(10px,1vw,15px);font-weight:600;
+    background:rgba(246,239,227,.07);color:var(--dim);
+    border:1px solid transparent;transition:background .1s, color .1s;
+  }
+  .bar.on{background:var(--sage);color:var(--bg);border-color:var(--sage)}
+  .pulse{display:flex;gap:7px;align-items:center;justify-content:center}
+  .beat{width:11px;height:11px;border-radius:50%;background:rgba(246,239,227,.16);
+        transition:background .05s, transform .05s}
+  .beat.hit{background:var(--cream);transform:scale(1.55)}
+  .beat.down{background:var(--clay);transform:scale(1.9)}
+
+  .spacer{flex:1 1 auto;min-height:0}
+
+  /* Pool of options: a drawer fixed to the right edge, so it is never pushed
+     off the page by the content above it and never affects the layout. */
+  .pool{
+    position:fixed;top:0;right:0;height:100vh;width:min(400px,92vw);z-index:60;
+    background:#2b221d;border-left:1px solid rgba(246,239,227,.18);
+    box-shadow:-18px 0 44px rgba(0,0,0,.45);
+    transform:translateX(100%);transition:transform .26s cubic-bezier(.3,.8,.35,1);
+    display:flex;flex-direction:column;
+  }
+  .pool.open{transform:translateX(0)}
+  .poolgrip{
+    position:absolute;left:-46px;top:50%;transform:translateY(-50%);
+    width:46px;padding:18px 0;border-radius:12px 0 0 12px;
+    background:var(--clay);color:#fff;border:none;cursor:pointer;
+    font:inherit;font-size:13px;font-weight:700;letter-spacing:.16em;
+    writing-mode:vertical-rl;text-orientation:mixed;
+    box-shadow:-8px 0 20px rgba(0,0,0,.35);
+  }
+  .poolgrip:hover{background:#d9834f;transform:translateY(-50%)}
+  .poolhead{
+    display:flex;align-items:center;gap:10px;padding:18px 20px 12px;
+    border-bottom:1px solid rgba(246,239,227,.12);
+  }
+  .poolhead h2{margin:0;font-size:19px;font-weight:600}
+  .poolclose{
+    margin-left:auto;background:transparent;color:var(--ink);border:none;
+    font-size:24px;line-height:1;padding:0 4px;cursor:pointer;border-radius:6px;
+  }
+  .poolclose:hover{background:rgba(246,239,227,.14);transform:none}
+  .poolsum{padding:8px 20px 0;font-size:13px;color:var(--dim)}
+  .poolbody{flex:1 1 auto;overflow-y:auto;padding:14px 20px 20px;
+            display:flex;flex-direction:column;gap:16px}
+  .poolrow{border-top:1px solid rgba(246,239,227,.1);padding-top:14px}
+  .poolrow:first-child{border-top:none;padding-top:0}
+  .poollab{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-bottom:9px}
+  .poollab .tally{margin-left:8px;letter-spacing:.04em;text-transform:none;font-size:13px;color:var(--ink)}
+  .poolfoot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+            border-top:1px solid rgba(246,239,227,.1);padding-top:14px}
+  .note{margin:8px 0 0;color:var(--dim);font-size:13px;line-height:1.5}
+  .warn{color:var(--clay);font-size:13.5px;font-weight:600;min-height:1.2em}
+  .scrim{
+    position:fixed;inset:0;background:rgba(15,11,9,.5);z-index:55;
+    opacity:0;pointer-events:none;transition:opacity .26s;
+  }
+  .scrim.on{opacity:1;pointer-events:auto}
+
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  /* Off is a hollow, dimmed chip with an empty box; on is filled and ticked.
+     Colour alone was not saying which state meant "in the pool". */
+  .chip{
+    font:inherit;font-size:13.5px;font-weight:600;padding:.4em .82em .4em .56em;
+    border-radius:999px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:.45em;
+    background:transparent;color:rgba(246,239,227,.42);
+    border:1px solid rgba(246,239,227,.2);
+    transition:background .14s, color .14s, border-color .14s;
+  }
+  .chip:hover{transform:none;background:rgba(246,239,227,.12);color:var(--ink)}
+  .chip .box{
+    width:15px;height:15px;border-radius:4px;flex:0 0 auto;
+    border:1.5px solid currentColor;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:10px;line-height:1;
+  }
+  .chip .box::after{content:""}
+  .chip.on{background:var(--sage);color:var(--bg);border-color:var(--sage)}
+  .chip.on .box{background:var(--bg);border-color:var(--bg);color:var(--sage)}
+  .chip.on .box::after{content:"\2713"}
+  .chip.k.on{background:var(--clay);border-color:var(--clay);color:#fff}
+  .chip.k.on .box{background:#fff;border-color:#fff;color:var(--clay)}
+
+  .presets{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+  .rangerow{margin-top:4px}
+  .preset{
+    font:inherit;font-size:12.5px;font-weight:600;padding:.36em .8em;border-radius:8px;
+    background:rgba(246,239,227,.1);color:var(--ink);border:1px solid rgba(246,239,227,.2);cursor:pointer;
+  }
+  .preset:hover{background:rgba(246,239,227,.2);transform:none}
+  .rangerow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .rangerow label{font-size:13px;color:var(--dim)}
+  .rangerow input[type=range]{width:118px;flex:0 1 auto}
+  .rangeval{font-size:16px;font-weight:600;min-width:34px;text-align:right}
+</style>
+</head>
+<body>
+
+<div class="spacer"></div>
+<h1>Blues Midterm &mdash; Call It</h1>
+<p class="sub">Key, tempo, and feel. However it lands, that is what you play.</p>
+
+<div class="stage" id="stage"></div>
+
+<!-- The same toggles as Setup, but on the page. The modal was too easy to
+     miss, and choosing the pool is the main teacher action, not a preference. -->
+<div class="transport" id="transport">
+  <div class="readout">
+    <span class="status" id="status">Ready</span>
+    <span class="chordnow" id="chordnow"></span>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="pulse" id="pulse"></div>
+</div>
+
+<div class="controls">
+  <button id="roll">Roll</button>
+  <button id="play" class="ghost">Play the form</button>
+  <button id="bassBtn" class="ghost on">Bass</button>
+  <button id="drumBtn" class="ghost on">Drums</button>
+  <button id="testBtn" class="ghost">Test tone</button>
+</div>
+<p class="hint">space rolls &middot; enter plays/stops &middot; click a die or use &lsaquo; &rsaquo; to set it &middot; arrows nudge tempo &middot; b bass &middot; d drums</p>
+<p class="hint" id="diag">build 10</p>
+<div class="spacer"></div>
+
+<div class="scrim" id="scrim"></div>
+
+<div class="pool" id="pool">
+  <button class="poolgrip" id="poolGrip">KEYS &amp; FEELS</button>
+  <div class="poolhead">
+    <h2>What the dice can land on</h2>
+    <button class="poolclose" id="poolClose" title="Close">&times;</button>
+  </div>
+  <div class="poolsum" id="poolSum"></div>
+  <div class="poolbody">
+    <div class="poolrow">
+      <div class="poollab">Keys <span class="tally" id="keyTally"></span></div>
+      <div class="presets" id="keyPresets"></div>
+      <div class="chips" id="keyChips"></div>
+    </div>
+    <div class="poolrow">
+      <div class="poollab">Feels <span class="tally" id="feelTally"></span></div>
+      <div class="chips" id="feelChips"></div>
+    </div>
+    <div class="poolrow">
+      <div class="poollab">Tempo the dice can roll</div>
+      <div class="rangerow">
+        <label for="tmin">Slowest</label>
+        <input type="range" id="tmin" min="40" max="200" step="5">
+        <span class="rangeval" id="tminVal"></span>
+      </div>
+      <div class="rangerow">
+        <label for="tmax">Fastest</label>
+        <input type="range" id="tmax" min="40" max="200" step="5">
+        <span class="rangeval" id="tmaxVal"></span>
+      </div>
+      <p class="note" id="tempoNote"></p>
+    </div>
+    <div class="poolfoot">
+      <span class="warn" id="warn"></span>
+      <button class="preset" id="resetBtn">Reset to defaults</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   1. WHAT CAN BE LANDED ON
+   Every key carries its own accidental preference so the chord grid
+   spells the blues correctly: Bb reads Bb7 Eb7 F7, F# reads F#7 B7 C#7.
+   ============================================================ */
+const SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const FLAT  = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
+
+const KEYS = [
+  {n:"C major", pc:0,  m:false, s:false}, {n:"G major",  pc:7,  m:false, s:true },
+  {n:"D major", pc:2,  m:false, s:true }, {n:"A major",  pc:9,  m:false, s:true },
+  {n:"E major", pc:4,  m:false, s:true }, {n:"B major",  pc:11, m:false, s:true },
+  {n:"F# major",pc:6,  m:false, s:true }, {n:"Db major", pc:1,  m:false, s:false},
+  {n:"Ab major",pc:8,  m:false, s:false}, {n:"Eb major", pc:3,  m:false, s:false},
+  {n:"Bb major",pc:10, m:false, s:false}, {n:"F major",  pc:5,  m:false, s:false},
+  {n:"A minor", pc:9,  m:true,  s:false}, {n:"E minor",  pc:4,  m:true,  s:true },
+  {n:"B minor", pc:11, m:true,  s:true }, {n:"F# minor", pc:6,  m:true,  s:true },
+  {n:"C# minor",pc:1,  m:true,  s:true }, {n:"G# minor", pc:8,  m:true,  s:true },
+  {n:"D minor", pc:2,  m:true,  s:false}, {n:"G minor",  pc:7,  m:true,  s:false},
+  {n:"C minor", pc:0,  m:true,  s:false}, {n:"F minor",  pc:5,  m:true,  s:false},
+  {n:"Bb minor",pc:10, m:true,  s:false}, {n:"Eb minor", pc:3,  m:true,  s:false}
+];
+const KEY = {};
+KEYS.forEach(k => KEY[k.n] = k);
+const ALL_KEYS  = KEYS.map(k => k.n);
+const ALL_FEELS = ["Reggae","Rock","12/8","6/8","Straight swing","Drum n' bass"];
+
+const KEY_PRESETS = [
+  {label:"Beginner (F, G, C)", keys:["F major","G major","C major"]},
+  {label:"Common blues keys",  keys:["F major","G major","C major","Bb major","D major",
+                                     "A minor","C minor","G minor"]},
+  {label:"Horn keys",          keys:["F major","Bb major","Eb major","Ab major","C major","G major"]},
+  {label:"All majors",         keys:KEYS.filter(k=>!k.m).map(k=>k.n)},
+  {label:"All minors",         keys:KEYS.filter(k=> k.m).map(k=>k.n)},
+  {label:"All 24",             keys:ALL_KEYS}
+];
+
+const DEFAULTS = {
+  keys:  ["F major","G major","C major","Bb major","D major","A minor","C minor","G minor"],
+  feels: ALL_FEELS.slice(),
+  tempoMin: 70,
+  tempoMax: 120
+};
+
+const STORE = "blues-randomizer-settings-v1";
+let settings = load();
+
+function load(){
+  try {
+    const raw = localStorage.getItem(STORE);
+    if (!raw) return clone(DEFAULTS);
+    const s = JSON.parse(raw);
+    // Drop anything that is no longer a real option, then fall back if that
+    // empties a category, so a stale save can never leave a die with no faces.
+    s.keys  = (s.keys  || []).filter(k => KEY[k]);
+    s.feels = (s.feels || []).filter(f => ALL_FEELS.indexOf(f) > -1);
+    if (!s.keys.length)  s.keys  = DEFAULTS.keys.slice();
+    if (!s.feels.length) s.feels = DEFAULTS.feels.slice();
+    s.tempoMin = clampT(s.tempoMin || DEFAULTS.tempoMin);
+    s.tempoMax = clampT(s.tempoMax || DEFAULTS.tempoMax);
+    if (s.tempoMax < s.tempoMin) { const t = s.tempoMin; s.tempoMin = s.tempoMax; s.tempoMax = t; }
+    return s;
+  } catch (e) { return clone(DEFAULTS); }
+}
+function save(){ try { localStorage.setItem(STORE, JSON.stringify(settings)); } catch (e) {} }
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function clampT(v){ return Math.max(40, Math.min(200, Math.round(v/5)*5)); }
+
+// The pool a die actually draws from, in the canonical order of the full list
+// so toggling an option keeps the die's ordering stable.
+function poolOf(name){
+  if (name === "key")  return ALL_KEYS.filter(k => settings.keys.indexOf(k) > -1);
+  if (name === "feel") return ALL_FEELS.filter(f => settings.feels.indexOf(f) > -1);
+  const out = [];
+  for (let t = settings.tempoMin; t <= settings.tempoMax; t += 5) out.push(t);
+  return out.length ? out : [settings.tempoMin];
+}
+
+const CAPS = { key:"Key", tempo:"Tempo", feel:"Feel" };
+
+/* ============================================================
+   2. THE FORM
+   12-bar blues with the quick change in bar 2 and a V turnaround.
+   ============================================================ */
+const FORM = [0, 5, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7];
+
+function chordName(keyName, deg){
+  const k = KEY[keyName] || KEY["C major"];
+  const pc = (k.pc + deg) % 12;
+  const nm = (k.s ? SHARP : FLAT)[pc];
+  // The I and IV of a minor blues stay minor; the V is played dominant.
+  return (k.m && deg !== 7) ? nm + "m7" : nm + "7";
+}
+
+/* ============================================================
+   3. THE FEELS
+   Each feel declares its own grid instead of sharing one and bending
+   it with swing math: div 3 gives the compound and swing feels their
+   triplets directly, div 2 and 4 stay straight.
+     beats = beats per bar, div = subdivisions per beat
+     drum steps are [step, velocity]; bass is [step, degree, length-in-steps]
+   Bass degrees above the chord root: 0 root, 3 minor 3rd, 4 major 3rd,
+   7 fifth, 9 sixth, 10 flat 7.
+   ============================================================ */
+const FEELS = {
+  "Rock": {
+    beats:4, div:2,
+    kick:[[0,1],[3,.8],[4,.95]], snare:[[2,1],[6,1]],
+    hat:[[0,.5],[1,.32],[2,.5],[3,.32],[4,.5],[5,.32],[6,.5],[7,.32]],
+    bass:[[0,0,1],[1,7,1],[2,9,1],[3,7,1],[4,0,1],[5,7,1],[6,9,1],[7,7,1]],
+    bassTone:"pluck"
+  },
+  "Straight swing": {
+    beats:4, div:3,
+    ride:[[0,.9],[3,.85],[5,.6],[6,.9],[9,.85],[11,.6]],
+    hat:[[3,.55],[9,.55]],
+    kick:[[0,.22],[3,.2],[6,.22],[9,.2]],
+    snare:[],
+    bass:[[0,0,3],[3,4,3],[6,7,3],[9,9,3]],
+    bassTone:"upright"
+  },
+  "12/8": {
+    beats:4, div:3,
+    ride:[[0,.85],[1,.4],[2,.4],[3,.8],[4,.4],[5,.4],[6,.85],[7,.4],[8,.4],[9,.8],[10,.4],[11,.45]],
+    kick:[[0,1],[6,.9]], snare:[[3,1],[9,1]],
+    bass:[[0,0,5],[6,7,4],[11,10,1]],
+    bassTone:"upright"
+  },
+  "6/8": {
+    beats:2, div:3,
+    hat:[[0,.75],[1,.35],[2,.35],[3,.6],[4,.35],[5,.35]],
+    kick:[[0,1]], snare:[[3,1]],
+    bass:[[0,0,3],[3,7,3]],
+    bassTone:"pluck"
+  },
+  "Reggae": {
+    beats:4, div:2,
+    kick:[[4,1]], rim:[[4,.9]],
+    hat:[[1,.55],[3,.55],[5,.55],[7,.55]],
+    bass:[[0,0,2],[3,7,1],[6,0,2]],
+    bassTone:"reggae"
+  },
+  "Drum n' bass": {
+    beats:4, div:4,
+    kick:[[0,1],[10,.9]], snare:[[4,1],[12,1]],
+    hat:[[0,.4],[2,.5],[4,.4],[6,.5],[8,.4],[10,.5],[12,.4],[14,.5]],
+    bass:[[0,0,6],[10,0,5]],
+    bassTone:"sub"
+  }
+};
+
+/* ============================================================
+   4. THE DICE
+   A drum turning on its horizontal axis, with one face per option.
+
+   The die is indexed, not repainted: face i holds pool[i] and the drum
+   rotates to bring the wanted face to the front. Stepping is therefore
+   exactly one notch of travel, which is what a picker should feel like.
+   An earlier version kept the answer on face 0 and spun a full turn for
+   every change, which read as erratic and made the arrows hard to use.
+
+   Only a pool larger than MAX_FACES falls back to repainting the face
+   that is about to arrive, since the geometry cannot hold every option.
+   ============================================================ */
+const MAX_FACES = 16;
+const stage = document.getElementById("stage");
+const cubes = {};
+let tempoSlider = null;
+let rolling = false;
+let current = { key:null, tempo:null, feel:null };
+
+for (const name of ["key","tempo","feel"]) {
+  const slot = document.createElement("div");
+  slot.className = "slot " + name;
+  slot.innerHTML =
+    '<span class="cap">' + CAPS[name] + '</span>' +
+    '<div class="scene"><div class="die"></div><div class="shade"></div></div>' +
+    '<div class="glow"></div>' +
+    '<div class="picker">' +
+      '<button class="arrow" data-step="-1" title="Previous">&lsaquo;</button>' +
+      '<span class="n"></span>' +
+      '<button class="arrow" data-step="1" title="Next">&rsaquo;</button>' +
+    '</div>' +
+    (name === "tempo"
+      ? '<input type="range" id="tempoSlider" min="40" max="200" step="5">'
+      : '');
+  stage.appendChild(slot);
+
+  cubes[name] = {
+    slot,
+    scene: slot.querySelector(".scene"),
+    die:   slot.querySelector(".die"),
+    count: slot.querySelector(".n"),
+    faces: [], rx:0, n:0, faceIndex:0, exact:true, faceH:40
+  };
+
+  const pool = poolOf(name);
+  current[name] = pool[Math.floor(Math.random()*pool.length)];
+
+  slot.querySelectorAll(".arrow").forEach(b =>
+    b.addEventListener("click", () => nudge(name, +b.dataset.step)));
+  slot.querySelector(".scene").addEventListener("click", () => nudge(name, 1));
+}
+
+// Rebuild a die's geometry for the current pool size. Called on load, on any
+// setup change, and on resize, because face size is derived from the scene box.
+function buildDie(name){
+  const c = cubes[name];
+  const pool = poolOf(name);
+  // Tempo is never exact: the hand slider reaches values outside the roll pool.
+  c.exact = (name !== "tempo") && pool.length <= MAX_FACES;
+  const n = Math.max(1, Math.min(pool.length, MAX_FACES));
+  const S = c.scene.clientWidth || 200;
+  const R = S * 0.46;
+  const ang = 360 / n;
+  const faceH = n === 1 ? S * 0.4 : 2 * R * Math.sin(Math.PI / n);
+  const apo   = n === 1 ? R : R * Math.cos(Math.PI / n);
+
+  c.die.innerHTML = "";
+  c.faces = [];
+  for (let i = 0; i < n; i++) {
+    const f = document.createElement("div");
+    f.className = "face";
+    f.style.width  = S + "px";
+    f.style.height = faceH + "px";
+    f.style.transform =
+      "translate(-50%,-50%) rotateX(" + (i * ang) + "deg) translateZ(" + apo + "px)";
+    c.die.appendChild(f);
+    c.faces.push(f);
+  }
+  c.n = n;
+  c.faceH = faceH;
+  c.faceIndex = c.exact ? Math.max(0, pool.indexOf(current[name])) : 0;
+
+  // Snap, no animation: a rebuild is not a move the user made.
+  c.die.classList.remove("rolling");
+  c.rx = -c.faceIndex * ang;
+  c.die.style.transform = "rotateX(" + c.rx + "deg)";
+
+  paintDie(name);
+  updateCount(name);
+}
+
+function updateCount(name){
+  const c = cubes[name], len = poolOf(name).length;
+  c.count.textContent = name === "tempo"
+    ? settings.tempoMin + "-" + settings.tempoMax
+    : len + (name === "key" ? (len === 1 ? " key" : " keys") : (len === 1 ? " feel" : " feels"));
+}
+
+// Long words on a short face need to shrink or they clip.
+function faceFont(name, text, faceH){
+  const S = cubes[name].scene.clientWidth || 200;
+  const byHeight = faceH * 0.56;
+  const byWidth  = (S - 22) / (String(text).length * 0.62);
+  return Math.max(9, Math.min(44, byHeight, byWidth));
+}
+
+function label(name, v){
+  return name === "tempo"
+    ? v + "<small style='font-size:.4em;letter-spacing:.14em;opacity:.6;margin-left:.35em'>BPM</small>"
+    : v;
+}
+
+function setFace(name, i, value){
+  const c = cubes[name], f = c.faces[i];
+  if (!f) return;
+  f.innerHTML = label(name, value);
+  f.style.fontSize = faceFont(name, name === "tempo" ? value + " BPM" : value, c.faceH) + "px";
+}
+
+// In exact mode the faces ARE the pool, in order, so the options a class sees
+// sliding past are the real ones. Otherwise the front face carries the answer
+// and the rest are spread from the pool for the look of the spin.
+function paintDie(name){
+  const c = cubes[name], pool = poolOf(name);
+  if (!c.faces.length) return;
+  if (c.exact) {
+    c.faces.forEach((f,i) => setFace(name, i, pool[i]));
+  } else {
+    const others = pool.filter(v => v !== current[name]);
+    c.faces.forEach((f,i) => setFace(name, i,
+      i === c.faceIndex ? current[name]
+                        : (others.length ? others[i % others.length] : current[name])));
+  }
+}
+
+function sizeAll(){ ["key","tempo","feel"].forEach(buildDie); }
+window.addEventListener("resize", sizeAll);
+
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+/* Turn the drum forward by a whole number of faces and leave `value` on the
+   face that ends up at the front. Positive steps always travel the same
+   direction, so wrapping past the end keeps rolling forward instead of
+   whipping backwards through the whole pool. */
+function turn(name, value, faces, dur){
+  const c = cubes[name];
+  const ang = 360 / c.n;
+  const dest = (((c.faceIndex + faces) % c.n) + c.n) % c.n;
+  if (!c.exact) setFace(name, dest, value);
+  c.faceIndex = dest;
+  c.rx -= faces * ang;
+  c.die.style.setProperty("--dur", dur + "s");
+  c.die.classList.add("rolling");
+  void c.die.offsetWidth;
+  c.die.style.transform = "rotateX(" + c.rx + "deg)";
+}
+
+/* ---- manual override ---- */
+function nudge(name, step){
+  if (rolling) return;
+  const c = cubes[name], pool = poolOf(name);
+  let value;
+  if (c.exact) {
+    // The face that is about to arrive decides the value, so the die and the
+    // state can never disagree.
+    const dest = (((c.faceIndex + step) % c.n) + c.n) % c.n;
+    value = pool[dest];
+  } else if (name === "tempo") {
+    value = clampTempo(Math.round(current.tempo / 5) * 5 + step * 5);
+  } else {
+    const i = pool.indexOf(current[name]);
+    value = pool[((i < 0 ? 0 : i) + step + pool.length) % pool.length];
+  }
+  turn(name, value, step, 0.34);
+  applyValue(name, value);
+}
+// The manual tempo control is deliberately not limited to the roll range: a
+// teacher can push past what the dice will land on without reopening Setup.
+function clampTempo(v){ return Math.max(40, Math.min(200, Math.round(v/5)*5)); }
+
+// State and readouts only. Die motion is the caller's business, because a
+// slider drag and an arrow click want very different amounts of movement.
+function applyValue(name, value){
+  const prevFeel = current.feel;
+  if (name === "tempo") value = clampTempo(value);
+  current[name] = value;
+
+  if (name === "tempo" && tempoSlider) tempoSlider.value = value;
+
+  if (name === "key") {
+    buildGrid(value);
+    if (playing) {
+      const cell = gridEl.children[barIndex];
+      if (cell) cell.classList.add("on");
+      chordEl.textContent = chordName(value, FORM[barIndex]);
+    }
+  }
+
+  // A new feel changes the grid under the groove, so restart the bar rather
+  // than let a 16th-note pattern finish inside a triplet bar.
+  if (name === "feel" && value !== prevFeel) {
+    buildPulse();
+    if (playing) stepIndex = 0;
+  }
+
+  if (!playing) setStatus(readyText(), false);
+}
+
+// Jump the die straight to a value with no travel. Used by the tempo slider,
+// where animating every pixel of a drag would be unusable.
+function setValue(name, value, spin){
+  const c = cubes[name];
+  if (name === "tempo") value = clampTempo(value);
+  applyValue(name, value);
+  if (c.exact) {
+    const pool = poolOf(name);
+    const i = pool.indexOf(value);
+    if (i > -1 && spin) { turn(name, value, ((i - c.faceIndex) % c.n + c.n) % c.n, 0.34); }
+    else if (i > -1)    { c.faceIndex = i; c.die.classList.remove("rolling");
+                          c.rx = -i * (360 / c.n);
+                          c.die.style.transform = "rotateX(" + c.rx + "deg)"; }
+  } else {
+    setFace(name, c.faceIndex, value);
+  }
+}
+
+function readyText(){
+  return "Ready &mdash; " + current.key + " at " + current.tempo + ", " + current.feel;
+}
+
+function roll(){
+  if (rolling) return;
+  rolling = true;
+  rollBtn.disabled = true; playBtn.disabled = true;
+  stop();
+  setStatus("Rolling...", false);
+  chordEl.textContent = "";
+
+  let longest = 0;
+  ["key","tempo","feel"].forEach((name,i) => {
+    const c = cubes[name], pool = poolOf(name);
+    const value = pick(pool);
+
+    const dur = 2.2 + i*0.45 + Math.random()*0.3;
+    longest = Math.max(longest, dur);
+
+    // Several whole turns, then however far it is to the landing face.
+    const turns = 3 + Math.floor(Math.random()*3);
+    let faces;
+    if (c.exact) {
+      const dest = pool.indexOf(value);
+      faces = c.n * turns + (((dest - c.faceIndex) % c.n) + c.n) % c.n;
+    } else {
+      faces = c.n * turns + Math.floor(Math.random()*c.n);
+    }
+
+    turn(name, value, faces, dur);
+    applyValue(name, value);
+    c.slot.classList.add("rolling");
+    setTimeout(() => c.slot.classList.remove("rolling"), dur*1000);
+  });
+
+  setTimeout(() => {
+    rolling = false;
+    rollBtn.disabled = false; rollBtn.textContent = "Roll again";
+    playBtn.disabled = false;
+    buildGrid(current.key);
+    buildPulse();
+    setStatus(readyText(), false);
+  }, longest*1000 + 120);
+}
+
+/* ============================================================
+   5. AUDIO ENGINE
+   A lookahead scheduler: a 25ms timer queues every hit that falls in
+   the next 150ms, so the groove is timed by the audio clock and not by
+   setTimeout, which drifts badly at 16th notes.
+   ============================================================ */
+let ctx = null, noiseBuf = null;
+let master = null, drumBus = null, bassBus = null;
+let timer = null, playing = false;
+let nextStepTime = 0, stepIndex = 0, barIndex = 0, inCount = false;
+
+const COUNT_BARS = 2;
+
+function initAudio(){
+  if (ctx) return;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const n = ctx.sampleRate * 1.2, buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+  for (let i=0;i<n;i++) d[i] = Math.random()*2 - 1;
+  noiseBuf = buf;
+  master  = ctx.createGain(); master.gain.value = 0.85; master.connect(ctx.destination);
+  drumBus = ctx.createGain(); drumBus.gain.value = 1;   drumBus.connect(master);
+  bassBus = ctx.createGain(); bassBus.gain.value = 1;   bassBus.connect(master);
+}
+function noise(){ const s = ctx.createBufferSource(); s.buffer = noiseBuf; return s; }
+function env(t, peak, dec, dest){
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(peak,0.0002), t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dec);
+  g.connect(dest);
+  return g;
+}
+function kick(t, v){
+  const o = ctx.createOscillator(); o.type = "sine";
+  o.frequency.setValueAtTime(155, t);
+  o.frequency.exponentialRampToValueAtTime(46, t + 0.11);
+  o.connect(env(t, 0.9*v, 0.34, drumBus));
+  o.start(t); o.stop(t + 0.4);
+  const c = noise(), f = ctx.createBiquadFilter();
+  f.type = "highpass"; f.frequency.value = 1400;
+  c.connect(f).connect(env(t, 0.16*v, 0.02, drumBus));
+  c.start(t); c.stop(t + 0.04);
+}
+function snare(t, v){
+  const s = noise(), f = ctx.createBiquadFilter();
+  f.type = "bandpass"; f.frequency.value = 1900; f.Q.value = 0.7;
+  s.connect(f).connect(env(t, 0.42*v, 0.19, drumBus));
+  s.start(t); s.stop(t + 0.25);
+  const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = 185;
+  o.connect(env(t, 0.24*v, 0.11, drumBus));
+  o.start(t); o.stop(t + 0.15);
+}
+function rim(t, v){
+  const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = 420;
+  o.connect(env(t, 0.3*v, 0.05, drumBus));
+  o.start(t); o.stop(t + 0.08);
+  const s = noise(), f = ctx.createBiquadFilter();
+  f.type = "bandpass"; f.frequency.value = 2600; f.Q.value = 1.4;
+  s.connect(f).connect(env(t, 0.3*v, 0.035, drumBus));
+  s.start(t); s.stop(t + 0.06);
+}
+function hat(t, v){
+  const s = noise(), f = ctx.createBiquadFilter();
+  f.type = "highpass"; f.frequency.value = 8200;
+  s.connect(f).connect(env(t, 0.2*v, 0.045, drumBus));
+  s.start(t); s.stop(t + 0.07);
+}
+function ride(t, v){
+  const s = noise(), f = ctx.createBiquadFilter();
+  f.type = "highpass"; f.frequency.value = 6200;
+  s.connect(f).connect(env(t, 0.11*v, 0.42, drumBus));
+  s.start(t); s.stop(t + 0.5);
+  const o = ctx.createOscillator(); o.type = "square"; o.frequency.value = 3100;
+  o.connect(env(t, 0.035*v, 0.16, drumBus));
+  o.start(t); o.stop(t + 0.2);
+}
+function stick(t, v){
+  const s = noise(), f = ctx.createBiquadFilter();
+  f.type = "bandpass"; f.frequency.value = 2400; f.Q.value = 1.1;
+  s.connect(f).connect(env(t, 0.5*v, 0.035, drumBus));
+  s.start(t); s.stop(t + 0.06);
+}
+
+const midiHz = m => 440 * Math.pow(2, (m - 69) / 12);
+
+// Keep every key in one bass register. Without this, C blues sits an octave
+// under Bb blues and the low keys disappear on a classroom speaker.
+function fold(midi){
+  while (midi > 43) midi -= 12;
+  while (midi < 31) midi += 12;
+  return midi;
+}
+
+function bassNote(t, midi, dur, tone){
+  const g = ctx.createGain(), f = ctx.createBiquadFilter();
+  f.type = "lowpass";
+  let peak = 0.3, atk = 0.012, rel = 0.09;
+  if (tone === "sub")     { f.frequency.value = 220;  peak = 0.46; atk = 0.02;  rel = 0.14; }
+  if (tone === "reggae")  { f.frequency.value = 340;  peak = 0.44; atk = 0.02;  rel = 0.12; }
+  if (tone === "upright") { f.frequency.value = 720;  peak = 0.30; atk = 0.014; rel = 0.07; }
+  if (tone === "pluck")   { f.frequency.value = 1000; peak = 0.32; atk = 0.006; rel = 0.06; }
+
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + atk);
+  g.gain.setValueAtTime(peak, t + Math.max(atk, dur - rel));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+  const o = ctx.createOscillator();
+  o.type = tone === "sub" ? "sine" : (tone === "upright" ? "triangle" : "sawtooth");
+  o.frequency.value = midiHz(midi);
+  o.connect(f).connect(g).connect(bassBus);
+  o.start(t); o.stop(t + dur + 0.05);
+
+  if (tone === "upright") {
+    const s = noise(), hf = ctx.createBiquadFilter();
+    hf.type = "bandpass"; hf.frequency.value = 1600;
+    s.connect(hf).connect(env(t, 0.05, 0.03, bassBus));
+    s.start(t); s.stop(t + 0.05);
+  }
+}
+
+function feelOf(){ return FEELS[current.feel] || FEELS["Rock"]; }
+function stepDur(){ return (60 / current.tempo) / feelOf().div; }
+function stepsPerBar(){ const f = feelOf(); return f.beats * f.div; }
+
+function fire(step, t){
+  const f = feelOf();
+  if (drumsOn) {
+    (f.kick  || []).forEach(h => { if (h[0] === step) kick(t, h[1]); });
+    (f.snare || []).forEach(h => { if (h[0] === step) snare(t, h[1]); });
+    (f.rim   || []).forEach(h => { if (h[0] === step) rim(t, h[1]); });
+    (f.hat   || []).forEach(h => { if (h[0] === step) hat(t, h[1]); });
+    (f.ride  || []).forEach(h => { if (h[0] === step) ride(t, h[1]); });
+  }
+  if (bassOn) {
+    const k = KEY[current.key] || KEY["C major"];
+    const root = fold(36 + ((k.pc + FORM[barIndex]) % 12));
+    const minor = k.m && FORM[barIndex] !== 7;
+    (f.bass || []).forEach(b => {
+      if (b[0] !== step) return;
+      let deg = b[1];
+      if (minor && deg === 4) deg = 3;    // major 3rd becomes minor
+      if (minor && deg === 9) deg = 10;   // sixth becomes flat 7
+      bassNote(t, root + deg, b[2] * stepDur() * 0.92, f.bassTone);
+    });
+  }
+}
+
+function schedule(){
+  const f = feelOf(), spb = stepsPerBar();
+  while (nextStepTime < ctx.currentTime + 0.15) {
+    const t = nextStepTime;
+    if (inCount) {
+      if (stepIndex % f.div === 0) {
+        const beat = stepIndex / f.div;
+        if (drumsOn) stick(t, beat === 0 ? 1 : 0.55);
+        paintCount(t, barIndex, beat);
+      }
+    } else {
+      fire(stepIndex, t);
+      if (stepIndex % f.div === 0) paintBeat(t, barIndex, stepIndex / f.div);
+    }
+    nextStepTime += stepDur();
+    stepIndex++;
+    if (stepIndex >= spb) {
+      stepIndex = 0;
+      barIndex++;
+      if (inCount && barIndex >= COUNT_BARS) { inCount = false; barIndex = 0; }
+      else if (!inCount && barIndex >= 12)   { barIndex = 0; }
+    }
+  }
+}
+
+async function play(){
+  if (playing || !current.key) return;
+  initAudio();
+  // Chrome starts an AudioContext suspended until a gesture resumes it, and
+  // resume() is a promise. Starting the scheduler before it settles left
+  // currentTime frozen at 0, so every hit was queued into the past.
+  if (ctx.state !== "running") { try { await ctx.resume(); } catch (e) {} }
+  diag();
+  if (ctx.state !== "running") {
+    setStatus("Browser is blocking audio &mdash; click anywhere, then press Play again", true);
+    return;
+  }
+  playing = true;
+  inCount = true;
+  stepIndex = 0; barIndex = 0;
+  nextStepTime = ctx.currentTime + 0.12;
+  timer = setInterval(schedule, 25);
+  playBtn.textContent = "Stop";
+  playBtn.classList.add("on");
+}
+function stop(){
+  if (timer) clearInterval(timer);
+  timer = null; playing = false; inCount = false;
+  playBtn.textContent = "Play the form";
+  playBtn.classList.remove("on");
+  [...document.querySelectorAll(".bar.on")].forEach(b => b.classList.remove("on"));
+  [...document.querySelectorAll(".beat")].forEach(b => b.classList.remove("hit","down"));
+  if (current.key) setStatus(readyText(), false);
+}
+
+/* ============================================================
+   6. TRANSPORT DISPLAY
+   Visual updates are queued against the audio clock so the lights land
+   with the hits rather than with the timer that scheduled them.
+   ============================================================ */
+const gridEl   = document.getElementById("grid");
+const pulseEl  = document.getElementById("pulse");
+const statusEl = document.getElementById("status");
+const chordEl  = document.getElementById("chordnow");
+
+function setStatus(html, counting){
+  statusEl.innerHTML = html;
+  statusEl.classList.toggle("counting", !!counting);
+}
+function buildGrid(key){
+  gridEl.innerHTML = "";
+  for (let i=0;i<12;i++){
+    const d = document.createElement("div");
+    d.className = "bar";
+    d.textContent = key ? chordName(key, FORM[i]) : (i+1);
+    gridEl.appendChild(d);
+  }
+}
+function buildPulse(){
+  pulseEl.innerHTML = "";
+  for (let i=0;i<feelOf().beats;i++){
+    const d = document.createElement("span");
+    d.className = "beat";
+    pulseEl.appendChild(d);
+  }
+}
+function at(t, fn){ setTimeout(fn, Math.max(0, (t - ctx.currentTime) * 1000)); }
+
+function paintBeat(t, bar, beat){
+  at(t, () => {
+    if (!playing) return;
+    if (beat === 0){
+      [...gridEl.children].forEach((el,i) => el.classList.toggle("on", i === bar));
+      chordEl.textContent = chordName(current.key, FORM[bar]);
+      setStatus("Bar " + (bar+1) + " of 12 &mdash; " + current.feel + " at " + current.tempo, false);
+    }
+    flash(beat);
+  });
+}
+function paintCount(t, bar, beat){
+  at(t, () => {
+    if (!playing) return;
+    const per = feelOf().beats;
+    setStatus("Count in &mdash; " + (bar*per + beat + 1) + " of " + (COUNT_BARS*per), true);
+    chordEl.textContent = "";
+    flash(beat);
+  });
+}
+function flash(beat){
+  const dots = pulseEl.children;
+  [...dots].forEach(d => d.classList.remove("hit","down"));
+  if (dots[beat]) dots[beat].classList.add(beat === 0 ? "down" : "hit");
+  setTimeout(() => { if (dots[beat]) dots[beat].classList.remove("hit","down"); }, 110);
+}
+
+/* ============================================================
+   7. TEACHER SETUP
+   ============================================================ */
+const keyChips   = document.getElementById("keyChips");
+const feelChips  = document.getElementById("feelChips");
+const keyPresets = document.getElementById("keyPresets");
+const tmin       = document.getElementById("tmin");
+const tmax       = document.getElementById("tmax");
+const tminVal    = document.getElementById("tminVal");
+const tmaxVal    = document.getElementById("tmaxVal");
+const tempoNote  = document.getElementById("tempoNote");
+const warnEl     = document.getElementById("warn");
+const keyTally   = document.getElementById("keyTally");
+const feelTally  = document.getElementById("feelTally");
+
+function warn(msg){
+  warnEl.textContent = msg || "";
+  if (msg) setTimeout(() => { if (warnEl.textContent === msg) warnEl.textContent = ""; }, 2600);
+}
+
+function chip(text, on, cls, onClick){
+  const b = document.createElement("button");
+  b.className = "chip " + cls + (on ? " on" : "");
+  b.innerHTML = '<span class="box"></span><span class="lbl"></span>';
+  b.querySelector(".lbl").textContent = text;
+  b.title = (on ? "On: " : "Off: ") + text + " — click to change";
+  b.addEventListener("click", () => onClick(b));
+  return b;
+}
+function buildChips(){
+  keyChips.innerHTML = "";
+  ALL_KEYS.forEach(k => keyChips.appendChild(
+    chip(k, settings.keys.indexOf(k) > -1, "k", b => toggle("keys", k, b))));
+  feelChips.innerHTML = "";
+  ALL_FEELS.forEach(f => feelChips.appendChild(
+    chip(f, settings.feels.indexOf(f) > -1, "f", b => toggle("feels", f, b))));
+  updateTallies();
+}
+function updateTallies(){
+  keyTally.textContent  = settings.keys.length  + " of " + ALL_KEYS.length  + " on";
+  feelTally.textContent = settings.feels.length + " of " + ALL_FEELS.length + " on";
+  document.getElementById("poolSum").textContent =
+    settings.keys.length + (settings.keys.length === 1 ? " key" : " keys") + " · " +
+    settings.feels.length + (settings.feels.length === 1 ? " feel" : " feels") + " · " +
+    settings.tempoMin + "-" + settings.tempoMax + " BPM";
+}
+
+// A category can never be emptied: with no options there is nothing to land on.
+function toggle(cat, value, btn){
+  const list = settings[cat];
+  const i = list.indexOf(value);
+  if (i > -1) {
+    if (list.length === 1) { warn("Keep at least one " + (cat === "keys" ? "key" : "feel")); return; }
+    list.splice(i, 1);
+    btn.classList.remove("on");
+  } else {
+    list.push(value);
+    btn.classList.add("on");
+  }
+  btn.title = (list.indexOf(value) > -1 ? "On: " : "Off: ") + value + " — click to change";
+  updateTallies();
+  applySettings();
+}
+
+KEY_PRESETS.forEach(p => {
+  const b = document.createElement("button");
+  b.className = "preset";
+  b.textContent = p.label;
+  b.addEventListener("click", () => {
+    settings.keys = p.keys.slice();
+    buildChips();
+    applySettings();
+  });
+  keyPresets.appendChild(b);
+});
+
+function syncTempoInputs(){
+  tmin.value = settings.tempoMin; tmax.value = settings.tempoMax;
+  tminVal.textContent = settings.tempoMin; tmaxVal.textContent = settings.tempoMax;
+  const n = poolOf("tempo").length;
+  tempoNote.textContent = "Rolls land on one of " + n + " tempo" + (n === 1 ? "" : "s") +
+    ", in steps of 5. The slider under the tempo die still reaches 40 to 200 by hand.";
+}
+tmin.addEventListener("input", () => {
+  settings.tempoMin = clampT(+tmin.value);
+  if (settings.tempoMin > settings.tempoMax) settings.tempoMax = settings.tempoMin;
+  applySettings();
+});
+tmax.addEventListener("input", () => {
+  settings.tempoMax = clampT(+tmax.value);
+  if (settings.tempoMax < settings.tempoMin) settings.tempoMin = settings.tempoMax;
+  applySettings();
+});
+
+// Rebuild the dice for the new pools, and pull any current value that just
+// left its pool back to something legal so the groove never plays a chord the
+// teacher has switched off.
+function applySettings(){
+  save();
+  syncTempoInputs();
+  ["key","feel"].forEach(name => {
+    const pool = poolOf(name);
+    if (pool.indexOf(current[name]) < 0) current[name] = pool[0];
+  });
+  const tp = poolOf("tempo");
+  if (current.tempo < settings.tempoMin || current.tempo > settings.tempoMax) {
+    current.tempo = tp[Math.floor(tp.length/2)];
+    if (tempoSlider) tempoSlider.value = current.tempo;
+  }
+  sizeAll();
+  buildGrid(current.key);
+  buildPulse();
+  if (!playing) setStatus(readyText(), false);
+}
+
+const poolPanel = document.getElementById("pool");
+const scrim     = document.getElementById("scrim");
+function openPool(on){
+  poolPanel.classList.toggle("open", on);
+  scrim.classList.toggle("on", on);
+}
+document.getElementById("poolGrip").addEventListener("click",
+  () => openPool(!poolPanel.classList.contains("open")));
+document.getElementById("poolClose").addEventListener("click", () => openPool(false));
+scrim.addEventListener("click", () => openPool(false));
+document.getElementById("resetBtn").addEventListener("click", () => {
+  settings = clone(DEFAULTS);
+  buildChips();
+  applySettings();
+  warn("Back to defaults");
+});
+
+/* ============================================================
+   8. WIRING
+   ============================================================ */
+const BUILD = 10;
+const diagEl = document.getElementById("diag");
+function diag(msg){
+  diagEl.textContent = "build " + BUILD + " · audio "
+    + (ctx ? ctx.state : "not started")
+    + (msg ? " · " + msg : "");
+}
+// A silent failure is the hardest thing to debug from the back of a classroom,
+// so anything that throws lands on the page instead of only in the console.
+window.addEventListener("error", e => diag("ERROR: " + e.message));
+
+const rollBtn = document.getElementById("roll");
+const playBtn = document.getElementById("play");
+const bassBtn = document.getElementById("bassBtn");
+const drumBtn = document.getElementById("drumBtn");
+let bassOn = true, drumsOn = true;
+
+rollBtn.addEventListener("click", roll);
+playBtn.addEventListener("click", () => playing ? stop() : play());
+bassBtn.addEventListener("click", () => { bassOn = !bassOn; bassBtn.classList.toggle("on", bassOn); });
+drumBtn.addEventListener("click", () => { drumsOn = !drumsOn; drumBtn.classList.toggle("on", drumsOn); });
+
+// Isolates "the browser is blocking audio" from "the groove logic is broken":
+// one kick and one bass note, fired immediately, no scheduler involved.
+document.getElementById("testBtn").addEventListener("click", async () => {
+  initAudio();
+  if (ctx.state !== "running") { try { await ctx.resume(); } catch (e) {} }
+  diag(ctx.state === "running" ? "test tone fired" : "resume refused");
+  const t = ctx.currentTime + 0.05;
+  kick(t, 1); snare(t + 0.25, 1); hat(t + 0.5, 1);
+  bassNote(t + 0.75, 41, 0.5, "pluck");
+});
+
+document.addEventListener("keydown", e => {
+  if (e.code === "Escape" && poolPanel.classList.contains("open")) { openPool(false); return; }
+  // Never hijack keys while the teacher is typing in a control.
+  const t = e.target && e.target.tagName;
+  if (t === "INPUT" || t === "TEXTAREA") return;
+  if (e.code === "Space")  { e.preventDefault(); roll(); }
+  if (e.code === "Enter")  { e.preventDefault(); playing ? stop() : play(); }
+  if (e.key === "b" || e.key === "B") bassBtn.click();
+  if (e.key === "d" || e.key === "D") drumBtn.click();
+  if (e.code === "ArrowRight" || e.code === "ArrowLeft") {
+    e.preventDefault();
+    const dir = e.code === "ArrowRight" ? 1 : -1;
+    setValue("tempo", clampTempo(current.tempo + dir * (e.shiftKey ? 5 : 1)), false);
+  }
+  if (e.code === "ArrowUp")   { e.preventDefault(); nudge("key", 1); }
+  if (e.code === "ArrowDown") { e.preventDefault(); nudge("feel", 1); }
+});
+
+tempoSlider = document.getElementById("tempoSlider");
+tempoSlider.addEventListener("input", () => {
+  // No spin on drag: the die would be mid-turn on every pixel of movement.
+  setValue("tempo", clampTempo(+tempoSlider.value), false);
+});
+
+// The dice already hold a valid combination at load, so the app is playable
+// before the first roll instead of gated behind it.
+sizeAll();
+tempoSlider.value = current.tempo;
+buildGrid(current.key);
+buildPulse();
+// The pool panel is on the page, so its chips are built at load rather than
+// when a dialog opens.
+buildChips();
+syncTempoInputs();
+setStatus(readyText(), false);
+diag();
+</script>
+</body>
+</html>
