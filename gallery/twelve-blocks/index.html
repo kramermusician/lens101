@@ -24,8 +24,9 @@
     content: ""; display: block; margin-left: 8px;
     border-left: 26px solid #e23b22; border-top: 16px solid transparent; border-bottom: 16px solid transparent;
   }
+  /* The dock never eats more than half the window, so the street is always visible. */
+  #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; max-height: 56vh; overflow-y: auto; }
   #hud {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
     display: none; align-items: center; justify-content: center; gap: 14px;
     padding: 12px 16px; flex-wrap: wrap;
     font-family: Futura, "Helvetica Neue", Arial, sans-serif; color: #163b4e;
@@ -47,6 +48,80 @@
   #hud label { font-size: 12px; letter-spacing: 0.08em; color: #3a5560; display: flex; align-items: center; gap: 8px; }
   #hud input[type=range] { accent-color: #e23b22; width: 100px; }
   #fullscreen { font-size: 15px; line-height: 1; }
+  /* the way into the builder is always visible and always reads as the live one */
+  #build { border-color: #e23b22; color: #e23b22; font-weight: 600; }
+  #build.on { background: #e23b22; color: #f5f2e9; }
+  #hud button:disabled { cursor: default; }
+  #hud button:disabled:hover { border-color: #163b4e; color: #163b4e; }
+
+  /* ---- the block builder ---- */
+  #builder {
+    display: none; flex-direction: column; gap: 8px;
+    padding: 10px 16px 6px; background: rgba(245, 242, 233, 0.97);
+    border-top: 3px solid #163b4e;
+    font-family: Futura, "Helvetica Neue", Arial, sans-serif; color: #163b4e;
+  }
+  #builder.collapsed #strip, #builder.collapsed #palette, #builder.collapsed #songs { display: none; }
+  #songs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; letter-spacing: 0.08em; }
+  #songname {
+    font-family: inherit; font-size: 12px; padding: 4px 8px; width: 190px;
+    background: #f5f2e9; border: 2px solid #163b4e; border-radius: 4px; color: #163b4e;
+  }
+  #songname::placeholder { color: #93a4ac; letter-spacing: 0.02em; }
+  #slist { min-width: 190px; }
+  #sdel { color: #a92715; border-color: #d8a99f; }
+  #sdel:hover { background: #e23b22; color: #f5f2e9; border-color: #e23b22; }
+  #builder button:disabled, #songname:disabled { opacity: 0.4; cursor: default; }
+  #builder button:disabled:hover { border-color: #163b4e; color: #163b4e; }
+  #sdel:disabled:hover { border-color: #d8a99f; color: #a92715; background: #f5f2e9; }
+  #smsg { color: #e23b22; letter-spacing: 0.02em; }
+  #bhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; letter-spacing: 0.08em; }
+  #bhead .btitle { font-weight: 600; letter-spacing: 0.16em; color: #e23b22; }
+  #bhead .hint { color: #3a5560; letter-spacing: 0.02em; }
+  #builder button, #builder select {
+    font-family: inherit; font-size: 12px; letter-spacing: 0.08em;
+    background: #f5f2e9; border: 2px solid #163b4e; border-radius: 4px;
+    color: #163b4e; padding: 4px 8px; cursor: pointer;
+  }
+  #builder button:hover, #builder select:hover { border-color: #e23b22; color: #e23b22; }
+
+  #strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 8px; align-items: stretch; }
+  .card {
+    flex: 0 0 auto; width: 92px; border: 3px solid #163b4e; border-radius: 6px;
+    background: #f5f2e9; overflow: hidden; cursor: grab;
+  }
+  .card.sel { border-color: #e23b22; }
+  .card.now { box-shadow: 0 0 0 3px #ffe9a3; }
+  .card.drag { opacity: 0.4; }
+  .chead { display: flex; align-items: center; gap: 3px; padding: 3px 4px; font-size: 11px; background: #ece7d8; }
+  .chead span.n { flex: 1; font-weight: 600; }
+  .mini { padding: 2px 4px !important; font-size: 10px !important; border-width: 1px !important; }
+  .cfoot { display: flex; gap: 3px; padding: 3px 4px; background: #ece7d8; }
+  .cfoot button { flex: 1; padding: 3px 0 !important; font-size: 10px !important; border-width: 1px !important; }
+  .del { color: #a92715 !important; border-color: #d8a99f !important; font-weight: 600; }
+  .del:hover { background: #e23b22 !important; color: #f5f2e9 !important; border-color: #e23b22 !important; }
+  .card.only .del { opacity: 0.3; pointer-events: none; }
+  .cbody { display: flex; gap: 2px; height: 54px; }
+  .slot {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; color: #f5f2e9; line-height: 1.15;
+  }
+  .slot b { font-size: 15px; }
+  .slot i { font-style: normal; font-size: 11px; opacity: 0.88; }
+  .slot.on { box-shadow: inset 0 0 0 3px #ffe9a3; }
+  .slot.hot, #addbar.hot { box-shadow: inset 0 0 0 3px #e23b22; }
+  #addbar { flex: 0 0 auto; width: 44px; font-size: 22px !important; }
+
+  #palette { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #ptabs { display: flex; gap: 4px; }
+  #ptabs button.on { background: #163b4e; color: #f5f2e9; }
+  #pgrid { display: flex; gap: 5px; flex-wrap: wrap; }
+  .pchip {
+    display: flex; flex-direction: column; align-items: center; min-width: 54px;
+    padding: 3px 5px !important; border-width: 2px !important; cursor: grab; line-height: 1.15;
+  }
+  .pchip b { font-size: 13px; }
+  .pchip i { font-style: normal; font-size: 10px; color: #3a5560; }
 </style>
 </head>
 <body>
@@ -59,10 +134,44 @@
   <p style="font-size:13px;">Click anywhere to start walking. Sound on.</p>
 </div>
 
+<div id="dock">
+
+<div id="builder">
+  <div id="bhead">
+    <span class="btitle">BUILD</span>
+    <button id="lenminus" title="Remove the last block">−</button>
+    <span id="lenval">4 blocks</span>
+    <button id="lenplus" title="Add a block on the end">+</button>
+    <button id="bclear" title="Start over from one block">CLEAR</button>
+    <button id="bcopy" title="Load the 12-bar blues into the builder and edit from there">COPY BLUES</button>
+    <button id="bcollapse" title="Hide the builder and watch the street">HIDE</button>
+    <span class="hint">drag a chord onto a block · drag blocks to reorder · click a block to select it</span>
+  </div>
+  <div id="songs">
+    <span class="btitle">SONGS</span>
+    <input id="songname" type="text" placeholder="name this progression" maxlength="40" />
+    <button id="ssave" title="Save the current progression under that name">SAVE</button>
+    <select id="slist" title="Your saved progressions"></select>
+    <button id="sload" title="Load the selected progression">LOAD</button>
+    <button id="sdel" title="Delete the selected progression">DELETE</button>
+    <span id="smsg" class="hint"></span>
+  </div>
+  <div id="strip"></div>
+  <div id="palette">
+    <div id="ptabs">
+      <button data-tab="degree" class="on" title="Pick by function, the same chord in every key">ROMAN</button>
+      <button data-tab="letter" title="Pick by letter name in the current key">LETTER</button>
+    </div>
+    <select id="qual" title="Chord quality"></select>
+    <div id="pgrid"></div>
+  </div>
+</div>
+
 <div id="hud">
   <button id="playpause">PAUSE</button>
+  <button id="build" title="Build your own progression, one block at a time">BUILD</button>
   <button id="mode" title="Switch between the major and minor 12-bar blues">MAJOR</button>
-  <button id="view" title="See the whole 12-bar progression at once, four bars to a line">MAP</button>
+  <button id="view" title="See the whole progression at once, four bars to a line">MAP</button>
   <label>key
     <select id="key"></select>
   </label>
@@ -82,81 +191,140 @@
   <button id="fullscreen" title="Fullscreen">⛶</button>
 </div>
 
+</div>
+
 <script>
 (() => {
 "use strict";
 
-/* ---------- the forms ---------- */
-// One chorus = 12 bars = 12 city blocks. A bar can hold one chord or split into two.
-const PROGS = {
-  major: [["I7"],["IV7"],["I7"],["I7"],["IV7"],["IV7"],["I7"],["I7"],["V7"],["IV7"],["I7"],["V7"]],
-  minor: [["im7"],["ivm7"],["im7"],["im7"],["ivm7"],["ivm7"],["im7"],["im7"],["bVI7"],["V7"],["im7"],["iim7b5","V7"]]
+/* ---------- the harmony ---------- */
+// A chord is stored as a KEY: "<semitones above the key root>:<quality>". Nothing
+// stores a letter name, so changing the key transposes every progression at once
+// and a chord picked by letter and the same chord picked by numeral are one object.
+const QUALITY = {
+  maj:  { intervals:[0,4,7],    walk:[0,4,7,9],  suffix:"",     roman:"",     family:"major",       shape:"square"  },
+  min:  { intervals:[0,3,7],    walk:[0,3,7,10], suffix:"m",    roman:"",     family:"minor",       shape:"arch",    lower:true },
+  dom7: { intervals:[0,4,7,10], walk:[0,4,7,9],  suffix:"7",    roman:"7",    family:"dominant",    shape:"tall"    },
+  m7:   { intervals:[0,3,7,10], walk:[0,3,7,10], suffix:"m7",   roman:"m7",   family:"minor",       shape:"arch",    lower:true },
+  maj7: { intervals:[0,4,7,11], walk:[0,4,7,11], suffix:"maj7", roman:"maj7", family:"major",       shape:"square"  },
+  six:  { intervals:[0,4,7,9],  walk:[0,4,7,9],  suffix:"6",    roman:"6",    family:"major",       shape:"square"  },
+  m7b5: { intervals:[0,3,6,10], walk:[0,3,6,10], suffix:"m7♭5", roman:"ø7",   family:"diminished",  shape:"diamond", lower:true },
+  dim7: { intervals:[0,3,6,9],  walk:[0,3,6,9],  suffix:"°7",   roman:"°7",   family:"diminished",  shape:"diamond", lower:true },
+  sus4: { intervals:[0,5,7],    walk:[0,5,7,10], suffix:"sus4", roman:"sus4", family:"suspended",   shape:"round"   },
+  aug:  { intervals:[0,4,8],    walk:[0,4,8,10], suffix:"+",    roman:"+",    family:"suspended",   shape:"round"   }
+};
+const QUAL_ORDER = ["maj","min","dom7","m7","maj7","six","m7b5","dim7","sus4","aug"];
+const QUAL_NAME = {
+  maj:"major", min:"minor", dom7:"dominant 7", m7:"minor 7", maj7:"major 7",
+  six:"sixth", m7b5:"half-diminished", dim7:"diminished 7", sus4:"sus4", aug:"augmented"
 };
 
-// Degree definitions: semitones above the key root, chord quality, and a visual identity.
-const DEGREES = {
-  I7:     { semi: 0,  quality: "dom7", color: "#3bb6e3", dark: "#1d7fb0", win: "square",  label: "I7" },
-  IV7:    { semi: 5,  quality: "dom7", color: "#e8b93e", dark: "#b8892a", win: "arch",    label: "IV7" },
-  V7:     { semi: 7,  quality: "dom7", color: "#e23b22", dark: "#a92715", win: "tall",    label: "V7" },
-  im7:    { semi: 0,  quality: "m7",   color: "#3bb6e3", dark: "#1d7fb0", win: "square",  label: "im7" },
-  ivm7:   { semi: 5,  quality: "m7",   color: "#e8b93e", dark: "#b8892a", win: "arch",    label: "ivm7" },
-  bVI7:   { semi: 8,  quality: "dom7", color: "#1d7fb0", dark: "#12556f", win: "round",   label: "♭VI7" },
-  iim7b5: { semi: 2,  quality: "m7b5", color: "#7c9a6d", dark: "#55704a", win: "diamond", label: "iiø7" }
+// Window SHAPE is chord family, so two chords that look alike really are alike.
+// Window HEIGHT and the role letter beside each row carry the exact difference.
+const ROMAN = ["I","♭II","II","♭III","III","IV","♭V","V","♭VI","VI","♭VII","VII"];
+
+// Colour is FUNCTION: one hue per scale degree, so home stays blue, the
+// subdominant stays gold and the dominant stays red in every key.
+const FUNC_COLOR = [
+  ["#3bb6e3","#1d7fb0"], ["#9b6fa8","#6d4a77"], ["#7c9a6d","#55704a"], ["#4c8f8b","#316260"],
+  ["#d97b3f","#a1552a"], ["#e8b93e","#b8892a"], ["#6f7fa8","#4a5877"], ["#e23b22","#a92715"],
+  ["#1d7fb0","#12556f"], ["#a85c7a","#7a3f57"], ["#5f9e6a","#3f6e48"], ["#8a7fb5","#5f5782"]
+];
+
+const CH = (semi, qual) => (((semi % 12) + 12) % 12) + ":" + qual;
+const chParts = k => { const p = String(k).split(":"); return { semi: +p[0], qual: p[1] }; };
+
+/* ---------- the forms ---------- */
+// One chorus = N bars = N city blocks. A bar can hold one chord or split into two.
+const PROGS = {
+  major: [[CH(0,"dom7")],[CH(5,"dom7")],[CH(0,"dom7")],[CH(0,"dom7")],
+          [CH(5,"dom7")],[CH(5,"dom7")],[CH(0,"dom7")],[CH(0,"dom7")],
+          [CH(7,"dom7")],[CH(5,"dom7")],[CH(0,"dom7")],[CH(7,"dom7")]],
+  minor: [[CH(0,"m7")],[CH(5,"m7")],[CH(0,"m7")],[CH(0,"m7")],
+          [CH(5,"m7")],[CH(5,"m7")],[CH(0,"m7")],[CH(0,"m7")],
+          [CH(8,"dom7")],[CH(7,"dom7")],[CH(0,"m7")],[CH(2,"m7b5"),CH(7,"dom7")]]
 };
-const QUALITY = {
-  dom7: { intervals: [0, 4, 7, 10], walk: [0, 4, 7, 9],  suffix: "7" },
-  m7:   { intervals: [0, 3, 7, 10], walk: [0, 3, 7, 10], suffix: "m7" },
-  m7b5: { intervals: [0, 3, 6, 10], walk: [0, 3, 6, 10], suffix: "m7♭5" }
-};
-const NOTES = ["C","D♭","D","E♭","E","F","G♭","G","A♭","A","B♭","B"];
+
+// A chord is named from its DEGREE, not from a lookup table, because the same
+// pitch is spelled differently depending on what it is doing. In A, the ♭II is
+// B♭ and the VI is F♯ — both would come out wrong from any one fixed table.
+// Take the letter the numeral points at, then bend it to the pitch we need.
+const LETTERS = "CDEFGAB";
+const LETTER_SEMI = [0, 2, 4, 5, 7, 9, 11];
+const DEG_STEP  = [0, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6];   // I ♭II II ♭III III IV ♭V V ♭VI VI ♭VII VII
+const KEYS = [ {l:0,a:0},{l:1,a:-1},{l:1,a:0},{l:2,a:-1},{l:2,a:0},{l:3,a:0},
+               {l:3,a:1},{l:4,a:0},{l:5,a:-1},{l:5,a:0},{l:6,a:-1},{l:6,a:0} ];
+const KEY_NAMES = ["C","D♭","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
+const NOTES_FLAT  = ["C","D♭","D","E♭","E","F","G♭","G","A♭","A","B♭","B"];
+const NOTES_SHARP = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
+const SHARP_KEYS = [7, 2, 9, 4, 11, 6];      // G D A E B F♯
+
+// semi = semitones above the key root, i.e. which scale degree this chord is
+function noteName(semi) {
+  const li = (KEYS[keySemi].l + DEG_STEP[semi]) % 7;
+  const actual = (keySemi + semi) % 12;
+  const acc = (((actual - LETTER_SEMI[li]) + 18) % 12) - 6;
+  // Two spellings are right on paper but never appear in a chord symbol: a
+  // double accidental, and C♭ / F♭ / B♯ / E♯. Nobody charts an F♭7, they chart
+  // an E7. Fall back to the plain letter for those.
+  const unwritten = (acc === -1 && (li === 0 || li === 3)) || (acc === 1 && (li === 2 || li === 6));
+  if (acc < -1 || acc > 1 || unwritten) {
+    return (SHARP_KEYS.indexOf(keySemi) >= 0 ? NOTES_SHARP : NOTES_FLAT)[actual];
+  }
+  return LETTERS[li] + (acc === -1 ? "♭" : acc === 1 ? "♯" : "");
+}
+
 const CREAM = "#f5f2e9", CREAM_DIM = "#ece7d8", INK = "#163b4e", INK_SOFT = "#3a5560";
 
 const STYLE_BPM = { shuffle: 126, rock: 132, halftime: 84, reggae: 100, "12/8": 63 };
 
 /* ---------- state ---------- */
-let mode = "major";
+let mode = "major";              // "major" | "minor" | "build"
+let lastBlues = "major";
 let keySemi = 9;                 // A
 let style = "shuffle";
 let view = "street";             // "street" walks the blocks; "map" shows the whole chorus
 let bpm = 126;
+const MAXBARS = 32;
+let userProg = null;             // the built progression, filled in below
 let PROG = PROGS[mode];
 
 const midiFreq = m => 440 * Math.pow(2, (m - 69) / 12);
 
-// Resolve a degree name into playable pitches for the current key.
-// Bass roots fold into G1..G2 so every key sits in a real bass register.
-function degSpec(name) {
-  const d = DEGREES[name];
-  const q = QUALITY[d.quality];
-  const rootSemi = (keySemi + d.semi) % 12;
-  let bassMidi = 31 + ((keySemi - 7 + 12) % 12) + d.semi;
+// Resolve a chord key into playable pitches, a roman numeral and a letter name
+// for the current key. Bass roots fold into G1..G2 so every key sits in a real
+// bass register. Both names are always built, never one or the other.
+function degSpec(key) {
+  const { semi, qual } = chParts(key);
+  const q = QUALITY[qual] || QUALITY.maj;
+  let bassMidi = 31 + ((keySemi - 7 + 12) % 12) + semi;
   while (bassMidi > 43) bassMidi -= 12;
   while (bassMidi < 28) bassMidi += 12;
   let compMidi = bassMidi + 24;
   while (compMidi > 66) compMidi -= 12;
   while (compMidi < 55) compMidi += 12;
   return {
-    ...d,
+    key, semi, qual, family: q.family, win: q.shape,
+    color: FUNC_COLOR[semi][0], dark: FUNC_COLOR[semi][1],
     intervals: q.intervals,
     walk: q.walk,
     // absolute pitch of each chord tone above the key root — the window floors
-    voicing: q.intervals.map(iv => d.semi + iv),
-    chordName: NOTES[rootSemi] + q.suffix,
+    voicing: q.intervals.map(iv => semi + iv),
+    label: (q.lower ? ROMAN[semi].toLowerCase() : ROMAN[semi]) + q.roman,
+    chordName: noteName(semi) + q.suffix,
     bassFreq: midiFreq(bassMidi),
     compFreq: midiFreq(compMidi)
   };
 }
+// Specs are memoised per key; changing the musical key just empties the cache.
 let SPECS = {};
-function rebuildSpecs() {
-  SPECS = {};
-  Object.keys(DEGREES).forEach(n => { SPECS[n] = degSpec(n); });
-}
-rebuildSpecs();
+function rebuildSpecs() { SPECS = {}; }
+function chord(key) { return SPECS[key] || (SPECS[key] = degSpec(key)); }
 
-function chordCell(bar) { return PROG[((bar % 12) + 12) % 12]; }
+function chordCell(bar) { const L = PROG.length; return PROG[((bar % L) + L) % L]; }
 function chordAt(bar, beat) {
   const cell = chordCell(bar);
-  return SPECS[cell.length === 2 ? (beat < 2 ? cell[0] : cell[1]) : cell[0]];
+  return chord(cell.length === 2 ? (beat < 2 ? cell[0] : cell[1]) : cell[0]);
 }
 
 /* ---------- audio ---------- */
@@ -247,7 +415,7 @@ const fifth = spec => spec.bassFreq * Math.pow(2, 7 / 12);
 
 /* Each feel decides what the band plays on a given beat. */
 function scheduleBeat(index, t) {
-  const bar = Math.floor(index / 4) % 12;
+  const bar = Math.floor(index / 4) % PROG.length;
   const beat = index % 4;
   const spec = chordAt(bar, beat);
   const bd = beatDur();
@@ -330,7 +498,12 @@ function seeded(i, salt) {
   return x - Math.floor(x);
 }
 
-function groundY() { return H * 0.78; }
+// The builder is a real panel at the bottom of the screen, so in build mode the
+// street has to move up out from under it. Blues mode keeps its original horizon.
+function bottomUI() { return document.getElementById("dock").offsetHeight; }
+function groundY() {
+  return mode === "build" ? Math.max(H * 0.34, H - bottomUI() - 70) : H * 0.78;
+}
 
 function drawSky(camX, t) {
   cx.fillStyle = CREAM;
@@ -376,7 +549,8 @@ function drawSky(camX, t) {
    pitch height (one unit per semitone above the key root), labeled by its role.
    A minor chord's third floor sits one semitone lower than a major one's, the
    half-diminished drops its fifth too, and taller roots lift the whole voicing. */
-const ROLE = { 0: "R", 2: "9", 3: "♭3", 4: "3", 6: "♭5", 7: "5", 9: "6", 10: "♭7" };
+const ROLE = { 0: "R", 1: "♭9", 2: "9", 3: "♭3", 4: "3", 5: "4",
+               6: "♭5", 7: "5", 8: "♯5", 9: "6", 10: "♭7", 11: "7" };
 
 function drawNoteRow(spec, bx, bw, cy, lit, compact) {
   cx.fillStyle = lit ? "#ffe9a3" : "rgba(245,242,233,0.85)";
@@ -465,7 +639,10 @@ function stabLit(beat, beatPhase) {
 function drawOneBuilding(spec, bx, bw, barIdx, salt, isCurChord, beat, beatPhase) {
   const gy = groundY();
   // Height comes from the voicing: one unit per semitone, so the skyline is the harmony.
-  const UNIT = 13, DOOR = 52, HEAD = 34;
+  const DOOR = 52, HEAD = 34;
+  // 13px a semitone, unless the street has been pushed up by the builder panel
+  // and the tallest chord in the vocabulary would run off the top.
+  const UNIT = Math.min(13, (gy - 120) / 24);
   const maxSemi = spec.voicing[spec.voicing.length - 1];
   const pulse = isCurChord ? Math.max(0, 1 - beatPhase * 3) * 8 : 0;
   const bh = DOOR + maxSemi * UNIT + HEAD + pulse;
@@ -493,18 +670,21 @@ function drawOneBuilding(spec, bx, bw, barIdx, salt, isCurChord, beat, beatPhase
   cx.fillStyle = spec.dark;
   cx.fillRect(bx + bw / 2 - 15, gy - 44, 30, 44);
 
-  // chord sign
-  const signY = by - 50 - (isCurChord ? Math.max(0, 1 - beatPhase * 2.5) * 10 : 0);
-  const signW = Math.min(96, bw * 0.8), signX = bx + bw / 2 - signW / 2;
+  // chord sign: function on top, letter name underneath, always both
+  const signY = by - 60 - (isCurChord ? Math.max(0, 1 - beatPhase * 2.5) * 10 : 0);
+  const signW = Math.min(116, bw * 0.88), signX = bx + bw / 2 - signW / 2;
   cx.fillStyle = CREAM;
   cx.strokeStyle = INK; cx.lineWidth = 2.5;
   cx.beginPath();
-  if (cx.roundRect) cx.roundRect(signX, signY, signW, 36, 6); else cx.rect(signX, signY, signW, 36);
+  if (cx.roundRect) cx.roundRect(signX, signY, signW, 46, 6); else cx.rect(signX, signY, signW, 46);
   cx.fill(); cx.stroke();
-  cx.fillStyle = isCurChord ? "#e23b22" : INK;
-  cx.font = "600 " + (spec.label.length > 3 ? 15 : 19) + "px Futura, 'Helvetica Neue', sans-serif";
   cx.textAlign = "center"; cx.textBaseline = "middle";
-  cx.fillText(spec.label, bx + bw / 2, signY + 19);
+  cx.fillStyle = isCurChord ? "#e23b22" : INK;
+  cx.font = "600 " + (spec.label.length > 4 ? 14 : 18) + "px Futura, 'Helvetica Neue', sans-serif";
+  cx.fillText(spec.label, bx + bw / 2, signY + 16);
+  cx.fillStyle = INK_SOFT;
+  cx.font = (spec.chordName.length > 5 ? 11 : 13) + "px Futura, 'Helvetica Neue', sans-serif";
+  cx.fillText(spec.chordName, bx + bw / 2, signY + 33);
 }
 
 function drawBlock(barIdx, screenX, beat, curBar, beatPhase) {
@@ -515,13 +695,13 @@ function drawBlock(barIdx, screenX, beat, curBar, beatPhase) {
   const startX = screenX + (BLOCK_W - totalW) / 2;
 
   if (cell.length === 1) {
-    drawOneBuilding(SPECS[cell[0]], startX, totalW, barIdx, 1, isCur, beat, beatPhase);
+    drawOneBuilding(chord(cell[0]), startX, totalW, barIdx, 1, isCur, beat, beatPhase);
   } else {
     // a split bar: two narrower buildings share the block
     const bw = (totalW - 18) / 2;
     cell.forEach((name, i) => {
       const active = isCur && (i === 0 ? beat < 2 : beat >= 2);
-      drawOneBuilding(SPECS[name], startX + i * (bw + 18), bw, barIdx, 1 + i * 3, active, beat, beatPhase);
+      drawOneBuilding(chord(name), startX + i * (bw + 18), bw, barIdx, 1 + i * 3, active, beat, beatPhase);
     });
   }
 
@@ -531,7 +711,7 @@ function drawBlock(barIdx, screenX, beat, curBar, beatPhase) {
   cx.fillText("bar " + (barIdx + 1), screenX + BLOCK_W / 2, gy + 26);
 
   // the turnaround sign stands at the top of bar 9, where the home stretch begins
-  if (barIdx === 8) {
+  if (mode !== "build" && barIdx === 8) {
     const px = screenX + 90, py = gy;   // clear of the streetlamp at the block edge
     cx.strokeStyle = INK; cx.lineWidth = 3;
     cx.beginPath(); cx.moveTo(px, py); cx.lineTo(px, py - 92); cx.stroke();
@@ -605,13 +785,17 @@ function drawWalker(x, y, beatPos, walking, t) {
 
 /* ---------- map view: the whole chorus at once, four bars to a line ---------- */
 function mapGrid() {
+  const n = PROG.length;
+  // Four bars to a line is how a chart is read, so hold that as long as it fits.
+  const cols = n <= 4 ? n : (n <= 16 ? 4 : (n <= 24 ? 6 : 8));
+  const rows = Math.ceil(n / cols);
   const padX = Math.max(30, W * 0.05);
   const top = Math.max(64, H * 0.1);
-  const bottom = 110;                       // room for the HUD
-  const gap = Math.max(12, W * 0.014);
-  const cellW = (W - padX * 2 - gap * 3) / 4;
-  const cellH = (H - top - bottom - gap * 2) / 3;
-  return { padX, top, gap, cellW, cellH };
+  const bottom = bottomUI() + 50;           // room for the HUD and the builder
+  const gap = Math.max(10, W * 0.014);
+  const cellW = (W - padX * 2 - gap * (cols - 1)) / cols;
+  const cellH = (H - top - bottom - gap * (rows - 1)) / rows;
+  return { padX, top, gap, cellW, cellH, cols, rows };
 }
 
 function drawMapFacade(spec, x, y, w, h, active, beat, beatPhase) {
@@ -629,15 +813,20 @@ function drawMapFacade(spec, x, y, w, h, active, beat, beatPhase) {
   cx.lineWidth = active ? 5 : 3;
   cx.strokeRect(x, y, w, h);
 
+  // both names, side by side where the cell is wide enough and stacked where it is not
   cx.textBaseline = "middle";
+  const fs = Math.max(11, Math.min(17, w / 7));
   cx.fillStyle = active ? "#ffe9a3" : CREAM;
-  cx.font = "600 17px Futura, 'Helvetica Neue', sans-serif";
+  cx.font = "600 " + fs + "px Futura, 'Helvetica Neue', sans-serif";
   cx.textAlign = "left";
-  cx.fillText(spec.label, x + 10, y + 17);
+  cx.fillText(spec.label, x + 8, y + 15);
+  cx.font = Math.max(10, fs - 4) + "px Futura, 'Helvetica Neue', sans-serif";
   if (w > 150) {
-    cx.font = "13px Futura, 'Helvetica Neue', sans-serif";
     cx.textAlign = "right";
-    cx.fillText(spec.chordName, x + w - 10, y + 17);
+    cx.fillText(spec.chordName, x + w - 10, y + 15);
+  } else {
+    cx.textAlign = "left";
+    cx.fillText(spec.chordName, x + 8, y + 15 + fs);
   }
 }
 
@@ -660,22 +849,23 @@ function drawMap(t, beats, curBar, beat, beatPhase) {
   cx.font = "14px Futura, 'Helvetica Neue', sans-serif";
   cx.textAlign = "left"; cx.textBaseline = "middle";
   const g = mapGrid();
-  cx.fillText("one chorus · twelve bars · four to a line", g.padX, g.top - 26);
+  cx.fillText("one chorus · " + PROG.length + (PROG.length === 1 ? " bar" : " bars")
+              + " · " + g.cols + " to a line", g.padX, g.top - 26);
 
-  for (let i = 0; i < 12; i++) {
-    const r = Math.floor(i / 4), c = i % 4;
+  for (let i = 0; i < PROG.length; i++) {
+    const r = Math.floor(i / g.cols), c = i % g.cols;
     const x = g.padX + c * (g.cellW + g.gap);
     const y = g.top + r * (g.cellH + g.gap);
     const cell = chordCell(i);
     const isCur = i === curBar;
 
     if (cell.length === 1) {
-      drawMapFacade(SPECS[cell[0]], x, y, g.cellW, g.cellH, isCur, beat, beatPhase);
+      drawMapFacade(chord(cell[0]), x, y, g.cellW, g.cellH, isCur, beat, beatPhase);
     } else {
       const half = (g.cellW - 8) / 2;
       cell.forEach((name, hi) => {
         const active = isCur && (hi === 0 ? beat < 2 : beat >= 2);
-        drawMapFacade(SPECS[name], x + hi * (half + 8), y, half, g.cellH, active, beat, beatPhase);
+        drawMapFacade(chord(name), x + hi * (half + 8), y, half, g.cellH, active, beat, beatPhase);
       });
     }
 
@@ -686,7 +876,7 @@ function drawMap(t, beats, curBar, beat, beatPhase) {
     cx.fillText(String(i + 1), x + 8, y - 12);
 
     // the turnaround tag at the top of bar 9, where the home stretch begins
-    if (i === 8) {
+    if (mode !== "build" && i === 8) {
       cx.fillStyle = "#e23b22";
       cx.beginPath();
       if (cx.roundRect) cx.roundRect(x + 22, y - 24, 104, 22, 4); else cx.rect(x + 22, y - 24, 104, 22);
@@ -698,9 +888,10 @@ function drawMap(t, beats, curBar, beat, beatPhase) {
     }
   }
 
-  // back to the top: bar 12 loops home to bar 1
-  const lastX = g.padX + 3 * (g.cellW + g.gap) + g.cellW;
-  const lastY = g.top + 2 * (g.cellH + g.gap) + g.cellH;
+  // back to the top: the last bar loops home to bar 1
+  const lastI = PROG.length - 1;
+  const lastX = g.padX + (lastI % g.cols) * (g.cellW + g.gap) + g.cellW;
+  const lastY = g.top + Math.floor(lastI / g.cols) * (g.cellH + g.gap) + g.cellH;
   cx.fillStyle = "#e23b22";
   cx.font = "600 13px Futura, 'Helvetica Neue', sans-serif";
   cx.textAlign = "right"; cx.textBaseline = "middle";
@@ -708,7 +899,7 @@ function drawMap(t, beats, curBar, beat, beatPhase) {
 
   // the walker strolls the chart, one cell per bar, reading left to right
   if (started) {
-    const r = Math.floor(curBar / 4), c = curBar % 4;
+    const r = Math.floor(curBar / g.cols), c = curBar % g.cols;
     const frac = (beats % 4) / 4;
     const wx = g.padX + c * (g.cellW + g.gap) + 14 + frac * (g.cellW - 28);
     const wy = g.top + r * (g.cellH + g.gap) + g.cellH;
@@ -727,6 +918,7 @@ const barsEl = document.getElementById("bars");
 const chordEl = document.getElementById("chordlabel");
 const chorusEl = document.getElementById("chorus");
 const ppBtn = document.getElementById("playpause");
+const buildBtn = document.getElementById("build");
 const modeBtn = document.getElementById("mode");
 const viewBtn = document.getElementById("view");
 const keySel = document.getElementById("key");
@@ -735,7 +927,7 @@ const tempoEl = document.getElementById("tempo");
 const bpmVal = document.getElementById("bpmval");
 const fsBtn = document.getElementById("fullscreen");
 
-NOTES.forEach((n, i) => {
+KEY_NAMES.forEach((n, i) => {
   const o = document.createElement("option");
   o.value = i; o.textContent = n;
   if (i === keySemi) o.selected = true;
@@ -745,18 +937,19 @@ NOTES.forEach((n, i) => {
 let barCells = [];
 function rebuildBarStrip() {
   barsEl.innerHTML = "";
+  const w = Math.max(6, Math.min(20, Math.round(300 / PROG.length)));
   barCells = PROG.map(cell => {
     const s = document.createElement("span");
+    s.style.width = w + "px";
     if (cell.length === 1) {
-      s.style.background = DEGREES[cell[0]].color;
+      s.style.background = chord(cell[0]).color;
     } else {
-      s.style.background = "linear-gradient(90deg, " + DEGREES[cell[0]].color + " 50%, " + DEGREES[cell[1]].color + " 50%)";
+      s.style.background = "linear-gradient(90deg, " + chord(cell[0]).color + " 50%, " + chord(cell[1]).color + " 50%)";
     }
     barsEl.appendChild(s);
     return s;
   });
 }
-rebuildBarStrip();
 
 function setBpm(v) {
   bpm = v;
@@ -771,16 +964,31 @@ viewBtn.addEventListener("click", () => {
   viewBtn.textContent = view === "street" ? "MAP" : "STREET";
 });
 
-modeBtn.addEventListener("click", () => {
-  mode = mode === "major" ? "minor" : "major";
-  PROG = PROGS[mode];
-  modeBtn.textContent = mode.toUpperCase();
+// BUILD is its own toggle rather than a third stop on the MODE cycle, so the way
+// into the builder is always one click and always the same button.
+function setMode(m) {
+  mode = m;
+  if (m !== "build") lastBlues = m;
+  PROG = m === "build" ? userProg : PROGS[m];
+  modeBtn.textContent = lastBlues.toUpperCase();
+  modeBtn.disabled = m === "build";
+  modeBtn.style.opacity = m === "build" ? 0.4 : 1;
+  buildBtn.classList.toggle("on", m === "build");
+  buildBtn.textContent = m === "build" ? "BLUES" : "BUILD";
+  buildBtn.title = m === "build" ? "Back to the 12-bar blues" : "Build your own progression, one block at a time";
+  builderEl.style.display = m === "build" ? "flex" : "none";
   rebuildBarStrip();
-});
+  if (m === "build") renderStrip();
+}
+buildBtn.addEventListener("click", () => setMode(mode === "build" ? lastBlues : "build"));
+modeBtn.addEventListener("click", () => { if (mode !== "build") setMode(mode === "major" ? "minor" : "major"); });
 
 keySel.addEventListener("change", () => {
   keySemi = parseInt(keySel.value, 10);
-  rebuildSpecs();
+  rebuildSpecs();          // letter names and the LETTER palette follow the key
+  rebuildBarStrip();
+  renderPalette();
+  renderStrip();
 });
 
 styleSel.addEventListener("change", () => {
@@ -810,6 +1018,358 @@ fsBtn.addEventListener("click", () => {
   }
 });
 
+/* ---------- the block builder ----------
+   The progression is just an array of bars, each bar an array of one or two
+   chord keys — exactly the shape the blues forms already use, so everything
+   downstream (the band, the street, the map, the walker) needs no special case. */
+const builderEl = document.getElementById("builder");
+const stripEl = document.getElementById("strip");
+const gridEl = document.getElementById("pgrid");
+const qualSel = document.getElementById("qual");
+const lenVal = document.getElementById("lenval");
+const tabBtns = Array.prototype.slice.call(document.querySelectorAll("#ptabs button"));
+
+let pickTab = "degree";
+let pickQual = "maj";
+let sel = { bar: 0, half: 0 };
+let stripCards = [];
+
+function validProg(raw) {
+  if (!Array.isArray(raw) || !raw.length || raw.length > MAXBARS) return false;
+  return raw.every(cell =>
+    Array.isArray(cell) && cell.length >= 1 && cell.length <= 2 &&
+    cell.every(k => {
+      const p = chParts(k);
+      return typeof k === "string" && QUALITY[p.qual] && p.semi >= 0 && p.semi < 12;
+    }));
+}
+function saveProg() {
+  try { localStorage.setItem("twelveBlocks.prog", JSON.stringify(userProg)); } catch (e) {}
+}
+function loadProg() {
+  try {
+    const raw = JSON.parse(localStorage.getItem("twelveBlocks.prog"));
+    return validProg(raw) ? raw : null;
+  } catch (e) { return null; }
+}
+// I - V - vi - IV, so build mode plays something recognisable the moment it opens
+userProg = loadProg() || [[CH(0,"maj")], [CH(7,"maj")], [CH(9,"min")], [CH(5,"maj")]];
+
+QUAL_ORDER.forEach(q => {
+  const o = document.createElement("option");
+  o.value = q; o.textContent = QUAL_NAME[q];
+  qualSel.appendChild(o);
+});
+qualSel.value = pickQual;
+qualSel.addEventListener("change", () => { pickQual = qualSel.value; renderPalette(); });
+
+tabBtns.forEach(b => b.addEventListener("click", () => {
+  pickTab = b.dataset.tab;
+  tabBtns.forEach(o => o.classList.toggle("on", o === b));
+  renderPalette();
+}));
+
+function twoLine(el, primary, secondary) {
+  const b = document.createElement("b"); b.textContent = primary;
+  const i = document.createElement("i"); i.textContent = secondary;
+  el.appendChild(b); el.appendChild(i);
+}
+
+// Twelve chips. ROMAN orders them by scale degree, LETTER by note name — the
+// same twelve chords either way, and every chip is labelled both ways.
+function renderPalette() {
+  gridEl.innerHTML = "";
+  for (let i = 0; i < 12; i++) {
+    const semi = pickTab === "degree" ? i : (((i - keySemi) % 12) + 12) % 12;
+    const key = CH(semi, pickQual);
+    const c = chord(key);
+    const b = document.createElement("button");
+    b.className = "pchip";
+    b.draggable = true;
+    b.style.borderColor = c.color;
+    twoLine(b, pickTab === "degree" ? c.label : c.chordName,
+               pickTab === "degree" ? c.chordName : c.label);
+    b.querySelector("b").style.color = c.dark;
+    b.addEventListener("click", () => assign(sel.bar, sel.half, key));
+    b.addEventListener("dragstart", e => {
+      e.dataTransfer.setData("text/plain", "chord:" + key);
+      e.dataTransfer.effectAllowed = "copy";
+    });
+    gridEl.appendChild(b);
+  }
+}
+
+function readDrop(e) { return e.dataTransfer.getData("text/plain") || ""; }
+
+function renderStrip() {
+  stripEl.innerHTML = "";
+  stripCards = userProg.map((cell, i) => {
+    const card = document.createElement("div");
+    card.className = "card" + (i === sel.bar ? " sel" : "") + (userProg.length === 1 ? " only" : "");
+    card.draggable = true;
+
+    const head = document.createElement("div");
+    head.className = "chead";
+    const num = document.createElement("span"); num.className = "n"; num.textContent = i + 1;
+    const sp = document.createElement("button");
+    sp.className = "mini";
+    sp.textContent = cell.length === 2 ? "join" : "split";
+    sp.title = cell.length === 2 ? "one chord for the whole bar" : "two chords, two beats each";
+    sp.addEventListener("click", e => { e.stopPropagation(); toggleSplit(i); });
+    head.appendChild(num); head.appendChild(sp);
+    card.appendChild(head);
+
+    const body = document.createElement("div");
+    body.className = "cbody";
+    cell.forEach((key, h) => {
+      const c = chord(key);
+      const slot = document.createElement("div");
+      slot.className = "slot" + (sel.bar === i && sel.half === h ? " on" : "");
+      slot.style.background = c.color;
+      slot.title = c.chordName + "  ·  " + c.label;
+      twoLine(slot, c.chordName, c.label);   // letter and function, always both
+      slot.addEventListener("click", () => { sel = { bar: i, half: h }; renderStrip(); });
+      slot.addEventListener("dragover", e => { e.preventDefault(); slot.classList.add("hot"); });
+      slot.addEventListener("dragleave", () => slot.classList.remove("hot"));
+      slot.addEventListener("drop", e => {
+        e.preventDefault(); e.stopPropagation();
+        slot.classList.remove("hot");
+        const d = readDrop(e);
+        if (d.indexOf("chord:") === 0) assign(i, h, d.slice(6));
+        else if (d.indexOf("move:") === 0) moveBar(+d.slice(5), i);
+      });
+      body.appendChild(slot);
+    });
+    card.appendChild(body);
+
+    // Per-block editing lives on the block itself: copy it, delete it, or open a
+    // new empty block in front of it. A one-block progression cannot be emptied.
+    const foot = document.createElement("div");
+    foot.className = "cfoot";
+    const ins = document.createElement("button");
+    ins.textContent = "+◀"; ins.title = "insert a new block before this one";
+    ins.addEventListener("click", e => { e.stopPropagation(); insertBar(i); });
+    const dup = document.createElement("button");
+    dup.textContent = "⧉"; dup.title = "duplicate this block";
+    dup.addEventListener("click", e => { e.stopPropagation(); duplicateBar(i); });
+    const del = document.createElement("button");
+    del.className = "del"; del.textContent = "DEL";
+    del.title = userProg.length === 1 ? "the last block cannot be deleted" : "delete block " + (i + 1);
+    del.addEventListener("click", e => { e.stopPropagation(); removeBar(i); });
+    foot.appendChild(ins); foot.appendChild(dup); foot.appendChild(del);
+    card.appendChild(foot);
+
+    card.addEventListener("dragstart", e => {
+      e.dataTransfer.setData("text/plain", "move:" + i);
+      e.dataTransfer.effectAllowed = "move";
+      card.classList.add("drag");
+    });
+    card.addEventListener("dragend", () => card.classList.remove("drag"));
+    card.addEventListener("dragover", e => e.preventDefault());
+    card.addEventListener("drop", e => {
+      e.preventDefault();
+      const d = readDrop(e);
+      if (d.indexOf("move:") === 0) moveBar(+d.slice(5), i);
+      else if (d.indexOf("chord:") === 0) assign(i, 0, d.slice(6));
+    });
+
+    stripEl.appendChild(card);
+    return card;
+  });
+
+  const add = document.createElement("button");
+  add.id = "addbar"; add.textContent = "+";
+  add.title = "add a block on the end, or drop a chord here";
+  add.addEventListener("click", () => addBar());
+  add.addEventListener("dragover", e => { e.preventDefault(); add.classList.add("hot"); });
+  add.addEventListener("dragleave", () => add.classList.remove("hot"));
+  add.addEventListener("drop", e => {
+    e.preventDefault(); add.classList.remove("hot");
+    const d = readDrop(e);
+    if (d.indexOf("chord:") === 0) addBar(d.slice(6));
+    else if (d.indexOf("move:") === 0) moveBar(+d.slice(5), userProg.length - 1);
+  });
+  stripEl.appendChild(add);
+
+  lenVal.textContent = userProg.length + (userProg.length === 1 ? " block" : " blocks");
+}
+
+// One place where an edit becomes audible: re-point the live progression, redraw
+// the HUD strip, save, redraw the cards. The band picks it up on the next beat.
+function commit() {
+  if (mode === "build") { PROG = userProg; rebuildBarStrip(); }
+  saveProg();
+  renderStrip();
+}
+function assign(bar, half, key) {
+  const cell = userProg[bar];
+  if (!cell) return;
+  const h = Math.min(half, cell.length - 1);
+  cell[h] = key;
+  sel = { bar: bar, half: h };
+  commit();
+}
+function addBar(key) {
+  if (userProg.length >= MAXBARS) return;
+  const last = userProg[userProg.length - 1];
+  userProg.push([key || last[last.length - 1]]);
+  sel = { bar: userProg.length - 1, half: 0 };
+  commit();
+}
+function removeBar(i) {
+  if (userProg.length <= 1 || i < 0 || i >= userProg.length) return;
+  userProg.splice(i, 1);
+  sel = { bar: Math.min(sel.bar, userProg.length - 1), half: 0 };
+  commit();
+}
+function insertBar(i) {
+  if (userProg.length >= MAXBARS) return;
+  userProg.splice(i, 0, [userProg[i][0]]);
+  sel = { bar: i, half: 0 };
+  commit();
+}
+function duplicateBar(i) {
+  if (userProg.length >= MAXBARS) return;
+  userProg.splice(i + 1, 0, userProg[i].slice());
+  sel = { bar: i + 1, half: 0 };
+  commit();
+}
+function moveBar(from, to) {
+  if (from === to || from < 0 || from >= userProg.length) return;
+  const cell = userProg.splice(from, 1)[0];
+  userProg.splice(to, 0, cell);
+  sel = { bar: to, half: 0 };
+  commit();
+}
+function toggleSplit(i) {
+  const cell = userProg[i];
+  if (cell.length === 2) cell.length = 1; else cell.push(cell[0]);
+  sel = { bar: i, half: 0 };
+  commit();
+}
+function replaceProg(next) {
+  userProg = next;
+  PROG = userProg;
+  sel = { bar: 0, half: 0 };
+  commit();
+}
+
+/* ---------- the song library ----------
+   Saved songs keep the key they were written in as well as the chords. The
+   chords themselves are degrees, so a song loaded into a different key would
+   still be the same tune — but a blues in A is a blues in A, so restore it. */
+const LIB_KEY = "twelveBlocks.songs";
+const nameEl = document.getElementById("songname");
+const listEl = document.getElementById("slist");
+const msgEl = document.getElementById("smsg");
+const saveBtn = document.getElementById("ssave");
+const loadBtn = document.getElementById("sload");
+const delBtn = document.getElementById("sdel");
+let songs = [];
+let msgTimer = 0;
+
+function say(text) {
+  msgEl.textContent = text;
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => { msgEl.textContent = ""; }, 2600);
+}
+function storageOK() {
+  try { localStorage.setItem("twelveBlocks.probe", "1"); localStorage.removeItem("twelveBlocks.probe"); return true; }
+  catch (e) { return false; }
+}
+function loadLibrary() {
+  let raw = [];
+  try { raw = JSON.parse(localStorage.getItem(LIB_KEY)) || []; } catch (e) { raw = []; }
+  // Anything malformed is dropped rather than allowed to break the picker.
+  songs = Array.isArray(raw) ? raw.filter(s =>
+    s && typeof s.name === "string" && validProg(s.prog)) : [];
+}
+function saveLibrary() {
+  try { localStorage.setItem(LIB_KEY, JSON.stringify(songs)); return true; }
+  catch (e) { say("out of browser storage"); return false; }
+}
+function renderList() {
+  const keep = listEl.value;
+  listEl.innerHTML = "";
+  if (!songs.length) {
+    const o = document.createElement("option");
+    o.value = ""; o.textContent = "— nothing saved yet —";
+    listEl.appendChild(o);
+  } else {
+    songs.forEach((s, i) => {
+      const o = document.createElement("option");
+      o.value = String(i);
+      o.textContent = s.name + "  (" + s.prog.length + " · " + (KEY_NAMES[s.key] || "?") + ")";
+      listEl.appendChild(o);
+    });
+    if (keep && songs[+keep]) listEl.value = keep;
+  }
+  const empty = !songs.length;
+  listEl.disabled = empty; loadBtn.disabled = empty; delBtn.disabled = empty;
+}
+
+saveBtn.addEventListener("click", () => {
+  const name = nameEl.value.trim();
+  if (!name) { nameEl.focus(); return say("give it a name first"); }
+  const entry = { name, key: keySemi, prog: userProg.map(c => c.slice()) };
+  const at = songs.findIndex(s => s.name.toLowerCase() === name.toLowerCase());
+  if (at >= 0) songs[at] = entry; else songs.push(entry);
+  if (!saveLibrary()) return;
+  renderList();
+  listEl.value = String(at >= 0 ? at : songs.length - 1);
+  say(at >= 0 ? "replaced " + name : "saved " + name);
+});
+
+loadBtn.addEventListener("click", () => {
+  const s = songs[+listEl.value];
+  if (!s) return;
+  keySemi = s.key;
+  keySel.value = String(keySemi);
+  rebuildSpecs();
+  renderPalette();
+  nameEl.value = s.name;
+  if (mode !== "build") setMode("build");
+  replaceProg(s.prog.map(c => c.slice()));
+  say("loaded " + s.name);
+});
+
+delBtn.addEventListener("click", () => {
+  const i = +listEl.value;
+  const s = songs[i];
+  if (!s) return;
+  songs.splice(i, 1);
+  if (!saveLibrary()) return;
+  renderList();
+  say("deleted " + s.name);
+});
+
+// Enter in the name box saves, so naming and saving is one gesture.
+nameEl.addEventListener("keydown", e => { if (e.key === "Enter") saveBtn.click(); });
+// The canvas listens for keys too; don't let typing a song name drive the app.
+["keydown", "keyup", "keypress"].forEach(t =>
+  nameEl.addEventListener(t, e => e.stopPropagation()));
+
+loadLibrary();
+renderList();
+if (!storageOK()) {
+  [saveBtn, loadBtn, delBtn, nameEl].forEach(el => { el.disabled = true; });
+  say("this browser is blocking storage, so songs cannot be saved");
+}
+
+document.getElementById("lenminus").addEventListener("click", () => removeBar(userProg.length - 1));
+document.getElementById("lenplus").addEventListener("click", () => addBar());
+document.getElementById("bclear").addEventListener("click", () => replaceProg([[CH(0, "maj")]]));
+document.getElementById("bcopy").addEventListener("click", () =>
+  replaceProg(PROGS[lastBlues].map(cell => cell.slice())));
+document.getElementById("bcollapse").addEventListener("click", e => {
+  const hidden = builderEl.classList.toggle("collapsed");
+  e.target.textContent = hidden ? "SHOW" : "HIDE";
+});
+
+renderPalette();
+renderStrip();
+setMode("major");
+
 overlay.addEventListener("click", () => {
   if (started) return;
   started = true;
@@ -825,10 +1385,10 @@ function frame(ms) {
   const t = ms / 1000;
   const beats = started ? songBeat() : 0;
   const barsFloat = beats / 4;
-  const curBar = Math.floor(barsFloat) % 12;
+  const curBar = Math.floor(barsFloat) % PROG.length;
   const beat = Math.floor(beats) % 4;
   const beatPhase = beats - Math.floor(beats);
-  const chorusNum = Math.floor(barsFloat / 12) + 1;
+  const chorusNum = Math.floor(barsFloat / PROG.length) + 1;
 
   // The walker's world position IS the musical position: he stands at the left
   // edge of block n exactly when bar n+1 begins, and steps onto the crosswalk
@@ -846,7 +1406,7 @@ function frame(ms) {
     const firstK = Math.floor(camX / BLOCK_W) - 1;
     const lastK = Math.floor((camX + W) / BLOCK_W) + 1;
     for (let k = firstK; k <= lastK; k++) {
-      const barIdx = ((k % 12) + 12) % 12;
+      const barIdx = ((k % PROG.length) + PROG.length) % PROG.length;
       drawBlock(barIdx, k * BLOCK_W - camX, beat, started && playing ? curBar : -1, beatPhase);
     }
 
@@ -855,16 +1415,17 @@ function frame(ms) {
 
   if (started) {
     barCells.forEach((s, i) => s.classList.toggle("on", i === curBar));
+    if (mode === "build") stripCards.forEach((c, i) => c.classList.toggle("now", i === curBar));
     const cell = chordCell(curBar);
     let label;
     if (cell.length === 1) {
-      const sp = SPECS[cell[0]];
+      const sp = chord(cell[0]);
       label = sp.label + " · " + sp.chordName;
     } else {
-      const a = SPECS[cell[0]], b = SPECS[cell[1]];
+      const a = chord(cell[0]), b = chord(cell[1]);
       label = a.label + "–" + b.label + " · " + a.chordName + "–" + b.chordName;
     }
-    chordEl.textContent = "bar " + (curBar + 1) + " of 12 · " + label;
+    chordEl.textContent = "bar " + (curBar + 1) + " of " + PROG.length + " · " + label;
     chorusEl.textContent = "chorus " + chorusNum;
   }
 
