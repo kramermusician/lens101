@@ -473,76 +473,100 @@ function playSnare(t, gain) {
 
 /* ---------- the bass line ----------
    A line that plays the same four notes over every chord lands on nothing.
-   A bass player hears the next chord coming and walks into it, so the line
-   here is built knowing where the music goes next, and the last note of a
-   bar is the half step that pulls into the chord after it. */
+   A bass player hears the next chord coming and walks into it, so the line is
+   built one bar at a time knowing where the music goes next.
 
-// The chord this one hands off to, which is the next cell unless this bar
-// holds two chords and we are still in its first half.
-function nextChordAfter(bar, beat) {
-  const cell = chordCell(bar);
-  if (cell.length === 2 && beat < 2) return chord(cell[1]);
-  return chordAt(bar + 1, 0);
+   The move, every time the chord changes: climb into the new root from a whole
+   step below. Going to F the line plays Eb, E, F. Going to G it plays F, F#, G.
+   It always rises into the target and never drops in from above, because the
+   pull of that half step is the whole point. */
+
+const bassMidiOf = f => Math.round(69 + 12 * Math.log2(f / 440));
+
+// The two notes before a change, as offsets from the chord we are leaving.
+function runInto(spec, nx) {
+  const here = bassMidiOf(spec.bassFreq);
+  let target = bassMidiOf(nx.bassFreq);
+  while (target - 2 < 28) target += 12;      // keep the climb on the instrument
+  return [target - 2 - here, target - 1 - here];
 }
 
-// How far the next root sits from this one, by the shorter way around.
-function rootStep(spec, next) {
-  let d = (next.semi - spec.semi) % 12;
-  if (d > 6) d -= 12;
-  if (d < -6) d += 12;
-  return d;
-}
+/* Where each feel puts a bass note inside a bar, as [beat position, length in
+   beats]. Everything else about the line is built on top of these slots, so a
+   feel is described once instead of being spelled out in the scheduler. */
+const BASS_SLOTS = {
+  shuffle:  [[0, .9], [1, .9], [2, .9], [3, .9]],
+  "12/8":   [[0, .9], [1, .9], [2, .9], [3, .9]],
+  rock:     [[0, .45], [0.5, .45], [1, .45], [1.5, .45],
+             [2, .45], [2.5, .45], [3, .45], [3.5, .45]],
+  halftime: [[0, 1.8], [2, .8], [3.5, .45]],
+  reggae:   [[0, .8], [2, .5], [2.5, .45], [3.5, .45]]
+};
 
-// Half step into the target, from whichever side the line is already on.
-function approachOffset(from, target) {
-  return Math.abs(target - 1 - from) <= Math.abs(target + 1 - from) ? target - 1 : target + 1;
-}
-
-/* One bar, one beat, in the current feel. Events are
-   [fraction of the beat, semitones above the chord root, length in beats, velocity].
-   The drawing code reads the same function, so what lights up in a window is
-   always the note actually sounding. */
-function bassEventsFor(spec, bar, beat) {
+// The chord tones the line would play if nothing were changing.
+function bassTones(spec, count, bar) {
   const w = spec.walk;
-  const third = w[1];
   const low = spec.family === "minor" || spec.family === "diminished";
   const six = low ? 10 : 9;
-  const nx = nextChordAfter(bar, beat);
-  const d = rootStep(spec, nx);
-  const changes = d !== 0;
-
   if (style === "rock") {
-    // The eight note boogie, walked up to the flat seven and back down.
-    const top = low ? 12 : 10;
-    const shape = [0, third, 7, six, top, six, 7, third];
-    const a = shape[beat * 2], b = shape[beat * 2 + 1];
-    const tail = (beat === 3 && changes) ? approachOffset(a, d) : b;
-    return [[0, a, 0.45, beat === 0 ? 1 : 0.8], [0.5, tail, 0.45, 0.74]];
+    const shape = low ? [0, 3, 7, 10, 12, 10, 7, 3]
+                      : [0, w[1], 7, six, 10, six, 7, w[1]];
+    return shape.slice(0, count);
   }
-
-  if (style === "halftime") {
-    if (beat === 0) return [[0, 0, 1.8, 1]];
-    if (beat === 2) return [[0, 7, 0.8, 0.8]];
-    if (beat === 3) return [[0.5, changes ? approachOffset(7, d) : w[3], 0.45, 0.76]];
-    return [];
-  }
-
-  if (style === "reggae") {
-    if (beat === 0) return [[0, 0, 0.8, 1]];
-    if (beat === 2) return [[0, 7, 0.5, 0.86], [0.5, low ? 10 : 9, 0.45, 0.7]];
-    if (beat === 3 && changes) return [[0.5, approachOffset(six, d), 0.45, 0.7]];
-    return [];
-  }
-
-  // shuffle and 12/8 both walk in quarters. Four shapes rotate by bar so a
-  // twelve bar chorus does not repeat the same three notes twelve times.
+  if (style === "halftime") return [0, 7, w[3]].slice(0, count);
+  // The last note only survives when the chord holds, so it must not repeat
+  // the one before it.
+  if (style === "reggae")   return [0, 7, six, six === 10 ? 7 : 10].slice(0, count);
+  // shuffle and 12/8 walk in quarters. Four shapes rotate by bar so a twelve
+  // bar chorus does not repeat the same three notes twelve times.
   const pair = [[1, 2], [2, 3], [1, 3], [3, 2]][((bar % 4) + 4) % 4];
   const b1 = w[pair[0]], b2 = w[pair[1]];
-  // Staying on the same chord still needs a fourth note that is not the third
-  // one again. A repeated note reads as the line running out of ideas.
+  // Holding one chord still needs a fourth note that is not the third one
+  // again. A repeated note reads as the line running out of ideas.
   const hold = (b2 === w[3]) ? w[2] : w[3];
-  const seq = [0, b1, b2, changes ? approachOffset(b2, d) : hold];
-  return [[0, seq[beat], 0.9, beat === 0 ? 1 : 0.82]];
+  return [0, b1, b2, hold].slice(0, count);
+}
+
+// One stretch of a single chord: it may be a whole bar, or half of one when a
+// bar holds two chords. Events come back as [beat in bar, midi, length, level].
+function bassSegment(seg, nx, bar) {
+  const slots = (BASS_SLOTS[style] || BASS_SLOTS.shuffle).filter(s => s[0] < seg.beats);
+  const here = bassMidiOf(seg.spec.bassFreq);
+  const tones = bassTones(seg.spec, slots.length, bar);
+  if (nx.semi !== seg.spec.semi) {
+    // Take the last two slots for the climb, but never slot 0: a chord has to
+    // start on its own root or it stops being audible as that chord. Half a
+    // bar leaves room for one note, so that one is the half step.
+    const r = runInto(seg.spec, nx);
+    const n = Math.min(2, slots.length - 1);
+    for (let i = 0; i < n; i++) tones[slots.length - n + i] = r[2 - n + i];
+  }
+  return slots.map((sl, i) => [
+    seg.start + sl[0],
+    here + tones[i],
+    sl[1],
+    i === 0 ? 1 : (sl[0] % 1 ? .74 : .84)
+  ]);
+}
+
+/* The whole bar at once, because a line has to see the bar to walk out of it.
+   Cached until something that would change it changes. */
+let bassCache = { bar: -1, style: null, key: -1, prog: null, plan: [] };
+function bassBarPlan(bar) {
+  if (bassCache.bar === bar && bassCache.style === style &&
+      bassCache.key === keySemi && bassCache.prog === PROG) return bassCache.plan;
+  const cell = chordCell(bar);
+  const segs = cell.length === 2
+    ? [{ spec: chord(cell[0]), start: 0, beats: 2 },
+       { spec: chord(cell[1]), start: 2, beats: 2 }]
+    : [{ spec: chord(cell[0]), start: 0, beats: 4 }];
+  const plan = [];
+  segs.forEach((seg, i) => {
+    const nx = (i + 1 < segs.length) ? segs[i + 1].spec : chordAt(bar + 1, 0);
+    plan.push(...bassSegment(seg, nx, bar));
+  });
+  bassCache = { bar, style, key: keySemi, prog: PROG, plan };
+  return plan;
 }
 
 /* Each feel decides what the band plays on a given beat. */
@@ -555,8 +579,10 @@ function scheduleBeat(index, t) {
   const swung = t + bd * 2 / 3;    // shuffled offbeat
 
   // The bass is the same engine in every feel. Only the feel's grid changes.
-  bassEventsFor(spec, bar, beat).forEach(e =>
-    playBass(spec.bassFreq * Math.pow(2, e[1] / 12), t + bd * e[0], bd * e[2], e[3]));
+  bassBarPlan(bar).forEach(e => {
+    if (Math.floor(e[0]) !== beat) return;
+    playBass(midiFreq(e[1]), t + bd * (e[0] - beat), bd * e[2], e[3]);
+  });
 
   if (style === "shuffle") {
     if (beat === 0 || beat === 2) playKick(t);
@@ -725,14 +751,14 @@ function drawVoicing(spec, bx, by, bw, floorY, lit, bassAbs, compact) {
 
 // Which chord tone the bass is on right now, as an absolute semitone (or null).
 // It asks the line itself rather than keeping a second copy of the pattern, so
-// a chromatic approach note correctly lights nothing: it is not in the chord.
+// a note in the chromatic climb correctly lights nothing: it is not in the chord.
 function bassAbsSemiAt(spec, beat) {
   const bar = ((Math.floor(songBeat() / 4) % PROG.length) + PROG.length) % PROG.length;
-  const ev = bassEventsFor(spec, bar, beat).find(e => e[0] === 0);
+  const ev = bassBarPlan(bar).find(e => e[0] === beat);
   if (!ev) return null;
-  const iv = ((ev[1] % 12) + 12) % 12;
-  if (!spec.intervals.includes(iv)) return null;
-  return spec.semi + iv;
+  const rel = (((ev[1] - bassMidiOf(spec.bassFreq)) % 12) + 12) % 12;
+  if (!spec.intervals.includes(rel)) return null;
+  return spec.semi + rel;
 }
 
 function drawTexture(spec, bx, by, bw, bh) {

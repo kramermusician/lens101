@@ -452,12 +452,21 @@ const FEELS = {
    and returns [step, midi, length-in-steps, velocity] events.
    ============================================================ */
 
-// Half step into the next root, from whichever side the line is already on.
-// This is the single most bass-sounding move there is, and it is what makes
-// bar 4 pull into bar 5 instead of just stopping.
-function approachTo(from, target){
-  const below = target - 1, above = target + 1;
-  return Math.abs(below - from) <= Math.abs(above - from) ? below : above;
+// Walk into the new chord from a whole step below: the two notes before the
+// change are always the target minus two and the target minus one, so going
+// to F the line plays Eb, E, F and going to G it plays F, F#, G. Kramer's
+// rule, and the move bass players actually use. It always climbs, never drops
+// in from above, because the pull of a rising half step is the whole point.
+function runInto(target){ return [target - 2, target - 1]; }
+
+// Swap the last two events of a bar for that run. Slot 0 is never touched:
+// a bar has to start on its own root or the chord stops being audible.
+function withRun(events, c, stepA, stepB, lenA, lenB){
+  if (!c.change) return events;
+  const r = runInto(c.next);
+  const kept = events.filter(e => e[0] < stepA);
+  kept.push([stepA, r[0], lenA, .76], [stepB, r[1], lenB, .84]);
+  return kept;
 }
 
 const BASS = {
@@ -470,13 +479,12 @@ const BASS = {
     const out = [];
     for (let i = 0; i < 8; i++)
       out.push([i, c.root + shape[i], 1, i === 0 ? 1 : (i === 4 ? .88 : .74)]);
-    if (c.change) out[7] = [7, approachTo(c.root + shape[7], c.next), 1, .86];
-    return out;
+    return withRun(out, c, 6, 7, 1, 1);   // the last two eighths of the bar
   },
 
-  // Quarter-note walking line. Beats 1 to 3 are chord tones, beat 4 is the
-  // half step into whatever comes next. Four shapes rotate by bar so twelve
-  // bars never repeat the same three notes.
+  // Quarter-note walking line. Beat 1 is the root, beat 2 a chord tone, and
+  // beats 3 and 4 are the run into the next chord. Four shapes rotate by bar
+  // so twelve bars never repeat the same three notes.
   walk(c){
     const t = c.third;
     const shapes = [
@@ -486,30 +494,31 @@ const BASS = {
     // Staying on the same chord still needs a fourth note that is not the
     // third one again. A repeated note reads as the line running out of ideas.
     const hold = shapes[1] === 10 ? 5 : 10;
-    notes.push(c.change ? approachTo(notes[2], c.next) : c.root + hold);
-    return notes.map((m, i) => [i * 3, m, 3, i === 0 ? .96 : .8]);
+    notes.push(c.root + hold);
+    return withRun(notes.map((m, i) => [i * 3, m, 3, i === 0 ? .96 : .8]), c, 6, 9, 3, 3);
   },
 
   // Slow blues. Long root, then the line wakes up in the second half of the
-  // bar and hands off on the last triplet.
+  // bar and climbs out of it on the last two notes.
   slow(c){
     const out = [
       [0, c.root, 5, 1],
       [6, c.root + 7, 3, .82],
-      [9, c.root + c.six, 2, .78]
+      [9, c.root + c.six, 2, .78],
+      [11, c.root + (c.six === 10 ? 7 : 10), 1, .72]
     ];
-    out.push([11, c.change ? approachTo(c.root + c.six, c.next) : c.root + (c.six === 10 ? 7 : 10), 1, .72]);
-    return out;
+    return withRun(out, c, 9, 11, 2, 1);
   },
 
-  // 6/8 lopes: root on the downbeat, fifth on the second big beat, one note
-  // of pickup at the end.
+  // 6/8 lopes: root on the downbeat, fifth on the second big beat, then the
+  // climb. Only two notes of room, which is exactly what the run needs.
   sixEight(c){
-    return [
+    const out = [
       [0, c.root, 3, 1],
       [3, c.root + 7, 2, .84],
-      [5, c.change ? approachTo(c.root + 7, c.next) : c.root + c.six, 1, .7]
+      [5, c.root + c.six, 1, .7]
     ];
+    return withRun(out, c, 3, 5, 2, 1);
   },
 
   // Reggae leaves the downbeat alone after the first note and lands on the
@@ -518,23 +527,22 @@ const BASS = {
     const out = [
       [0, c.root, 2, 1],
       [3, c.root + 7, 1, .8],
-      [4, c.root + 10, 2, .76]
+      [4, c.root + 10, 2, .76],
+      [6, c.root, 2, .88]
     ];
-    if (c.change) { out.push([6, c.root, 1, .88]); out.push([7, approachTo(c.root, c.next), 1, .72]); }
-    else out.push([6, c.root, 2, .88]);
-    return out;
+    return withRun(out, c, 6, 7, 1, 1);
   },
 
-  // Drum and bass wants space, so this is two long notes with one octave
-  // answer between them rather than a busy line fighting the break.
+  // Drum and bass wants space, so this is long notes rather than a busy line
+  // fighting the break. The run still gets the last beat of the bar.
   dnb(c){
     const out = [
       [0, c.root, 6, 1],
       [7, c.root + 7, 2, .72],
-      [10, c.root, 4, .92]
+      [10, c.root, 4, .92],
+      [14, c.root + c.six, 2, .7]
     ];
-    out.push([14, c.change ? approachTo(c.root, c.next) : c.root + c.six, 2, .7]);
-    return out;
+    return withRun(out, c, 12, 14, 2, 2);
   }
 };
 
