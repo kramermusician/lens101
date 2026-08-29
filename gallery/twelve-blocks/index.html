@@ -328,7 +328,7 @@ function chordAt(bar, beat) {
 }
 
 /* ---------- audio ---------- */
-let ctx = null, master = null, noiseBuf = null;
+let ctx = null, master = null, bassBus = null, noiseBuf = null;
 const beatDur = () => 60 / bpm;
 let nextBeatTime = 0, nextBeatIndex = 0;
 let beatQueue = [];
@@ -340,56 +340,119 @@ function initAudio() {
   const comp = ctx.createDynamicsCompressor();
   comp.threshold.value = -18; comp.ratio.value = 4;
   master.connect(comp); comp.connect(ctx.destination);
+  // The bass gets its own bus with a little soft clipping. Bass through a
+  // speaker is never perfectly clean, and the harmonics that adds are what
+  // make the line readable on a laptop, where the low notes barely exist.
+  bassBus = ctx.createGain(); bassBus.gain.value = 0.85;
+  const drive = ctx.createWaveShaper();
+  const curve = new Float32Array(1024);
+  for (let i = 0; i < 1024; i++) { const x = (i / 1023) * 2 - 1; curve[i] = Math.tanh(x * 1.7) / Math.tanh(1.7); }
+  drive.curve = curve; drive.oversample = "2x";
+  bassBus.connect(drive); drive.connect(master);
   const b = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate);
   const d = b.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   noiseBuf = b;
 }
 
-function playBass(freq, t, dur) {
-  const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
-  o.type = "sawtooth"; o.frequency.value = freq;
-  f.type = "lowpass"; f.frequency.value = 420; f.Q.value = 0.8;
+function playBass(freq, t, dur, vel) {
+  vel = (vel === undefined ? 1 : vel);
+  const g = ctx.createGain(), f = ctx.createBiquadFilter();
+  // A real bass is brightest at the attack and darkens while the note rings.
+  // A fixed cutoff is what made this sound like a synth pad on its side.
+  // The cutoff also tracks pitch, so high notes are not dull and low notes
+  // are not honky.
+  const track = Math.max(0.6, Math.min(1.8, freq / 82));
+  f.type = "lowpass"; f.Q.value = 1.1;
+  f.frequency.setValueAtTime(1200 * track, t);
+  f.frequency.exponentialRampToValueAtTime(300 * track, t + Math.min(0.11, dur));
+
+  const peak = 0.42 * vel;
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(0.5, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(peak, t + 0.012);
+  g.gain.setValueAtTime(peak, t + Math.max(0.012, dur - 0.07));   // it holds, then lets go
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(f); f.connect(g); g.connect(master);
-  o.start(t); o.stop(t + dur + 0.05);
+  f.connect(g); g.connect(bassBus);
+
+  const o = ctx.createOscillator();
+  o.type = "sawtooth"; o.frequency.value = freq;
+  o.connect(f); o.start(t); o.stop(t + dur + 0.05);
+  // A second voice a few cents away gives the note a body instead of a beep.
+  const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+  o2.type = "sawtooth"; o2.frequency.value = freq; o2.detune.value = -7;
+  g2.gain.value = 0.5; o2.connect(g2); g2.connect(f);
+  o2.start(t); o2.stop(t + dur + 0.05);
+  // A clean sine underneath keeps the line audible on small speakers.
+  const os = ctx.createOscillator(), gs = ctx.createGain();
+  os.type = "sine"; os.frequency.value = freq;
+  gs.gain.setValueAtTime(0.0001, t);
+  gs.gain.exponentialRampToValueAtTime(peak * 0.5, t + 0.014);
+  gs.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  os.connect(gs); gs.connect(bassBus);
+  os.start(t); os.stop(t + dur + 0.05);
+  // The finger noise of a string being pulled. Small enough to read as touch.
+  const nz = ctx.createBufferSource(), nf = ctx.createBiquadFilter(), ng = ctx.createGain();
+  nz.buffer = noiseBuf;
+  nf.type = "bandpass"; nf.frequency.value = 1500; nf.Q.value = 1.2;
+  ng.gain.setValueAtTime(0.05 * vel, t);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+  nz.connect(nf); nf.connect(ng); ng.connect(bassBus);
+  nz.start(t);
 }
 
 function playChord(spec, t, gain, decay) {
-  spec.intervals.forEach(semi => {
+  spec.intervals.forEach((semi, i) => {
+    // Nobody strums four strings at the same instant, and the top of a chord
+    // rings longer than the bottom. Both of those are one line of code each
+    // and they are the difference between a chord and a beep.
+    const at = t + i * 0.006;
+    const dec = decay * (1 + i * 0.12);
     const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
     o.type = "triangle";
     o.frequency.value = spec.compFreq * Math.pow(2, semi / 12);
-    f.type = "lowpass"; f.frequency.value = 2400;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(gain, t + 0.008);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+    o.detune.value = (i % 2 ? 5 : -5);
+    f.type = "lowpass"; f.Q.value = 0.9;
+    f.frequency.setValueAtTime(3600, at);
+    f.frequency.exponentialRampToValueAtTime(1400, at + dec);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(gain * (1 - i * 0.08), at + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dec);
     o.connect(f); f.connect(g); g.connect(master);
-    o.start(t); o.stop(t + decay + 0.08);
+    o.start(at); o.stop(at + dec + 0.08);
   });
 }
 
 function playHat(t, loud) {
   const s = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
   s.buffer = noiseBuf;
-  f.type = "highpass"; f.frequency.value = 6500;
-  g.gain.setValueAtTime(loud ? 0.09 : 0.05, t);
+  f.type = "highpass"; f.frequency.value = 7000;
+  // One pitch to sit at, so the hat stops hissing across the whole mix.
+  const b = ctx.createBiquadFilter();
+  b.type = "bandpass"; b.frequency.value = 9400; b.Q.value = 0.9;
+  f.connect(b);
+  g.gain.setValueAtTime(loud ? 0.1 : 0.055, t);
   g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
-  s.connect(f); f.connect(g); g.connect(master);
+  s.connect(f); b.connect(g); g.connect(master);
   s.start(t);
 }
 
 function playKick(t) {
   const o = ctx.createOscillator(), g = ctx.createGain();
   o.type = "sine";
-  o.frequency.setValueAtTime(120, t);
-  o.frequency.exponentialRampToValueAtTime(45, t + 0.09);
-  g.gain.setValueAtTime(0.5, t);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+  o.frequency.setValueAtTime(155, t);
+  o.frequency.exponentialRampToValueAtTime(46, t + 0.1);
+  g.gain.setValueAtTime(0.55, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
   o.connect(g); g.connect(master);
-  o.start(t); o.stop(t + 0.2);
+  o.start(t); o.stop(t + 0.36);
+  // The click that makes a kick land on a laptop speaker at all.
+  const c = ctx.createBufferSource(), cf = ctx.createBiquadFilter(), cg = ctx.createGain();
+  c.buffer = noiseBuf;
+  cf.type = "highpass"; cf.frequency.value = 1400;
+  cg.gain.setValueAtTime(0.1, t);
+  cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.02);
+  c.connect(cf); cf.connect(cg); cg.connect(master);
+  c.start(t);
 }
 
 function playSnare(t, gain) {
@@ -408,10 +471,79 @@ function playSnare(t, gain) {
   o.start(t); o.stop(t + 0.12);
 }
 
-function walkNote(spec, beat) {
-  return spec.bassFreq * Math.pow(2, spec.walk[beat] / 12);
+/* ---------- the bass line ----------
+   A line that plays the same four notes over every chord lands on nothing.
+   A bass player hears the next chord coming and walks into it, so the line
+   here is built knowing where the music goes next, and the last note of a
+   bar is the half step that pulls into the chord after it. */
+
+// The chord this one hands off to, which is the next cell unless this bar
+// holds two chords and we are still in its first half.
+function nextChordAfter(bar, beat) {
+  const cell = chordCell(bar);
+  if (cell.length === 2 && beat < 2) return chord(cell[1]);
+  return chordAt(bar + 1, 0);
 }
-const fifth = spec => spec.bassFreq * Math.pow(2, 7 / 12);
+
+// How far the next root sits from this one, by the shorter way around.
+function rootStep(spec, next) {
+  let d = (next.semi - spec.semi) % 12;
+  if (d > 6) d -= 12;
+  if (d < -6) d += 12;
+  return d;
+}
+
+// Half step into the target, from whichever side the line is already on.
+function approachOffset(from, target) {
+  return Math.abs(target - 1 - from) <= Math.abs(target + 1 - from) ? target - 1 : target + 1;
+}
+
+/* One bar, one beat, in the current feel. Events are
+   [fraction of the beat, semitones above the chord root, length in beats, velocity].
+   The drawing code reads the same function, so what lights up in a window is
+   always the note actually sounding. */
+function bassEventsFor(spec, bar, beat) {
+  const w = spec.walk;
+  const third = w[1];
+  const low = spec.family === "minor" || spec.family === "diminished";
+  const six = low ? 10 : 9;
+  const nx = nextChordAfter(bar, beat);
+  const d = rootStep(spec, nx);
+  const changes = d !== 0;
+
+  if (style === "rock") {
+    // The eight note boogie, walked up to the flat seven and back down.
+    const top = low ? 12 : 10;
+    const shape = [0, third, 7, six, top, six, 7, third];
+    const a = shape[beat * 2], b = shape[beat * 2 + 1];
+    const tail = (beat === 3 && changes) ? approachOffset(a, d) : b;
+    return [[0, a, 0.45, beat === 0 ? 1 : 0.8], [0.5, tail, 0.45, 0.74]];
+  }
+
+  if (style === "halftime") {
+    if (beat === 0) return [[0, 0, 1.8, 1]];
+    if (beat === 2) return [[0, 7, 0.8, 0.8]];
+    if (beat === 3) return [[0.5, changes ? approachOffset(7, d) : w[3], 0.45, 0.76]];
+    return [];
+  }
+
+  if (style === "reggae") {
+    if (beat === 0) return [[0, 0, 0.8, 1]];
+    if (beat === 2) return [[0, 7, 0.5, 0.86], [0.5, low ? 10 : 9, 0.45, 0.7]];
+    if (beat === 3 && changes) return [[0.5, approachOffset(six, d), 0.45, 0.7]];
+    return [];
+  }
+
+  // shuffle and 12/8 both walk in quarters. Four shapes rotate by bar so a
+  // twelve bar chorus does not repeat the same three notes twelve times.
+  const pair = [[1, 2], [2, 3], [1, 3], [3, 2]][((bar % 4) + 4) % 4];
+  const b1 = w[pair[0]], b2 = w[pair[1]];
+  // Staying on the same chord still needs a fourth note that is not the third
+  // one again. A repeated note reads as the line running out of ideas.
+  const hold = (b2 === w[3]) ? w[2] : w[3];
+  const seq = [0, b1, b2, changes ? approachOffset(b2, d) : hold];
+  return [[0, seq[beat], 0.9, beat === 0 ? 1 : 0.82]];
+}
 
 /* Each feel decides what the band plays on a given beat. */
 function scheduleBeat(index, t) {
@@ -422,30 +554,28 @@ function scheduleBeat(index, t) {
   const off = t + bd / 2;          // straight offbeat
   const swung = t + bd * 2 / 3;    // shuffled offbeat
 
+  // The bass is the same engine in every feel. Only the feel's grid changes.
+  bassEventsFor(spec, bar, beat).forEach(e =>
+    playBass(spec.bassFreq * Math.pow(2, e[1] / 12), t + bd * e[0], bd * e[2], e[3]));
+
   if (style === "shuffle") {
-    playBass(walkNote(spec, beat), t, bd * 0.9);
     if (beat === 0 || beat === 2) playKick(t);
     if (beat === 1 || beat === 3) playChord(spec, t, 0.16, 0.22);
     playHat(t, beat === 1 || beat === 3);
     playHat(swung, false);
   } else if (style === "rock") {
-    playBass(spec.bassFreq, t, bd * 0.45);
-    playBass(spec.bassFreq, off, bd * 0.45);
     if (beat === 0 || beat === 2) { playKick(t); playChord(spec, t, 0.15, 0.32); }
     if (beat === 1 || beat === 3) playSnare(t, 0.28);
     playHat(t, true); playHat(off, false);
   } else if (style === "halftime") {
-    if (beat === 0) { playKick(t); playBass(spec.bassFreq, t, bd * 1.8); }
+    if (beat === 0) playKick(t);
     if (beat === 2) { playSnare(t, 0.3); playChord(spec, t, 0.15, 0.4); }
-    if (beat === 3) playBass(walkNote(spec, 3), off, bd * 0.4);
     playHat(t, beat === 0); playHat(off, false);
   } else if (style === "reggae") {
-    if (beat === 0) playBass(spec.bassFreq, t, bd * 0.8);
-    if (beat === 2) { playKick(t); playSnare(t, 0.16); playBass(fifth(spec), t, bd * 0.8); }
+    if (beat === 2) { playKick(t); playSnare(t, 0.16); }
     playChord(spec, off, 0.13, 0.11);   // the skank, always on the offbeat
     playHat(t, false);
   } else {                              // 12/8, the slow blues
-    playBass(walkNote(spec, beat), t, bd * 0.9);
     if (beat === 0 || beat === 2) playKick(t);
     if (beat === 1 || beat === 3) { playSnare(t, 0.22); playChord(spec, t, 0.15, 0.3); }
     playHat(t, true);
@@ -594,14 +724,15 @@ function drawVoicing(spec, bx, by, bw, floorY, lit, bassAbs, compact) {
 }
 
 // Which chord tone the bass is on right now, as an absolute semitone (or null).
+// It asks the line itself rather than keeping a second copy of the pattern, so
+// a chromatic approach note correctly lights nothing: it is not in the chord.
 function bassAbsSemiAt(spec, beat) {
-  let rel = null;
-  if (style === "shuffle" || style === "12/8") rel = spec.walk[beat];
-  else if (style === "rock") rel = 0;
-  else if (style === "halftime") rel = beat === 0 ? 0 : (beat === 3 ? spec.walk[3] : null);
-  else if (style === "reggae") rel = beat === 0 ? 0 : (beat === 2 ? 7 : null);
-  if (rel === null || !spec.intervals.includes(rel)) return null;
-  return spec.semi + rel;
+  const bar = ((Math.floor(songBeat() / 4) % PROG.length) + PROG.length) % PROG.length;
+  const ev = bassEventsFor(spec, bar, beat).find(e => e[0] === 0);
+  if (!ev) return null;
+  const iv = ((ev[1] % 12) + 12) % 12;
+  if (!spec.intervals.includes(iv)) return null;
+  return spec.semi + iv;
 }
 
 function drawTexture(spec, bx, by, bw, bh) {

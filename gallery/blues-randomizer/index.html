@@ -391,17 +391,15 @@ function chordName(keyName, deg){
    it with swing math: div 3 gives the compound and swing feels their
    triplets directly, div 2 and 4 stay straight.
      beats = beats per bar, div = subdivisions per beat
-     drum steps are [step, velocity]; bass is [step, degree, length-in-steps]
-   Bass degrees above the chord root: 0 root, 3 minor 3rd, 4 major 3rd,
-   7 fifth, 9 sixth, 10 flat 7.
+     drum steps are [step, velocity]
+     bass names a line generator in BASS below, not a fixed array
    ============================================================ */
 const FEELS = {
   "Rock": {
     beats:4, div:2,
     kick:[[0,1],[3,.8],[4,.95]], snare:[[2,1],[6,1]],
     hat:[[0,.5],[1,.32],[2,.5],[3,.32],[4,.5],[5,.32],[6,.5],[7,.32]],
-    bass:[[0,0,1],[1,7,1],[2,9,1],[3,7,1],[4,0,1],[5,7,1],[6,9,1],[7,7,1]],
-    bassTone:"pluck"
+    bass:"boogie", bassTone:"pluck"
   },
   "Straight swing": {
     beats:4, div:3,
@@ -409,36 +407,134 @@ const FEELS = {
     hat:[[3,.55],[9,.55]],
     kick:[[0,.22],[3,.2],[6,.22],[9,.2]],
     snare:[],
-    bass:[[0,0,3],[3,4,3],[6,7,3],[9,9,3]],
-    bassTone:"upright"
+    bass:"walk", bassTone:"upright"
   },
   "12/8": {
     beats:4, div:3,
     ride:[[0,.85],[1,.4],[2,.4],[3,.8],[4,.4],[5,.4],[6,.85],[7,.4],[8,.4],[9,.8],[10,.4],[11,.45]],
     kick:[[0,1],[6,.9]], snare:[[3,1],[9,1]],
-    bass:[[0,0,5],[6,7,4],[11,10,1]],
-    bassTone:"upright"
+    bass:"slow", bassTone:"upright"
   },
   "6/8": {
     beats:2, div:3,
     hat:[[0,.75],[1,.35],[2,.35],[3,.6],[4,.35],[5,.35]],
     kick:[[0,1]], snare:[[3,1]],
-    bass:[[0,0,3],[3,7,3]],
-    bassTone:"pluck"
+    bass:"sixEight", bassTone:"pluck"
   },
   "Reggae": {
     beats:4, div:2,
     kick:[[4,1]], rim:[[4,.9]],
     hat:[[1,.55],[3,.55],[5,.55],[7,.55]],
-    bass:[[0,0,2],[3,7,1],[6,0,2]],
-    bassTone:"reggae"
+    bass:"reggae", bassTone:"reggae"
   },
   "Drum n' bass": {
     beats:4, div:4,
     kick:[[0,1],[10,.9]], snare:[[4,1],[12,1]],
     hat:[[0,.4],[2,.5],[4,.4],[6,.5],[8,.4],[10,.5],[12,.4],[14,.5]],
-    bass:[[0,0,6],[10,0,5]],
-    bassTone:"sub"
+    bass:"dnb", bassTone:"sub"
+  }
+};
+
+/* ============================================================
+   3b. THE BASS LINES
+   A line built from one fixed array per feel plays the same shape over
+   every chord and lands on nothing. A bass player hears the next chord
+   coming and walks into it, so every generator here is handed the chord
+   it is leaving and the chord it is about to reach.
+
+   A generator gets one object:
+     root   midi of this bar's chord root, already folded into the register
+     next   midi of the next bar's root
+     change true when the next bar is a different chord
+     third  4 in major, 3 in minor
+     six    6th in major, flat 7 in minor (the note the boogie leans on)
+     bar    0..11, so a line can vary instead of looping identically
+   and returns [step, midi, length-in-steps, velocity] events.
+   ============================================================ */
+
+// Half step into the next root, from whichever side the line is already on.
+// This is the single most bass-sounding move there is, and it is what makes
+// bar 4 pull into bar 5 instead of just stopping.
+function approachTo(from, target){
+  const below = target - 1, above = target + 1;
+  return Math.abs(below - from) <= Math.abs(above - from) ? below : above;
+}
+
+const BASS = {
+  // Eight-note boogie: root, third, fifth, sixth, flat seven and back down.
+  // The classic shape, and the reason it swings is the walk back down.
+  boogie(c){
+    const shape = c.third === 3
+      ? [0, 3, 7, 10, 12, 10, 7, 3]      // minor blues climbs to the octave
+      : [0, c.third, 7, 9, 10, 9, 7, c.third];
+    const out = [];
+    for (let i = 0; i < 8; i++)
+      out.push([i, c.root + shape[i], 1, i === 0 ? 1 : (i === 4 ? .88 : .74)]);
+    if (c.change) out[7] = [7, approachTo(c.root + shape[7], c.next), 1, .86];
+    return out;
+  },
+
+  // Quarter-note walking line. Beats 1 to 3 are chord tones, beat 4 is the
+  // half step into whatever comes next. Four shapes rotate by bar so twelve
+  // bars never repeat the same three notes.
+  walk(c){
+    const t = c.third;
+    const shapes = [
+      [t, 7], [7, c.six], [t, 5], [7, 10]
+    ][c.bar % 4];
+    const notes = [c.root, c.root + shapes[0], c.root + shapes[1]];
+    // Staying on the same chord still needs a fourth note that is not the
+    // third one again. A repeated note reads as the line running out of ideas.
+    const hold = shapes[1] === 10 ? 5 : 10;
+    notes.push(c.change ? approachTo(notes[2], c.next) : c.root + hold);
+    return notes.map((m, i) => [i * 3, m, 3, i === 0 ? .96 : .8]);
+  },
+
+  // Slow blues. Long root, then the line wakes up in the second half of the
+  // bar and hands off on the last triplet.
+  slow(c){
+    const out = [
+      [0, c.root, 5, 1],
+      [6, c.root + 7, 3, .82],
+      [9, c.root + c.six, 2, .78]
+    ];
+    out.push([11, c.change ? approachTo(c.root + c.six, c.next) : c.root + (c.six === 10 ? 7 : 10), 1, .72]);
+    return out;
+  },
+
+  // 6/8 lopes: root on the downbeat, fifth on the second big beat, one note
+  // of pickup at the end.
+  sixEight(c){
+    return [
+      [0, c.root, 3, 1],
+      [3, c.root + 7, 2, .84],
+      [5, c.change ? approachTo(c.root + 7, c.next) : c.root + c.six, 1, .7]
+    ];
+  },
+
+  // Reggae leaves the downbeat alone after the first note and lands on the
+  // third beat with the drum, which is where the weight of the bar actually is.
+  reggae(c){
+    const out = [
+      [0, c.root, 2, 1],
+      [3, c.root + 7, 1, .8],
+      [4, c.root + 10, 2, .76]
+    ];
+    if (c.change) { out.push([6, c.root, 1, .88]); out.push([7, approachTo(c.root, c.next), 1, .72]); }
+    else out.push([6, c.root, 2, .88]);
+    return out;
+  },
+
+  // Drum and bass wants space, so this is two long notes with one octave
+  // answer between them rather than a busy line fighting the break.
+  dnb(c){
+    const out = [
+      [0, c.root, 6, 1],
+      [7, c.root + 7, 2, .72],
+      [10, c.root, 4, .92]
+    ];
+    out.push([14, c.change ? approachTo(c.root, c.next) : c.root + c.six, 2, .7]);
+    return out;
   }
 };
 
@@ -736,7 +832,15 @@ function initAudio(){
   noiseBuf = buf;
   master  = ctx.createGain(); master.gain.value = 0.85; master.connect(ctx.destination);
   drumBus = ctx.createGain(); drumBus.gain.value = 1;   drumBus.connect(master);
-  bassBus = ctx.createGain(); bassBus.gain.value = 1;   bassBus.connect(master);
+  bassBus = ctx.createGain(); bassBus.gain.value = 1;
+  // A touch of soft clipping. Bass through a speaker is never perfectly clean,
+  // and the harmonics it adds are what make the line readable on small speakers.
+  const drive = ctx.createWaveShaper();
+  const curve = new Float32Array(1024);
+  for (let i=0;i<1024;i++){ const x = (i/1023)*2 - 1; curve[i] = Math.tanh(x * 1.7) / Math.tanh(1.7); }
+  drive.curve = curve; drive.oversample = "2x";
+  const bassTrim = ctx.createGain(); bassTrim.gain.value = 0.82;
+  bassBus.connect(drive); drive.connect(bassTrim); bassTrim.connect(master);
 }
 function noise(){ const s = ctx.createBufferSource(); s.buffer = noiseBuf; return s; }
 function env(t, peak, dec, dest){
@@ -777,19 +881,30 @@ function rim(t, v){
   s.start(t); s.stop(t + 0.06);
 }
 function hat(t, v){
-  const s = noise(), f = ctx.createBiquadFilter();
-  f.type = "highpass"; f.frequency.value = 8200;
-  s.connect(f).connect(env(t, 0.2*v, 0.045, drumBus));
+  const s = noise(), f = ctx.createBiquadFilter(), b = ctx.createBiquadFilter();
+  f.type = "highpass"; f.frequency.value = 7000;
+  // A hat is two closed cymbals, not a burst of static. The bandpass on top
+  // gives it one pitch to sit at so it stops hissing over the whole mix.
+  b.type = "bandpass"; b.frequency.value = 9400; b.Q.value = 0.9;
+  s.connect(f).connect(b).connect(env(t, 0.22*v, 0.04, drumBus));
   s.start(t); s.stop(t + 0.07);
 }
 function ride(t, v){
+  // Ping first, wash second. The old ride was all wash, so the swing feel had
+  // no beat to hang on. The short bandpassed ping is the part players hear.
   const s = noise(), f = ctx.createBiquadFilter();
-  f.type = "highpass"; f.frequency.value = 6200;
-  s.connect(f).connect(env(t, 0.11*v, 0.42, drumBus));
-  s.start(t); s.stop(t + 0.5);
-  const o = ctx.createOscillator(); o.type = "square"; o.frequency.value = 3100;
-  o.connect(env(t, 0.035*v, 0.16, drumBus));
-  o.start(t); o.stop(t + 0.2);
+  f.type = "highpass"; f.frequency.value = 5200;
+  s.connect(f).connect(env(t, 0.07*v, 0.5, drumBus));
+  s.start(t); s.stop(t + 0.6);
+  const p = noise(), pf = ctx.createBiquadFilter();
+  pf.type = "bandpass"; pf.frequency.value = 5600; pf.Q.value = 2.2;
+  p.connect(pf).connect(env(t, 0.2*v, 0.05, drumBus));
+  p.start(t); p.stop(t + 0.08);
+  [2140, 3180, 4390].forEach((hz, i) => {
+    const o = ctx.createOscillator(); o.type = "square"; o.frequency.value = hz;
+    o.connect(env(t, 0.022*v/(i+1), 0.2, drumBus));
+    o.start(t); o.stop(t + 0.26);
+  });
 }
 function stick(t, v){
   const s = noise(), f = ctx.createBiquadFilter();
@@ -808,32 +923,94 @@ function fold(midi){
   return midi;
 }
 
-function bassNote(t, midi, dur, tone){
+function bassNote(t, midi, dur, tone, vel){
+  vel = (vel === undefined ? 1 : vel);
+  const hz = midiHz(midi);
   const g = ctx.createGain(), f = ctx.createBiquadFilter();
   f.type = "lowpass";
-  let peak = 0.3, atk = 0.012, rel = 0.09;
-  if (tone === "sub")     { f.frequency.value = 220;  peak = 0.46; atk = 0.02;  rel = 0.14; }
-  if (tone === "reggae")  { f.frequency.value = 340;  peak = 0.44; atk = 0.02;  rel = 0.12; }
-  if (tone === "upright") { f.frequency.value = 720;  peak = 0.30; atk = 0.014; rel = 0.07; }
-  if (tone === "pluck")   { f.frequency.value = 1000; peak = 0.32; atk = 0.006; rel = 0.06; }
+
+  // Every real bass is brightest at the attack and darkens as the note rings.
+  // A fixed cutoff is what made these sound like a synth pad on its side, so
+  // each tone gets an open value, a resting value, and how fast it closes.
+  let peak = 0.3, atk = 0.012, rel = 0.09, open = 900, base = 320, q = 0.7, close = 0.14;
+  let wave = "sawtooth", sub = 0, detune = 6;
+  if (tone === "sub")     { peak=.46; atk=.02;  rel=.16; open=300;  base=110; close=.22; wave="sine";     detune=0; sub=0; }
+  if (tone === "reggae")  { peak=.44; atk=.022; rel=.14; open=520;  base=155; close=.10; wave="triangle"; detune=4; sub=.5; }
+  if (tone === "upright") { peak=.32; atk=.014; rel=.08; open=1100; base=260; q=1.1; close=.09; wave="triangle"; detune=5; sub=.35; }
+  if (tone === "pluck")   { peak=.32; atk=.006; rel=.07; open=1900; base=330; q=1.4; close=.11; wave="sawtooth"; detune=8; sub=.25; }
+  peak *= vel;
+
+  f.Q.value = q;
+  // The cutoff tracks pitch so a high note is not dull and a low note is not honky.
+  const track = Math.max(0.6, Math.min(1.8, hz / 82));
+  f.frequency.setValueAtTime(open * track, t);
+  f.frequency.exponentialRampToValueAtTime(Math.max(60, base * track), t + Math.min(close, dur));
 
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(peak, t + atk);
-  g.gain.setValueAtTime(peak, t + Math.max(atk, dur - rel));
+  g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0002), t + atk);
+  g.gain.setValueAtTime(Math.max(peak, 0.0002), t + Math.max(atk, dur - rel));
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  f.connect(g).connect(bassBus);
 
   const o = ctx.createOscillator();
-  o.type = tone === "sub" ? "sine" : (tone === "upright" ? "triangle" : "sawtooth");
-  o.frequency.value = midiHz(midi);
-  o.connect(f).connect(g).connect(bassBus);
+  o.type = wave; o.frequency.value = hz;
+  o.connect(f);
   o.start(t); o.stop(t + dur + 0.05);
 
-  if (tone === "upright") {
-    const s = noise(), hf = ctx.createBiquadFilter();
-    hf.type = "bandpass"; hf.frequency.value = 1600;
-    s.connect(hf).connect(env(t, 0.05, 0.03, bassBus));
-    s.start(t); s.stop(t + 0.05);
+  // A second voice a few cents away gives the note a body instead of a beep.
+  if (detune) {
+    const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+    o2.type = wave; o2.frequency.value = hz; o2.detune.value = -detune;
+    g2.gain.value = 0.5;
+    o2.connect(g2).connect(f);
+    o2.start(t); o2.stop(t + dur + 0.05);
   }
+  // A clean sine under the filter is what keeps the line audible on a laptop
+  // speaker, where everything below about 150 Hz simply is not there.
+  if (sub) {
+    const os = ctx.createOscillator(), gs = ctx.createGain();
+    os.type = "sine"; os.frequency.value = hz;
+    gs.gain.setValueAtTime(0.0001, t);
+    gs.gain.exponentialRampToValueAtTime(Math.max(peak * sub, 0.0002), t + atk);
+    gs.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    os.connect(gs).connect(bassBus);
+    os.start(t); os.stop(t + dur + 0.05);
+  }
+
+  if (tone === "upright") {
+    // A finger pulling a thick string does not start in tune. This scoop is
+    // small enough to hear as touch rather than as a mistake.
+    o.frequency.setValueAtTime(hz * 0.978, t);
+    o.frequency.exponentialRampToValueAtTime(hz, t + 0.045);
+    const nz = noise(), hf = ctx.createBiquadFilter();
+    hf.type = "bandpass"; hf.frequency.value = 1600; hf.Q.value = 1.2;
+    nz.connect(hf).connect(env(t, 0.06 * vel, 0.035, bassBus));
+    nz.start(t); nz.stop(t + 0.06);
+  }
+}
+
+/* The line for a whole bar is built once, because a generator has to see the
+   bar as a whole to walk into the next one. It is cached until something that
+   would change it changes. */
+let planCache = { bar:-1, feel:null, key:null, notes:[] };
+function bassPlan(bar){
+  const f = feelOf();
+  if (planCache.bar === bar && planCache.feel === current.feel && planCache.key === current.key)
+    return planCache.notes;
+  const k = KEY[current.key] || KEY["C major"];
+  const deg = FORM[bar % 12], nextDeg = FORM[(bar + 1) % 12];
+  const root = fold(36 + ((k.pc + deg) % 12));
+  const next = fold(36 + ((k.pc + nextDeg) % 12));
+  const minor = k.m && deg !== 7;
+  const gen = BASS[f.bass] || BASS.boogie;
+  const notes = gen({
+    root, next, bar,
+    change: nextDeg !== deg,
+    third: minor ? 3 : 4,
+    six:   minor ? 10 : 9
+  });
+  planCache = { bar, feel: current.feel, key: current.key, notes };
+  return notes;
 }
 
 function feelOf(){ return FEELS[current.feel] || FEELS["Rock"]; }
@@ -850,15 +1027,8 @@ function fire(step, t){
     (f.ride  || []).forEach(h => { if (h[0] === step) ride(t, h[1]); });
   }
   if (bassOn) {
-    const k = KEY[current.key] || KEY["C major"];
-    const root = fold(36 + ((k.pc + FORM[barIndex]) % 12));
-    const minor = k.m && FORM[barIndex] !== 7;
-    (f.bass || []).forEach(b => {
-      if (b[0] !== step) return;
-      let deg = b[1];
-      if (minor && deg === 4) deg = 3;    // major 3rd becomes minor
-      if (minor && deg === 9) deg = 10;   // sixth becomes flat 7
-      bassNote(t, root + deg, b[2] * stepDur() * 0.92, f.bassTone);
+    bassPlan(barIndex).forEach(b => {
+      if (b[0] === step) bassNote(t, b[1], b[2] * stepDur() * 0.94, f.bassTone, b[3]);
     });
   }
 }
