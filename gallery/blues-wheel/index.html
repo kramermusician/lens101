@@ -8,7 +8,7 @@
   :root { color-scheme: dark; }
   html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
   body { font-family: "SF Mono", "Menlo", "Consolas", monospace; color: #fff; }
-  canvas { display: block; }
+  canvas { display: block; touch-action: manipulation; }
   #dock {
     position: fixed; left: 0; right: 0; bottom: 0;
     display: flex; align-items: center; justify-content: center; gap: 14px;
@@ -57,6 +57,12 @@
 
 <div id="dock">
   <button id="playBtn">▸ Launch</button>
+  <div class="grp" id="editGrp" hidden>
+    <button id="prevCh" title="Try the previous chord here">◂</button>
+    <span class="lbl" id="editLbl">BAR 1</span>
+    <button id="nextCh" title="Try the next chord here">▸</button>
+  </div>
+  <button id="resetBtn" hidden title="Restore the real minor blues">Reset</button>
   <div class="grp">
     <span class="lbl">KEY</span>
     <select id="keySel"></select>
@@ -77,13 +83,20 @@
    i | iv | i | i | iv | iv | i | i | bVI | V7 | i | iiø7–V7b9 */
 
 const CH = {
-  i:    { roman: "i",     suf: "m",   off: 0, tones: [0, 3, 7, 12] },
-  iv:   { roman: "iv",    suf: "m",   off: 5, tones: [0, 3, 7, 12] },
-  bVI:  { roman: "♭VI",   suf: "",    off: 8, tones: [0, 4, 7, 11] },
-  V7:   { roman: "V7",    suf: "7",   off: 7, tones: [0, 4, 7, 10] },
-  iio:  { roman: "iiø7",  suf: "ø7",  off: 2, tones: [0, 3, 6, 10] },
-  V7b9: { roman: "V7♭9",  suf: "7♭9", off: 7, tones: [0, 4, 7, 10, 13] },
+  i:    { roman: "i",     suf: "m",   off: 0,  tones: [0, 3, 7, 12] },
+  iv:   { roman: "iv",    suf: "m",   off: 5,  tones: [0, 3, 7, 12] },
+  v:    { roman: "v",     suf: "m",   off: 7,  tones: [0, 3, 7, 12] },
+  bIII: { roman: "♭III",  suf: "",    off: 3,  tones: [0, 4, 7, 12] },
+  bVI:  { roman: "♭VI",   suf: "",    off: 8,  tones: [0, 4, 7, 11] },
+  bVII: { roman: "♭VII",  suf: "",    off: 10, tones: [0, 4, 7, 12] },
+  V7:   { roman: "V7",    suf: "7",   off: 7,  tones: [0, 4, 7, 10] },
+  IV7:  { roman: "IV7",   suf: "7",   off: 5,  tones: [0, 4, 7, 10] },
+  iio:  { roman: "iiø7",  suf: "ø7",  off: 2,  tones: [0, 3, 6, 10] },
+  V7b9: { roman: "V7♭9",  suf: "7♭9", off: 7,  tones: [0, 4, 7, 10, 13] },
 };
+
+// The chords a sector can be swapped to while experimenting.
+const PALETTE = ["i", "iv", "v", "V7", "IV7", "bIII", "bVI", "bVII", "iio", "V7b9"];
 
 // One entry per bar; bar 12 carries two chords, two beats each.
 const BARS = [
@@ -92,9 +105,14 @@ const BARS = [
   ["bVI"], ["V7"], ["i"], ["iio", "V7b9"],
 ];
 
+// The live progression: starts canonical, mutable while experimenting.
+let PROG = BARS.map(c => c.slice());
+function isModified() {
+  return PROG.some((c, i) => c.some((id, h) => id !== BARS[i][h]));
+}
+
 const SHARP = ["A","A♯","B","C","C♯","D","D♯","E","F","F♯","G","G♯"];
 const FLAT  = ["A","B♭","B","C","D♭","D","E♭","E","F","G♭","G","A♭"];
-// Minor keys offered, with a flat/sharp spelling preference.
 const KEYS = [
   { name: "A minor",  semi: 0,  flat: false },
   { name: "B minor",  semi: 2,  flat: false },
@@ -122,15 +140,17 @@ function rootFreq(id) {
 }
 
 /* ================= TRANSPORT =================
-   The animation clock is the audio clock; nothing drifts. */
+   The animation clock is the audio clock; nothing drifts.
+   Stop parks the wheel; Launch always restarts from bar 1. */
 
 let ctx = null, master = null, comp = null;
 let playing = false;
 let bpm = 92;
-let songStart = 0;          // ctx.currentTime at beat zero
-let nextBeat = 0;           // next beat index to schedule
+let songStart = 0;
+let nextBeat = 0;
 let nextBeatTime = 0;
-const LOOKAHEAD = 0.12;     // seconds scheduled ahead
+let schedTimer = 0;
+const LOOKAHEAD = 0.12;
 const BEATS_PER_BAR = 4;
 const TOTAL_BEATS = 12 * BEATS_PER_BAR;
 
@@ -140,7 +160,7 @@ function chordAtBeat(beat) {
   const b = ((beat % TOTAL_BEATS) + TOTAL_BEATS) % TOTAL_BEATS;
   const bar = Math.floor(b / BEATS_PER_BAR);
   const inBar = b % BEATS_PER_BAR;
-  const cell = BARS[bar];
+  const cell = PROG[bar];
   const half = (cell.length === 2 && inBar >= 2) ? 1 : 0;
   return { bar, half, id: cell[half] };
 }
@@ -152,6 +172,10 @@ function initAudio() {
   master = ctx.createGain();
   master.gain.value = 0.85;
   master.connect(comp); comp.connect(ctx.destination);
+}
+function audioReady() {
+  if (!ctx) initAudio();
+  if (ctx.state !== "running") ctx.resume();
 }
 
 /* ---- instruments: thin, mono-ish, radio-from-space ---- */
@@ -170,7 +194,7 @@ function playBass(freq, t, dur, vel) {
 }
 
 function playChord(id, t, gain, dur) {
-  const base = rootFreq(id) * 2; // up an octave from the bass register
+  const base = rootFreq(id) * 2;
   for (const semi of CH[id].tones) {
     const o = ctx.createOscillator(); o.type = "square";
     o.frequency.value = base * Math.pow(2, semi / 12);
@@ -183,6 +207,35 @@ function playChord(id, t, gain, dur) {
     o.connect(f); f.connect(g); g.connect(master);
     o.start(t); o.stop(t + dur + 0.05);
   }
+}
+
+// Gentle audition: soft sine arpeggio up the chord, low root underneath.
+function playArp(id) {
+  audioReady();
+  const t0 = ctx.currentTime + 0.03;
+  const base = rootFreq(id) * 2;
+  const seq = CH[id].tones.slice();
+  if (seq[seq.length - 1] < 12) seq.push(seq[0] + 12);
+
+  const root = ctx.createOscillator(), rg = ctx.createGain();
+  root.type = "triangle"; root.frequency.value = rootFreq(id);
+  rg.gain.setValueAtTime(0, t0);
+  rg.gain.linearRampToValueAtTime(0.22, t0 + 0.03);
+  rg.gain.exponentialRampToValueAtTime(0.001, t0 + 1.6);
+  root.connect(rg); rg.connect(master);
+  root.start(t0); root.stop(t0 + 1.7);
+
+  seq.forEach((semi, i) => {
+    const t = t0 + i * 0.15;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.value = base * Math.pow(2, semi / 12);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.16, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.1);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + 1.2);
+  });
 }
 
 let noiseBuf = null;
@@ -227,17 +280,15 @@ function playSnare(t) {
 
 function scheduleBeat(beat, t) {
   const bd = beatDur();
-  const swing = bd * (2 / 3); // shuffled offbeat
+  const swing = bd * (2 / 3);
   const cur = chordAtBeat(beat);
   const nxt = chordAtBeat(beat + 1);
   const inBar = beat % BEATS_PER_BAR;
 
-  // drums
   playHat(t, true); playHat(t + swing, false);
   if (inBar === 0 || inBar === 2) playKick(t);
   if (inBar === 1 || inBar === 3) playSnare(t);
 
-  // bass: root / third / fifth / approach the next root
   const r = rootFreq(cur.id);
   const tones = CH[cur.id].tones;
   let bf;
@@ -245,13 +296,12 @@ function scheduleBeat(beat, t) {
   const last = (inBar === 3) || (cur.half !== nxt.half && changing);
   if (last && changing) {
     const nr = rootFreq(nxt.id);
-    bf = nr * Math.pow(2, (nr > r ? -1 : 1) / 12); // chromatic approach
+    bf = nr * Math.pow(2, (nr > r ? -1 : 1) / 12);
   } else if (inBar === 0 || (cur.half === 1 && inBar === 2)) bf = r;
   else if (inBar === 1 || inBar === 3) bf = r * Math.pow(2, tones[1] / 12);
   else bf = r * Math.pow(2, tones[2] / 12);
   playBass(bf, t, bd * 0.95, 0.5);
 
-  // comping: pad on the chord's first beat, stabs on the backbeat
   const firstOfChord = inBar === 0 || (cur.half === 1 && inBar === 2);
   if (firstOfChord) playChord(cur.id, t, 0.06, bd * 1.8);
   if (inBar === 1 || inBar === 3) playChord(cur.id, t + swing, 0.05, bd * 0.5);
@@ -264,37 +314,38 @@ function scheduler() {
     nextBeat++;
     nextBeatTime = songStart + nextBeat * beatDur();
   }
-  setTimeout(scheduler, 30);
+  schedTimer = setTimeout(scheduler, 30);
 }
 
-function songBeat() { // fractional beat position right now
-  if (!playing) return pausedBeat;
+function songBeat() {
+  if (!playing) return 0;
   return (ctx.currentTime - songStart) / beatDur();
 }
 
-let pausedBeat = 0;
-
 function start() {
-  if (!ctx) initAudio();
-  ctx.resume();
+  audioReady();
+  clearTimeout(schedTimer);
   playing = true;
-  songStart = ctx.currentTime + 0.06 - pausedBeat * beatDur();
-  nextBeat = Math.ceil(pausedBeat);
-  nextBeatTime = songStart + nextBeat * beatDur();
+  selBar = -1; updateEditUI();
+  songStart = ctx.currentTime + 0.08;
+  nextBeat = 0;
+  nextBeatTime = songStart;
+  // park the wheel within one turn of home so bar 1 is a short ease away
+  wheelAngle -= Math.round(wheelAngle / (Math.PI * 2)) * Math.PI * 2;
+  wheelVel = 0;
   scheduler();
-  playBtn.textContent = "■ Hold";
+  playBtn.textContent = "■ Stop";
   playBtn.classList.add("on");
 }
 function stop() {
-  pausedBeat = songBeat() % TOTAL_BEATS;
   playing = false;
-  // rebase the wheel to the same sector within one turn, so the
-  // wrapped beat counter doesn't spin it backward through old laps
-  const tgt = targetAngle(pausedBeat);
-  wheelAngle -= Math.round((wheelAngle - tgt) / (Math.PI * 2)) * Math.PI * 2;
+  clearTimeout(schedTimer);
+  // ease the wheel back to bar 1 without unwinding old laps
+  wheelAngle -= Math.round(wheelAngle / (Math.PI * 2)) * Math.PI * 2;
   wheelVel = 0;
   playBtn.textContent = "▸ Launch";
   playBtn.classList.remove("on");
+  updateEditUI();
 }
 
 /* ================= THE WHEEL ================= */
@@ -313,7 +364,12 @@ function resize() {
 }
 window.addEventListener("resize", resize);
 
-// starfield, fixed seed
+function geo() {
+  const cx = W / 2, cy = H / 2 + 8;
+  const R = Math.min(W, H) * 0.395;
+  return { cx, cy, R, hubR: R * 0.42 };
+}
+
 const STARS = [];
 (function () {
   let s = 42;
@@ -323,9 +379,9 @@ const STARS = [];
 
 const SLICE = (Math.PI * 2) / 12;
 
-// wheel angle eases toward the current bar with a little overshoot,
-// like a game-show wheel clicking past its peg
 let wheelAngle = 0, wheelVel = 0;
+let selBar = -1, selHalf = 0;   // sector selected while stopped
+
 function targetAngle(beat) {
   const bar = Math.floor((((beat % TOTAL_BEATS) + TOTAL_BEATS) % TOTAL_BEATS) / BEATS_PER_BAR)
             + Math.floor(beat / TOTAL_BEATS) * 12;
@@ -340,7 +396,11 @@ function draw() {
   const beatPhase = loopBeat % 1;
   const inBar = Math.floor(loopBeat) % BEATS_PER_BAR;
 
-  // spring toward the target angle
+  // which sector is lit: the band's bar while playing, the tapped one while stopped
+  const hlBar = playing ? cur.bar : selBar;
+  const hlHalf = playing ? cur.half : selHalf;
+  const hubId = playing ? cur.id : (selBar >= 0 ? PROG[selBar][selHalf] : PROG[0][0]);
+
   const tgt = targetAngle(beat);
   const k = 0.016, damp = 0.82;
   wheelVel = (wheelVel + (tgt - wheelAngle) * k) * damp;
@@ -350,18 +410,14 @@ function draw() {
   g2d.clearRect(0, 0, W, H);
   g2d.fillStyle = "#000"; g2d.fillRect(0, 0, W, H);
 
-  // stars
   for (const st of STARS) {
     const a = 0.25 + 0.55 * Math.abs(Math.sin(t * 0.6 + st.tw));
     g2d.fillStyle = "rgba(255,255,255," + a.toFixed(2) + ")";
     g2d.fillRect(st.x * W, st.y * H, st.r, st.r);
   }
 
-  const cx = W / 2, cy = H / 2 + 8;
-  const R = Math.min(W, H) * 0.395;
-  const hubR = R * 0.42;
+  const { cx, cy, R, hubR } = geo();
 
-  // outer dashed orbit rings
   g2d.strokeStyle = "rgba(255,255,255,0.35)";
   g2d.lineWidth = 1;
   g2d.setLineDash([2, 6]);
@@ -376,22 +432,20 @@ function draw() {
   g2d.rotate(wheelAngle);
 
   for (let bar = 0; bar < 12; bar++) {
-    const cell = BARS[bar];
-    // sector centered on "up" when bar is current: sector i spans angles around -PI/2 + i*SLICE
+    const cell = PROG[bar];
     const a0 = -Math.PI / 2 + bar * SLICE - SLICE / 2;
     const a1 = a0 + SLICE;
     for (let h = 0; h < cell.length; h++) {
       const ha0 = cell.length === 2 ? a0 + h * SLICE / 2 : a0;
       const ha1 = cell.length === 2 ? ha0 + SLICE / 2 : a1;
-      const isPlayingNow = playing && bar === cur.bar && (cell.length === 1 || h === cur.half);
+      const lit = bar === hlBar && (cell.length === 1 || h === hlHalf);
 
       g2d.beginPath();
       g2d.arc(0, 0, R, ha0, ha1);
       g2d.arc(0, 0, hubR, ha1, ha0, true);
       g2d.closePath();
-      if (bar === cur.bar && (cell.length === 1 || h === cur.half)) {
-        // current chord: solid white sector, pulsing slightly on the beat
-        const pulse = isPlayingNow ? 1 - 0.12 * beatPhase : 1;
+      if (lit) {
+        const pulse = playing ? 1 - 0.12 * beatPhase : 0.9 + 0.1 * Math.sin(t * 3);
         g2d.fillStyle = "rgba(255,255,255," + (0.92 * pulse).toFixed(2) + ")";
         g2d.fill();
       } else if (CH[cell[h]].roman === "i") {
@@ -402,30 +456,36 @@ function draw() {
     }
   }
 
-  // sector labels (drawn upright-ish along the radius)
+  // sector labels
   for (let bar = 0; bar < 12; bar++) {
-    const cell = BARS[bar];
+    const cell = PROG[bar];
     for (let h = 0; h < cell.length; h++) {
       const mid = -Math.PI / 2 + bar * SLICE
         + (cell.length === 2 ? (h ? SLICE / 4 : -SLICE / 4) : 0);
-      const isCur = bar === cur.bar && (cell.length === 1 || h === cur.half);
+      const lit = bar === hlBar && (cell.length === 1 || h === hlHalf);
       const rr = (R + hubR) / 2;
       const lx = Math.cos(mid) * rr, ly = Math.sin(mid) * rr;
       g2d.save();
       g2d.translate(lx, ly);
-      // rotate text so it reads outward, flipped on the lower half for legibility
       let rot = mid + Math.PI / 2;
       if (Math.sin(mid) > 0.02) rot += Math.PI;
       g2d.rotate(rot);
-      g2d.fillStyle = isCur ? "#000" : "#fff";
+      g2d.fillStyle = lit ? "#000" : "#fff";
       g2d.textAlign = "center";
       const small = cell.length === 2;
-      g2d.font = (small ? "600 " + Math.max(11, R * 0.062) : "600 " + Math.max(13, R * 0.085)) + "px 'SF Mono', Menlo, Consolas, monospace";
+      g2d.font = "600 " + Math.max(small ? 11 : 13, R * (small ? 0.062 : 0.085)) + "px 'SF Mono', Menlo, Consolas, monospace";
       g2d.fillText(CH[cell[h]].roman, 0, -R * 0.02);
       g2d.font = Math.max(9, R * 0.05) + "px 'SF Mono', Menlo, Consolas, monospace";
-      g2d.globalAlpha = isCur ? 0.75 : 0.55;
+      g2d.globalAlpha = lit ? 0.75 : 0.55;
       g2d.fillText(chordName(cell[h]), 0, R * 0.055);
       g2d.globalAlpha = 1;
+      // swapped-in chord gets a marker so the experiment is visible
+      if (cell[h] !== BARS[bar][h]) {
+        g2d.beginPath();
+        g2d.arc(0, R * 0.13, 2.4, 0, Math.PI * 2);
+        g2d.fillStyle = lit ? "#000" : "#fff";
+        g2d.fill();
+      }
       g2d.restore();
     }
   }
@@ -437,14 +497,14 @@ function draw() {
     const rx = Math.cos(mid) * R * 1.06, ry = Math.sin(mid) * R * 1.06;
     g2d.save();
     g2d.translate(rx, ry);
-    g2d.rotate(-wheelAngle); // keep numbers upright
+    g2d.rotate(-wheelAngle);
     g2d.font = Math.max(9, R * 0.045) + "px 'SF Mono', Menlo, Consolas, monospace";
     g2d.textAlign = "center"; g2d.textBaseline = "middle";
     g2d.fillText(String(bar + 1).padStart(2, "0"), 0, 0);
     g2d.restore();
   }
 
-  g2d.restore(); // wheel rotation
+  g2d.restore();
 
   // ===== hub =====
   g2d.fillStyle = "#000";
@@ -459,22 +519,27 @@ function draw() {
   g2d.textAlign = "center"; g2d.textBaseline = "middle";
   g2d.fillStyle = "#fff";
   g2d.font = "700 " + Math.max(22, R * 0.17) + "px 'SF Mono', Menlo, Consolas, monospace";
-  g2d.fillText(CH[cur.id].roman, cx, cy - hubR * 0.18);
+  g2d.fillText(CH[hubId].roman, cx, cy - hubR * 0.18);
   g2d.font = Math.max(12, R * 0.075) + "px 'SF Mono', Menlo, Consolas, monospace";
   g2d.globalAlpha = 0.75;
-  g2d.fillText(chordName(cur.id), cx, cy + hubR * 0.16);
+  g2d.fillText(chordName(hubId), cx, cy + hubR * 0.16);
   g2d.globalAlpha = 1;
 
-  // beat lamps
-  const lampY = cy + hubR * 0.5;
-  for (let b = 0; b < 4; b++) {
-    const lx = cx + (b - 1.5) * hubR * 0.24;
-    g2d.beginPath(); g2d.arc(lx, lampY, hubR * 0.045, 0, Math.PI * 2);
-    if (playing && b === inBar) { g2d.fillStyle = "#fff"; g2d.fill(); }
-    else { g2d.strokeStyle = "rgba(255,255,255,0.6)"; g2d.lineWidth = 1; g2d.stroke(); }
+  if (playing) {
+    const lampY = cy + hubR * 0.5;
+    for (let b = 0; b < 4; b++) {
+      const lx = cx + (b - 1.5) * hubR * 0.24;
+      g2d.beginPath(); g2d.arc(lx, lampY, hubR * 0.045, 0, Math.PI * 2);
+      if (b === inBar) { g2d.fillStyle = "#fff"; g2d.fill(); }
+      else { g2d.strokeStyle = "rgba(255,255,255,0.6)"; g2d.lineWidth = 1; g2d.stroke(); }
+    }
+  } else {
+    g2d.font = Math.max(8, R * 0.042) + "px 'SF Mono', Menlo, Consolas, monospace";
+    g2d.fillStyle = "rgba(255,255,255,0.55)";
+    g2d.fillText(selBar >= 0 ? "◂ ▸ SWAPS THIS CHORD" : "TAP A SECTOR TO HEAR IT", cx, cy + hubR * 0.52);
   }
 
-  // ===== fixed pointer at 12 o'clock, crosshair style =====
+  // ===== fixed pointer at 12 o'clock =====
   const py = cy - R;
   g2d.strokeStyle = "#fff"; g2d.lineWidth = 1.4;
   g2d.beginPath();
@@ -493,7 +558,9 @@ function draw() {
   g2d.font = "10px 'SF Mono', Menlo, Consolas, monospace";
   g2d.fillStyle = "rgba(255,255,255,0.6)";
   g2d.fillText("MINOR BLUES · 12 SECTORS · " + KEYS[keyIdx].name.toUpperCase(), 18, 36);
-  g2d.fillText("SECTOR " + String(cur.bar + 1).padStart(2, "0") + "/12", 18, 50);
+  g2d.fillText(playing ? "SECTOR " + String(cur.bar + 1).padStart(2, "0") + "/12"
+                       : (selBar >= 0 ? "AUDITION · BAR " + String(selBar + 1).padStart(2, "0") : "READY"), 18, 50);
+  if (isModified()) g2d.fillText("EXPERIMENTAL PROGRESSION · RESET RESTORES", 18, 64);
 
   g2d.textAlign = "right";
   g2d.fillText("i · iv · ♭VI · V7 · iiø7 · V7♭9", W - 18, 16);
@@ -508,6 +575,9 @@ const bpmIn = document.getElementById("bpm");
 const bpmVal = document.getElementById("bpmVal");
 const fsBtn = document.getElementById("fsBtn");
 const tapHint = document.getElementById("tapHint");
+const editGrp = document.getElementById("editGrp");
+const editLbl = document.getElementById("editLbl");
+const resetBtn = document.getElementById("resetBtn");
 
 KEYS.forEach((k, i) => {
   const o = document.createElement("option");
@@ -515,10 +585,19 @@ KEYS.forEach((k, i) => {
   keySel.appendChild(o);
 });
 
+function updateEditUI() {
+  editGrp.hidden = playing || selBar < 0;
+  resetBtn.hidden = !isModified();
+  if (selBar >= 0) {
+    editLbl.textContent = "BAR " + (selBar + 1) +
+      (PROG[selBar].length === 2 ? (selHalf ? "B" : "A") : "");
+  }
+}
+
 playBtn.addEventListener("click", () => playing ? stop() : start());
 keySel.addEventListener("change", () => { keyIdx = +keySel.value; });
 bpmIn.addEventListener("input", () => {
-  const pos = songBeat(); // rebase so the groove doesn't jump
+  const pos = songBeat();
   bpm = +bpmIn.value;
   bpmVal.textContent = bpm;
   if (playing) {
@@ -532,9 +611,56 @@ fsBtn.addEventListener("click", () => {
 });
 tapHint.addEventListener("click", () => { tapHint.remove(); start(); });
 
+// tap a sector while stopped: select it and hear a gentle arpeggio
+cv.addEventListener("pointerdown", e => {
+  if (playing) return;
+  const rect = cv.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  const { cx, cy, R, hubR } = geo();
+  const dx = x - cx, dy = y - cy;
+  const dist = Math.hypot(dx, dy);
+  if (dist < hubR || dist > R * 1.08) { selBar = -1; updateEditUI(); return; }
+  const rel = (Math.atan2(dy, dx) - wheelAngle + Math.PI / 2) / SLICE;
+  let bar = Math.round(rel);
+  const frac = rel - bar;
+  bar = ((bar % 12) + 12) % 12;
+  selBar = bar;
+  selHalf = (PROG[bar].length === 2 && frac >= 0) ? 1 : 0;
+  playArp(PROG[selBar][selHalf]);
+  updateEditUI();
+});
+
+function swapChord(dir) {
+  if (selBar < 0) return;
+  const cell = PROG[selBar];
+  const cur = cell[selHalf];
+  let i = PALETTE.indexOf(cur);
+  if (i < 0) i = 0;
+  const next = PALETTE[((i + dir) % PALETTE.length + PALETTE.length) % PALETTE.length];
+  cell[selHalf] = next;
+  playArp(next);
+  updateEditUI();
+}
+document.getElementById("prevCh").addEventListener("click", () => swapChord(-1));
+document.getElementById("nextCh").addEventListener("click", () => swapChord(1));
+resetBtn.addEventListener("click", () => {
+  PROG = BARS.map(c => c.slice());
+  selBar = -1;
+  updateEditUI();
+});
+
+// state mirrored into the DOM (readable by automated checks)
+setInterval(() => {
+  const d = document.body.dataset;
+  d.playing = playing;
+  d.beat = songBeat().toFixed(2);
+  d.sel = selBar;
+  d.prog = PROG.map(c => c.join("+")).join("|");
+}, 200);
+
 resize();
 requestAnimationFrame(draw);
-setTimeout(resize, 60); // after the dock lays out
+setTimeout(resize, 60);
 </script>
 </body>
 </html>
