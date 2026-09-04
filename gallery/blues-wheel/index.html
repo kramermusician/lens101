@@ -10,7 +10,7 @@
   body { font-family: "SF Mono", "Menlo", "Consolas", monospace; color: #fff; }
   canvas { display: block; touch-action: manipulation; }
   #dock {
-    position: fixed; left: 0; right: 0; bottom: 0;
+    position: absolute; left: 0; right: 0; bottom: 0;
     display: flex; align-items: center; justify-content: center; gap: 14px;
     padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
     background: #000; border-top: 1px solid #fff;
@@ -20,14 +20,16 @@
     font-family: inherit; font-size: 12px; letter-spacing: 0.12em;
     background: #000; color: #fff; border: 1px solid #fff;
     padding: 8px 14px; cursor: pointer; border-radius: 0;
-    text-transform: uppercase;
+    text-transform: uppercase; touch-action: manipulation;
   }
-  button:hover, select:hover { background: #fff; color: #000; }
   button.on { background: #fff; color: #000; }
   select { appearance: none; -webkit-appearance: none; padding-right: 22px;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6'><path d='M0 0h8L4 6z' fill='white'/></svg>");
     background-repeat: no-repeat; background-position: right 7px center; }
-  select:hover { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6'><path d='M0 0h8L4 6z' fill='black'/></svg>"); }
+  @media (hover: hover) {
+    button:hover, select:hover { background: #fff; color: #000; }
+    select:hover { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6'><path d='M0 0h8L4 6z' fill='black'/></svg>"); }
+  }
   .grp { display: flex; align-items: center; gap: 8px; }
   .lbl { font-size: 10px; letter-spacing: 0.18em; opacity: 0.7; }
   input[type=range] {
@@ -536,7 +538,31 @@ function draw() {
   } else {
     g2d.font = Math.max(8, R * 0.042) + "px 'SF Mono', Menlo, Consolas, monospace";
     g2d.fillStyle = "rgba(255,255,255,0.55)";
-    g2d.fillText(selBar >= 0 ? "◂ ▸ SWAPS THIS CHORD" : "TAP A SECTOR TO HEAR IT", cx, cy + hubR * 0.52);
+    g2d.fillText(selBar >= 0 ? "SWAP THE CHORD" : "TAP A SECTOR TO HEAR IT", cx, cy + hubR * 0.45);
+
+    if (selBar >= 0) {
+      // big on-canvas swap arrows, the touch-first controls
+      const ax = hubR * 0.66, ar = hubR * 0.24;
+      for (const dir of [-1, 1]) {
+        const bx = cx + dir * ax;
+        g2d.strokeStyle = "#fff"; g2d.lineWidth = 1.2;
+        g2d.beginPath(); g2d.arc(bx, cy, ar, 0, Math.PI * 2); g2d.stroke();
+        g2d.fillStyle = "#fff";
+        g2d.beginPath();
+        g2d.moveTo(bx - dir * ar * 0.4, cy - ar * 0.42);
+        g2d.lineTo(bx - dir * ar * 0.4, cy + ar * 0.42);
+        g2d.lineTo(bx + dir * ar * 0.45, cy);
+        g2d.closePath(); g2d.fill();
+      }
+    }
+    if (isModified()) {
+      g2d.font = Math.max(9, R * 0.048) + "px 'SF Mono', Menlo, Consolas, monospace";
+      g2d.fillStyle = "#fff";
+      const ry = cy + hubR * 0.68;
+      g2d.fillText("⟲ RESET", cx, ry);
+      g2d.strokeStyle = "rgba(255,255,255,0.6)"; g2d.lineWidth = 1;
+      g2d.strokeRect(cx - hubR * 0.36, ry - hubR * 0.12, hubR * 0.72, hubR * 0.24);
+    }
   }
 
   // ===== fixed pointer at 12 o'clock =====
@@ -594,6 +620,11 @@ function updateEditUI() {
   }
 }
 
+// iOS sometimes drops the synthesized click on these; fire on touchend directly
+for (const el of document.querySelectorAll("#dock button")) {
+  el.addEventListener("touchend", e => { e.preventDefault(); el.click(); }, { passive: false });
+}
+
 playBtn.addEventListener("click", () => playing ? stop() : start());
 keySel.addEventListener("change", () => { keyIdx = +keySel.value; });
 bpmIn.addEventListener("input", () => {
@@ -610,15 +641,35 @@ fsBtn.addEventListener("click", () => {
   else document.documentElement.requestFullscreen();
 });
 tapHint.addEventListener("click", () => { tapHint.remove(); start(); });
+tapHint.addEventListener("touchend", e => { e.preventDefault(); tapHint.remove(); start(); }, { passive: false });
 
-// tap a sector while stopped: select it and hear a gentle arpeggio
+// tap a sector while stopped: select it and hear a gentle arpeggio.
+// The hub carries big swap arrows and a reset zone so everything
+// works by touch, no tiny buttons required.
 cv.addEventListener("pointerdown", e => {
   if (playing) return;
+  e.preventDefault();
   const rect = cv.getBoundingClientRect();
   const x = e.clientX - rect.left, y = e.clientY - rect.top;
   const { cx, cy, R, hubR } = geo();
   const dx = x - cx, dy = y - cy;
   const dist = Math.hypot(dx, dy);
+
+  // on-canvas swap arrows beside the hub
+  if (selBar >= 0) {
+    const ax = hubR * 0.66, hit = hubR * 0.32;
+    if (Math.hypot(dx + ax, dy) < hit) return swapChord(-1);
+    if (Math.hypot(dx - ax, dy) < hit) return swapChord(1);
+  }
+  // on-canvas reset zone under the hub text
+  if (isModified() &&
+      Math.abs(dx) < hubR * 0.45 && Math.abs(dy - hubR * 0.68) < hubR * 0.2) {
+    PROG = BARS.map(c => c.slice());
+    selBar = -1;
+    updateEditUI();
+    return;
+  }
+
   if (dist < hubR || dist > R * 1.08) { selBar = -1; updateEditUI(); return; }
   const rel = (Math.atan2(dy, dx) - wheelAngle + Math.PI / 2) / SLICE;
   let bar = Math.round(rel);
