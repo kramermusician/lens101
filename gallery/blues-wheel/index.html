@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Blues Orbit · the minor blues wheel</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
+  body { font-family: "SF Mono", "Menlo", "Consolas", monospace; color: #fff; }
+  canvas { display: block; }
+  #dock {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    background: #000; border-top: 1px solid #fff;
+    flex-wrap: wrap; z-index: 5;
+  }
+  button, select {
+    font-family: inherit; font-size: 12px; letter-spacing: 0.12em;
+    background: #000; color: #fff; border: 1px solid #fff;
+    padding: 8px 14px; cursor: pointer; border-radius: 0;
+    text-transform: uppercase;
+  }
+  button:hover, select:hover { background: #fff; color: #000; }
+  button.on { background: #fff; color: #000; }
+  select { appearance: none; -webkit-appearance: none; padding-right: 22px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6'><path d='M0 0h8L4 6z' fill='white'/></svg>");
+    background-repeat: no-repeat; background-position: right 7px center; }
+  select:hover { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6'><path d='M0 0h8L4 6z' fill='black'/></svg>"); }
+  .grp { display: flex; align-items: center; gap: 8px; }
+  .lbl { font-size: 10px; letter-spacing: 0.18em; opacity: 0.7; }
+  input[type=range] {
+    -webkit-appearance: none; width: 130px; height: 1px; background: #fff; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 12px; height: 12px; background: #000;
+    border: 1px solid #fff; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { background: #fff; }
+  #bpmVal { min-width: 3ch; display: inline-block; text-align: right; font-size: 12px; }
+  #tapHint {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    z-index: 10; cursor: pointer; background: rgba(0,0,0,0.35);
+  }
+  #tapHint span {
+    border: 1px solid #fff; padding: 14px 26px; font-size: 13px; letter-spacing: 0.25em;
+    animation: blink 1.4s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0.35; } }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div id="tapHint"><span>▸ CLICK TO LAUNCH · SOUND ON</span></div>
+
+<div id="dock">
+  <button id="playBtn">▸ Launch</button>
+  <div class="grp">
+    <span class="lbl">KEY</span>
+    <select id="keySel"></select>
+  </div>
+  <div class="grp">
+    <span class="lbl">TEMPO</span>
+    <input type="range" id="bpm" min="50" max="160" value="92" />
+    <span id="bpmVal">92</span>
+  </div>
+  <button id="fsBtn" title="Fullscreen">⛶</button>
+</div>
+
+<script>
+"use strict";
+
+/* ================= THE FORM =================
+   Minor blues, twelve bars:
+   i | iv | i | i | iv | iv | i | i | bVI | V7 | i | iiø7–V7b9 */
+
+const CH = {
+  i:    { roman: "i",     suf: "m",   off: 0, tones: [0, 3, 7, 12] },
+  iv:   { roman: "iv",    suf: "m",   off: 5, tones: [0, 3, 7, 12] },
+  bVI:  { roman: "♭VI",   suf: "",    off: 8, tones: [0, 4, 7, 11] },
+  V7:   { roman: "V7",    suf: "7",   off: 7, tones: [0, 4, 7, 10] },
+  iio:  { roman: "iiø7",  suf: "ø7",  off: 2, tones: [0, 3, 6, 10] },
+  V7b9: { roman: "V7♭9",  suf: "7♭9", off: 7, tones: [0, 4, 7, 10, 13] },
+};
+
+// One entry per bar; bar 12 carries two chords, two beats each.
+const BARS = [
+  ["i"], ["iv"], ["i"], ["i"],
+  ["iv"], ["iv"], ["i"], ["i"],
+  ["bVI"], ["V7"], ["i"], ["iio", "V7b9"],
+];
+
+const SHARP = ["A","A♯","B","C","C♯","D","D♯","E","F","F♯","G","G♯"];
+const FLAT  = ["A","B♭","B","C","D♭","D","E♭","E","F","G♭","G","A♭"];
+// Minor keys offered, with a flat/sharp spelling preference.
+const KEYS = [
+  { name: "A minor",  semi: 0,  flat: false },
+  { name: "B minor",  semi: 2,  flat: false },
+  { name: "C minor",  semi: 3,  flat: true  },
+  { name: "D minor",  semi: 5,  flat: true  },
+  { name: "E minor",  semi: 7,  flat: false },
+  { name: "F minor",  semi: 8,  flat: true  },
+  { name: "F♯ minor", semi: 9,  flat: false },
+  { name: "G minor",  semi: 10, flat: true  },
+];
+
+let keyIdx = 0;
+function noteName(semi) {
+  const k = KEYS[keyIdx];
+  return (k.flat ? FLAT : SHARP)[((semi % 12) + 12) % 12];
+}
+function chordName(id) {
+  const c = CH[id];
+  return noteName(KEYS[keyIdx].semi + c.off) + c.suf;
+}
+// A2-region root frequency for a chord.
+function rootFreq(id) {
+  const semiFromA2 = ((KEYS[keyIdx].semi + CH[id].off) % 12);
+  return 110 * Math.pow(2, semiFromA2 / 12);
+}
+
+/* ================= TRANSPORT =================
+   The animation clock is the audio clock; nothing drifts. */
+
+let ctx = null, master = null, comp = null;
+let playing = false;
+let bpm = 92;
+let songStart = 0;          // ctx.currentTime at beat zero
+let nextBeat = 0;           // next beat index to schedule
+let nextBeatTime = 0;
+const LOOKAHEAD = 0.12;     // seconds scheduled ahead
+const BEATS_PER_BAR = 4;
+const TOTAL_BEATS = 12 * BEATS_PER_BAR;
+
+function beatDur() { return 60 / bpm; }
+
+function chordAtBeat(beat) {
+  const b = ((beat % TOTAL_BEATS) + TOTAL_BEATS) % TOTAL_BEATS;
+  const bar = Math.floor(b / BEATS_PER_BAR);
+  const inBar = b % BEATS_PER_BAR;
+  const cell = BARS[bar];
+  const half = (cell.length === 2 && inBar >= 2) ? 1 : 0;
+  return { bar, half, id: cell[half] };
+}
+
+function initAudio() {
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -14; comp.ratio.value = 4;
+  master = ctx.createGain();
+  master.gain.value = 0.85;
+  master.connect(comp); comp.connect(ctx.destination);
+}
+
+/* ---- instruments: thin, mono-ish, radio-from-space ---- */
+
+function playBass(freq, t, dur, vel) {
+  const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = freq;
+  const o2 = ctx.createOscillator(); o2.type = "square"; o2.frequency.value = freq;
+  const g = ctx.createGain(), g2 = ctx.createGain(), f = ctx.createBiquadFilter();
+  f.type = "lowpass"; f.frequency.value = 520; f.Q.value = 0.7;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vel, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  g2.gain.value = 0.18;
+  o.connect(g); o2.connect(g2); g2.connect(g); g.connect(f); f.connect(master);
+  o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
+}
+
+function playChord(id, t, gain, dur) {
+  const base = rootFreq(id) * 2; // up an octave from the bass register
+  for (const semi of CH[id].tones) {
+    const o = ctx.createOscillator(); o.type = "square";
+    o.frequency.value = base * Math.pow(2, semi / 12);
+    const g = ctx.createGain(), f = ctx.createBiquadFilter();
+    f.type = "lowpass"; f.frequency.setValueAtTime(2600, t);
+    f.frequency.exponentialRampToValueAtTime(700, t + dur);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(gain, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(f); f.connect(g); g.connect(master);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+}
+
+let noiseBuf = null;
+function noise() {
+  if (!noiseBuf) {
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const s = ctx.createBufferSource(); s.buffer = noiseBuf; return s;
+}
+
+function playHat(t, loud) {
+  const s = noise(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+  f.type = "highpass"; f.frequency.value = 7000;
+  g.gain.setValueAtTime(loud ? 0.16 : 0.07, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  s.connect(f); f.connect(g); g.connect(master);
+  s.start(t); s.stop(t + 0.08);
+}
+
+function playKick(t) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.frequency.setValueAtTime(120, t);
+  o.frequency.exponentialRampToValueAtTime(42, t + 0.1);
+  g.gain.setValueAtTime(0.9, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+  o.connect(g); g.connect(master);
+  o.start(t); o.stop(t + 0.2);
+}
+
+function playSnare(t) {
+  const s = noise(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+  f.type = "bandpass"; f.frequency.value = 1900; f.Q.value = 0.8;
+  g.gain.setValueAtTime(0.34, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+  s.connect(f); f.connect(g); g.connect(master);
+  s.start(t); s.stop(t + 0.18);
+}
+
+/* ---- the band, one beat at a time, shuffle feel ---- */
+
+function scheduleBeat(beat, t) {
+  const bd = beatDur();
+  const swing = bd * (2 / 3); // shuffled offbeat
+  const cur = chordAtBeat(beat);
+  const nxt = chordAtBeat(beat + 1);
+  const inBar = beat % BEATS_PER_BAR;
+
+  // drums
+  playHat(t, true); playHat(t + swing, false);
+  if (inBar === 0 || inBar === 2) playKick(t);
+  if (inBar === 1 || inBar === 3) playSnare(t);
+
+  // bass: root / third / fifth / approach the next root
+  const r = rootFreq(cur.id);
+  const tones = CH[cur.id].tones;
+  let bf;
+  const changing = nxt.id !== cur.id || nxt.bar !== cur.bar;
+  const last = (inBar === 3) || (cur.half !== nxt.half && changing);
+  if (last && changing) {
+    const nr = rootFreq(nxt.id);
+    bf = nr * Math.pow(2, (nr > r ? -1 : 1) / 12); // chromatic approach
+  } else if (inBar === 0 || (cur.half === 1 && inBar === 2)) bf = r;
+  else if (inBar === 1 || inBar === 3) bf = r * Math.pow(2, tones[1] / 12);
+  else bf = r * Math.pow(2, tones[2] / 12);
+  playBass(bf, t, bd * 0.95, 0.5);
+
+  // comping: pad on the chord's first beat, stabs on the backbeat
+  const firstOfChord = inBar === 0 || (cur.half === 1 && inBar === 2);
+  if (firstOfChord) playChord(cur.id, t, 0.06, bd * 1.8);
+  if (inBar === 1 || inBar === 3) playChord(cur.id, t + swing, 0.05, bd * 0.5);
+}
+
+function scheduler() {
+  if (!playing) return;
+  while (nextBeatTime < ctx.currentTime + LOOKAHEAD) {
+    scheduleBeat(nextBeat, nextBeatTime);
+    nextBeat++;
+    nextBeatTime = songStart + nextBeat * beatDur();
+  }
+  setTimeout(scheduler, 30);
+}
+
+function songBeat() { // fractional beat position right now
+  if (!playing) return pausedBeat;
+  return (ctx.currentTime - songStart) / beatDur();
+}
+
+let pausedBeat = 0;
+
+function start() {
+  if (!ctx) initAudio();
+  ctx.resume();
+  playing = true;
+  songStart = ctx.currentTime + 0.06 - pausedBeat * beatDur();
+  nextBeat = Math.ceil(pausedBeat);
+  nextBeatTime = songStart + nextBeat * beatDur();
+  scheduler();
+  playBtn.textContent = "■ Hold";
+  playBtn.classList.add("on");
+}
+function stop() {
+  pausedBeat = songBeat() % TOTAL_BEATS;
+  playing = false;
+  // rebase the wheel to the same sector within one turn, so the
+  // wrapped beat counter doesn't spin it backward through old laps
+  const tgt = targetAngle(pausedBeat);
+  wheelAngle -= Math.round((wheelAngle - tgt) / (Math.PI * 2)) * Math.PI * 2;
+  wheelVel = 0;
+  playBtn.textContent = "▸ Launch";
+  playBtn.classList.remove("on");
+}
+
+/* ================= THE WHEEL ================= */
+
+const cv = document.getElementById("cv");
+const g2d = cv.getContext("2d");
+let W = 0, H = 0, DPR = 1;
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth;
+  H = window.innerHeight - document.getElementById("dock").offsetHeight;
+  cv.width = W * DPR; cv.height = H * DPR;
+  cv.style.width = W + "px"; cv.style.height = H + "px";
+  g2d.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener("resize", resize);
+
+// starfield, fixed seed
+const STARS = [];
+(function () {
+  let s = 42;
+  const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 130; i++) STARS.push({ x: rnd(), y: rnd(), r: rnd() * 1.3 + 0.3, tw: rnd() * 6.28 });
+})();
+
+const SLICE = (Math.PI * 2) / 12;
+
+// wheel angle eases toward the current bar with a little overshoot,
+// like a game-show wheel clicking past its peg
+let wheelAngle = 0, wheelVel = 0;
+function targetAngle(beat) {
+  const bar = Math.floor((((beat % TOTAL_BEATS) + TOTAL_BEATS) % TOTAL_BEATS) / BEATS_PER_BAR)
+            + Math.floor(beat / TOTAL_BEATS) * 12;
+  return -bar * SLICE;
+}
+
+function draw() {
+  requestAnimationFrame(draw);
+  const beat = songBeat();
+  const loopBeat = ((beat % TOTAL_BEATS) + TOTAL_BEATS) % TOTAL_BEATS;
+  const cur = chordAtBeat(Math.floor(loopBeat));
+  const beatPhase = loopBeat % 1;
+  const inBar = Math.floor(loopBeat) % BEATS_PER_BAR;
+
+  // spring toward the target angle
+  const tgt = targetAngle(beat);
+  const k = 0.016, damp = 0.82;
+  wheelVel = (wheelVel + (tgt - wheelAngle) * k) * damp;
+  wheelAngle += wheelVel;
+
+  const t = performance.now() / 1000;
+  g2d.clearRect(0, 0, W, H);
+  g2d.fillStyle = "#000"; g2d.fillRect(0, 0, W, H);
+
+  // stars
+  for (const st of STARS) {
+    const a = 0.25 + 0.55 * Math.abs(Math.sin(t * 0.6 + st.tw));
+    g2d.fillStyle = "rgba(255,255,255," + a.toFixed(2) + ")";
+    g2d.fillRect(st.x * W, st.y * H, st.r, st.r);
+  }
+
+  const cx = W / 2, cy = H / 2 + 8;
+  const R = Math.min(W, H) * 0.395;
+  const hubR = R * 0.42;
+
+  // outer dashed orbit rings
+  g2d.strokeStyle = "rgba(255,255,255,0.35)";
+  g2d.lineWidth = 1;
+  g2d.setLineDash([2, 6]);
+  g2d.beginPath(); g2d.arc(cx, cy, R * 1.12, 0, Math.PI * 2); g2d.stroke();
+  g2d.setLineDash([1, 9]);
+  g2d.beginPath(); g2d.arc(cx, cy, R * 1.2, t * 0.02 % (Math.PI * 2), t * 0.02 + Math.PI * 2); g2d.stroke();
+  g2d.setLineDash([]);
+
+  // ===== the wheel =====
+  g2d.save();
+  g2d.translate(cx, cy);
+  g2d.rotate(wheelAngle);
+
+  for (let bar = 0; bar < 12; bar++) {
+    const cell = BARS[bar];
+    // sector centered on "up" when bar is current: sector i spans angles around -PI/2 + i*SLICE
+    const a0 = -Math.PI / 2 + bar * SLICE - SLICE / 2;
+    const a1 = a0 + SLICE;
+    for (let h = 0; h < cell.length; h++) {
+      const ha0 = cell.length === 2 ? a0 + h * SLICE / 2 : a0;
+      const ha1 = cell.length === 2 ? ha0 + SLICE / 2 : a1;
+      const isPlayingNow = playing && bar === cur.bar && (cell.length === 1 || h === cur.half);
+
+      g2d.beginPath();
+      g2d.arc(0, 0, R, ha0, ha1);
+      g2d.arc(0, 0, hubR, ha1, ha0, true);
+      g2d.closePath();
+      if (bar === cur.bar && (cell.length === 1 || h === cur.half)) {
+        // current chord: solid white sector, pulsing slightly on the beat
+        const pulse = isPlayingNow ? 1 - 0.12 * beatPhase : 1;
+        g2d.fillStyle = "rgba(255,255,255," + (0.92 * pulse).toFixed(2) + ")";
+        g2d.fill();
+      } else if (CH[cell[h]].roman === "i") {
+        g2d.fillStyle = "rgba(255,255,255,0.05)";
+        g2d.fill();
+      }
+      g2d.strokeStyle = "#fff"; g2d.lineWidth = 1.2; g2d.stroke();
+    }
+  }
+
+  // sector labels (drawn upright-ish along the radius)
+  for (let bar = 0; bar < 12; bar++) {
+    const cell = BARS[bar];
+    for (let h = 0; h < cell.length; h++) {
+      const mid = -Math.PI / 2 + bar * SLICE
+        + (cell.length === 2 ? (h ? SLICE / 4 : -SLICE / 4) : 0);
+      const isCur = bar === cur.bar && (cell.length === 1 || h === cur.half);
+      const rr = (R + hubR) / 2;
+      const lx = Math.cos(mid) * rr, ly = Math.sin(mid) * rr;
+      g2d.save();
+      g2d.translate(lx, ly);
+      // rotate text so it reads outward, flipped on the lower half for legibility
+      let rot = mid + Math.PI / 2;
+      if (Math.sin(mid) > 0.02) rot += Math.PI;
+      g2d.rotate(rot);
+      g2d.fillStyle = isCur ? "#000" : "#fff";
+      g2d.textAlign = "center";
+      const small = cell.length === 2;
+      g2d.font = (small ? "600 " + Math.max(11, R * 0.062) : "600 " + Math.max(13, R * 0.085)) + "px 'SF Mono', Menlo, Consolas, monospace";
+      g2d.fillText(CH[cell[h]].roman, 0, -R * 0.02);
+      g2d.font = Math.max(9, R * 0.05) + "px 'SF Mono', Menlo, Consolas, monospace";
+      g2d.globalAlpha = isCur ? 0.75 : 0.55;
+      g2d.fillText(chordName(cell[h]), 0, R * 0.055);
+      g2d.globalAlpha = 1;
+      g2d.restore();
+    }
+  }
+
+  // bar numbers riding the rim
+  g2d.fillStyle = "rgba(255,255,255,0.5)";
+  for (let bar = 0; bar < 12; bar++) {
+    const mid = -Math.PI / 2 + bar * SLICE;
+    const rx = Math.cos(mid) * R * 1.06, ry = Math.sin(mid) * R * 1.06;
+    g2d.save();
+    g2d.translate(rx, ry);
+    g2d.rotate(-wheelAngle); // keep numbers upright
+    g2d.font = Math.max(9, R * 0.045) + "px 'SF Mono', Menlo, Consolas, monospace";
+    g2d.textAlign = "center"; g2d.textBaseline = "middle";
+    g2d.fillText(String(bar + 1).padStart(2, "0"), 0, 0);
+    g2d.restore();
+  }
+
+  g2d.restore(); // wheel rotation
+
+  // ===== hub =====
+  g2d.fillStyle = "#000";
+  g2d.beginPath(); g2d.arc(cx, cy, hubR - 1, 0, Math.PI * 2); g2d.fill();
+  g2d.strokeStyle = "#fff"; g2d.lineWidth = 1.2;
+  g2d.beginPath(); g2d.arc(cx, cy, hubR, 0, Math.PI * 2); g2d.stroke();
+  g2d.setLineDash([1, 5]);
+  g2d.strokeStyle = "rgba(255,255,255,0.4)";
+  g2d.beginPath(); g2d.arc(cx, cy, hubR * 0.86, 0, Math.PI * 2); g2d.stroke();
+  g2d.setLineDash([]);
+
+  g2d.textAlign = "center"; g2d.textBaseline = "middle";
+  g2d.fillStyle = "#fff";
+  g2d.font = "700 " + Math.max(22, R * 0.17) + "px 'SF Mono', Menlo, Consolas, monospace";
+  g2d.fillText(CH[cur.id].roman, cx, cy - hubR * 0.18);
+  g2d.font = Math.max(12, R * 0.075) + "px 'SF Mono', Menlo, Consolas, monospace";
+  g2d.globalAlpha = 0.75;
+  g2d.fillText(chordName(cur.id), cx, cy + hubR * 0.16);
+  g2d.globalAlpha = 1;
+
+  // beat lamps
+  const lampY = cy + hubR * 0.5;
+  for (let b = 0; b < 4; b++) {
+    const lx = cx + (b - 1.5) * hubR * 0.24;
+    g2d.beginPath(); g2d.arc(lx, lampY, hubR * 0.045, 0, Math.PI * 2);
+    if (playing && b === inBar) { g2d.fillStyle = "#fff"; g2d.fill(); }
+    else { g2d.strokeStyle = "rgba(255,255,255,0.6)"; g2d.lineWidth = 1; g2d.stroke(); }
+  }
+
+  // ===== fixed pointer at 12 o'clock, crosshair style =====
+  const py = cy - R;
+  g2d.strokeStyle = "#fff"; g2d.lineWidth = 1.4;
+  g2d.beginPath();
+  g2d.moveTo(cx, py - 26); g2d.lineTo(cx, py - 8);
+  g2d.stroke();
+  g2d.beginPath();
+  g2d.moveTo(cx - 9, py - 22); g2d.lineTo(cx, py - 6); g2d.lineTo(cx + 9, py - 22);
+  g2d.closePath();
+  g2d.fillStyle = "#fff"; g2d.fill();
+
+  // ===== HUD =====
+  g2d.textAlign = "left"; g2d.textBaseline = "top";
+  g2d.fillStyle = "#fff";
+  g2d.font = "700 14px 'SF Mono', Menlo, Consolas, monospace";
+  g2d.fillText("BLUES ORBIT", 18, 16);
+  g2d.font = "10px 'SF Mono', Menlo, Consolas, monospace";
+  g2d.fillStyle = "rgba(255,255,255,0.6)";
+  g2d.fillText("MINOR BLUES · 12 SECTORS · " + KEYS[keyIdx].name.toUpperCase(), 18, 36);
+  g2d.fillText("SECTOR " + String(cur.bar + 1).padStart(2, "0") + "/12", 18, 50);
+
+  g2d.textAlign = "right";
+  g2d.fillText("i · iv · ♭VI · V7 · iiø7 · V7♭9", W - 18, 16);
+  g2d.fillText(playing ? "STATUS: IN ORBIT" : "STATUS: HOLDING", W - 18, 30);
+}
+
+/* ================= WIRING ================= */
+
+const playBtn = document.getElementById("playBtn");
+const keySel = document.getElementById("keySel");
+const bpmIn = document.getElementById("bpm");
+const bpmVal = document.getElementById("bpmVal");
+const fsBtn = document.getElementById("fsBtn");
+const tapHint = document.getElementById("tapHint");
+
+KEYS.forEach((k, i) => {
+  const o = document.createElement("option");
+  o.value = i; o.textContent = k.name;
+  keySel.appendChild(o);
+});
+
+playBtn.addEventListener("click", () => playing ? stop() : start());
+keySel.addEventListener("change", () => { keyIdx = +keySel.value; });
+bpmIn.addEventListener("input", () => {
+  const pos = songBeat(); // rebase so the groove doesn't jump
+  bpm = +bpmIn.value;
+  bpmVal.textContent = bpm;
+  if (playing) {
+    songStart = ctx.currentTime - pos * beatDur();
+    nextBeatTime = songStart + nextBeat * beatDur();
+  }
+});
+fsBtn.addEventListener("click", () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen();
+});
+tapHint.addEventListener("click", () => { tapHint.remove(); start(); });
+
+resize();
+requestAnimationFrame(draw);
+setTimeout(resize, 60); // after the dock lays out
+</script>
+</body>
+</html>
