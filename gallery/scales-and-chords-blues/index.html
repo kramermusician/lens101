@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LENS 101 9A, Week 3: Scales, Chords, Blues</title>
+<style>
+:root{
+  --bg:#f4ead6; --ink:#2b2620; --dim:#6e6357; --card:#fffaf0;
+  --ocean:#2f6f8f; --sage:#6f8f5e; --clay:#c8653a; --gold:#d8a04a;
+  --white-key:#fffdf7; --black-key:#2b2620;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font:20px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,sans-serif;overflow:hidden}
+.slide{display:none;position:absolute;inset:0;padding:4vh 5vw;flex-direction:column}
+.slide.on{display:flex}
+h1{font-size:6.5vh;margin:0 0 .5vh;font-weight:600;letter-spacing:-.01em}
+h2{font-size:4.6vh;margin:0 0 .5vh;font-weight:600}
+.sub{color:var(--dim);font-size:2.8vh;margin:0 0 2vh}
+.big{font-size:5.2vh;line-height:1.3;max-width:80vw}
+.msg{font-size:4.4vh;line-height:1.35;max-width:82vw;margin-top:2vh}
+.accent{color:var(--clay)}
+.ocean{color:var(--ocean)}
+.sage{color:var(--sage)}
+.row{display:flex;gap:2vw;flex:1;min-height:0}
+.col{flex:1;display:flex;flex-direction:column;min-height:0}
+.card{background:var(--card);border-radius:14px;padding:1.6vh 1.6vw;box-shadow:0 2px 10px rgba(43,38,32,.08);display:flex;flex-direction:column;min-height:0}
+.card h3{margin:0 0 .6vh;font-size:3.1vh;font-weight:600}
+.card p{margin:0;font-size:2.3vh;color:var(--dim)}
+.notes{font-size:2.6vh;margin:.4vh 0 0;letter-spacing:.04em}
+svg.kb{width:100%;height:auto;display:block}
+.chords{display:flex;gap:1.4vw;margin-top:1.4vh;flex:1;min-height:0}
+.chords .card{flex:1;justify-content:center}
+.chords svg.kb{max-height:26vh;width:auto;max-width:100%}
+.slide.scale .row{flex:0 0 auto}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.2vw;flex:1;min-height:0;margin-top:1vh}
+.bar{background:var(--card);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  box-shadow:0 2px 10px rgba(43,38,32,.08);position:relative}
+.bar .n{position:absolute;top:1vh;left:1vw;font-size:2vh;color:var(--dim)}
+.bar .c{font-size:6.2vh;font-weight:600}
+.bar .d{font-size:2.4vh;color:var(--dim)}
+.bar.one{border-bottom:.8vh solid var(--ocean)}
+.bar.four{border-bottom:.8vh solid var(--sage)}
+.bar.five{border-bottom:.8vh solid var(--clay)}
+.side{width:26vw;flex:none}
+.band{list-style:none;padding:0;margin:0;font-size:2.7vh}
+.band li{padding:.5vh 0;border-bottom:1px solid rgba(43,38,32,.12)}
+.band li span{color:var(--dim);float:right}
+.foot{margin-top:auto;padding-top:1.5vh;color:var(--dim);font-size:2.2vh;display:flex;justify-content:space-between}
+.pill{display:inline-block;background:var(--ocean);color:#fff;border-radius:999px;padding:.3vh 1.2vw;font-size:2.2vh;margin-right:.6vw}
+.pill.sage{background:var(--sage)} .pill.clay{background:var(--clay)}
+#nav{position:fixed;bottom:1.6vh;right:2vw;color:var(--dim);font-size:2vh}
+.slide{padding-bottom:13vh}
+#notesWrap{position:fixed;left:5vw;right:14vw;bottom:1.4vh;display:flex;flex-direction:column;gap:.4vh;z-index:5}
+#notesLabel{font-size:1.8vh;color:var(--dim);display:flex;gap:1.2vw;align-items:baseline}
+#saveState{font-size:1.8vh}
+#saveState.ok{color:#4a7d4a} #saveState.local{color:#b3572d} #saveState.err{color:#a33}
+#notes{width:100%;min-height:6vh;max-height:22vh;resize:vertical;font-family:inherit;font-size:2vh;line-height:1.4;
+  color:var(--ink);background:rgba(255,255,255,.75);border:1px solid rgba(43,38,32,.25);border-radius:8px;padding:.8vh 1vw;outline:none}
+#notes:focus{border-color:var(--ocean);background:#fff}
+.slide.scale .card,.bar{cursor:zoom-in}
+#zoom{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;padding:4vh 6vw;z-index:20;cursor:zoom-out}
+#zoom.on{display:flex}
+#zoom h2{font-size:5.5vh;margin:0 0 1vh}
+#zoom .notes{font-size:4.2vh}
+#zoom .kbwrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+#zoom svg.kb{width:100%;max-height:60vh;height:auto}
+#zoom p.hint{color:var(--dim);font-size:2.4vh;margin:0}
+.players{width:100%;height:14vh;resize:vertical;font-family:inherit;font-size:2.8vh;line-height:1.35;color:var(--ink);
+  background:var(--card);border:1px solid rgba(43,38,32,.25);border-radius:12px;padding:1vh 1.2vw;outline:none;margin-bottom:.6vh}
+.players:focus{border-color:var(--ocean);background:#fff}
+body.hidenotes #notesWrap{display:none} body.hidenotes .slide{padding-bottom:4vh}
+.pics{display:flex;gap:2vw;flex:1;min-height:0;margin-top:1.5vh}
+.pics figure{margin:0;flex:1;display:flex;flex-direction:column;min-height:0}
+.pics img{flex:1;min-height:0;width:100%;object-fit:contain;border-radius:14px}
+.pics figcaption{font-size:1.7vh;color:var(--dim);margin-top:.5vh}
+.bass-wrap{display:flex;flex-direction:row;flex:1;min-height:0;gap:3vw}
+.bass-left{flex:1;display:flex;flex-direction:column;gap:1.5vh;min-width:0}
+.bass-wrap svg.kb{width:100%;height:auto}
+.bass-wrap svg.kb rect{cursor:pointer}
+.bass-wrap .hint{font-size:2.3vh;color:var(--dim);margin:0;line-height:1.5}
+.bass-wrap .status{font-size:5vh;font-weight:600;margin:0}
+#bassFb{flex:none;height:100%;display:flex;justify-content:center}
+svg.fbv{height:100%;width:auto;display:block}
+svg.fbv .fret-hit{cursor:pointer}
+svg.fb{width:100%;height:auto;display:block;max-height:34vh}
+svg.fb .fret-hit{cursor:pointer}
+.ctl{display:flex;gap:1vw;align-items:center;flex-wrap:wrap}
+.btn{background:var(--card);border:1px solid rgba(43,38,32,.25);border-radius:999px;padding:.6vh 1.4vw;font:inherit;font-size:2.2vh;color:var(--ink);cursor:pointer}
+.btn.on{background:var(--ocean);color:#fff;border-color:var(--ocean)}
+.btn.clay.on{background:var(--clay);border-color:var(--clay)}
+.status{font-size:3vh;color:var(--ink);margin-left:auto}
+#zoom .trio{display:flex;flex-direction:row;gap:2vw;flex:1;min-height:0}
+#zoom .trio .card{cursor:default}
+#zoom .trio .pianos{flex:1;display:flex;flex-direction:column;gap:1.2vh;min-width:0}
+#zoom .trio .pianos .card{flex:1;justify-content:center;padding:.6vh 1.6vw}
+#zoom .trio h3{font-size:3.6vh;margin:0 0 .4vh}
+#zoom .trio h3 .notes{font-size:2.6vh;color:var(--dim);font-weight:400;margin-left:1vw}
+#zoom .trio svg.kb{max-height:23vh;width:auto;max-width:100%}
+#zoom .trio .bassv{flex:none;display:flex}
+#zoom .trio .bassv .card{align-items:center;padding:1vh 1.4vw}
+#zoom .trio svg.fbv{height:100%;min-height:0;flex:1;width:auto}
+#zoom .trio p.b{font-size:1.9vh;color:var(--dim);margin:.4vh 0 0;text-align:center;max-width:22vw}
+.list{font-size:3.6vh;line-height:1.6;margin:1vh 0 0;padding-left:1.2em}
+</style>
+</head>
+<body>
+
+<!-- 1. Opener -->
+<section class="slide on" data-id="opener" data-title="Let's practice scales.">
+  <h1>Let's practice scales.</h1>
+  <p class="msg" style="margin-top:.5vh">Musicians need to learn every scale and chord so they can grab them quickly when improvising.</p>
+  <div class="pics">
+    <figure><img src="images/i-can-play-that.jpg" alt="A cat with one paw on the piano keys next to a pianist"><figcaption>Photo: cogdogblog, CC BY 2.0, Wikimedia Commons</figcaption></figure>
+    <figure><img src="images/math-lady.jpg" alt="Woman deep in concentration with equations floating around her head"><figcaption>Renata Sorrah as Nazaré Tedesco, Senhora do Destino (TV Globo)</figcaption></figure>
+  </div>
+  <p class="msg accent" style="margin-top:.5vh">Phones out. Open your piano app.</p>
+  <div class="foot"><span>LENS 101, section 9A, week 3</span><span>Prof. Kramer Gibson</span></div>
+</section>
+
+<!-- 2. Plan -->
+<section class="slide" data-id="plan" data-title="Today">
+  <h1>Today</h1>
+  <ol class="list">
+    <li>Five keys, all together: major scale, then Mixolydian.</li>
+    <li>Three chords in each key: major 7, minor 7, dominant 7.</li>
+    <li>Four blues jams, a real band each time. C, F, G, D.</li>
+    <li>Book in hand? Show me.</li>
+  </ol>
+  <p class="sub" style="margin-top:2vh">The midterm hands you one of these keys at random. Today is the first rep.</p>
+</section>
+
+<!-- Scale slides are generated by JS into this container -->
+<div id="scales"></div>
+
+<!-- Blues slides generated into this container -->
+<div id="blues"></div>
+
+<!-- Closer -->
+<section class="slide" data-id="close" data-title="What can you do now?">
+  <h1>What can you do now?</h1>
+  <p class="msg">Name one thing you can play today that you could not play at 2:00.</p>
+  <p class="msg ocean">Next week: quiz 1 on the form, and the jams start for real. You call the key.</p>
+  <div class="foot"><span>Growth reflection due week 4. Blues visual map due week 6.</span><span>Prof. Kramer Gibson</span></div>
+</section>
+
+<div id="zoom"></div>
+<div id="nav"></div>
+<div id="notesWrap">
+  <div id="notesLabel"><span>My notes for this slide</span><span id="saveState"></span><span style="margin-left:auto">n hides this box</span></div>
+  <textarea id="notes" placeholder="What worked, what flopped, what to change on this slide..."></textarea>
+</div>
+
+<script>
+// ---------- data ----------
+const KEYS = [
+  {root:'C',  major:['C','D','E','F','G','A','B'],   mix:['C','D','E','F','G','A','Bb'],
+   maj7:['C','E','G','B'],  m7:['C','Eb','G','Bb'],  dom7:['C','E','G','Bb'],  why:'Home key for blues 1. Also the IV chord of the G blues and the V chord of the F blues.'},
+  {root:'F',  major:['F','G','A','Bb','C','D','E'],  mix:['F','G','A','Bb','C','D','Eb'],
+   maj7:['F','A','C','E'],  m7:['F','Ab','C','Eb'],  dom7:['F','A','C','Eb'],  why:'Home key for blues 2. Also the IV chord of the C blues.'},
+  {root:'G',  major:['G','A','B','C','D','E','F#'],  mix:['G','A','B','C','D','E','F'],
+   maj7:['G','B','D','F#'], m7:['G','Bb','D','F'],   dom7:['G','B','D','F'],   why:'Home key for blues 3. Also the V chord of the C blues.'},
+  {root:'Bb', major:['Bb','C','D','Eb','F','G','A'], mix:['Bb','C','D','Eb','F','G','Ab'],
+   maj7:['Bb','D','F','A'], m7:['Bb','Db','F','Ab'], dom7:['Bb','D','F','Ab'], why:'The IV chord of the F blues. You need it in bars 2, 5, 6 and 10.'},
+  {root:'D',  major:['D','E','F#','G','A','B','C#'], mix:['D','E','F#','G','A','B','C'],
+   maj7:['D','F#','A','C#'],m7:['D','F','A','C'],    dom7:['D','F#','A','C'],  why:'Home key for blues 4. Also the V chord of the G blues.'},
+];
+const BLUES = [
+  {key:'C', I:'C7', IV:'F7', V:'G7'},
+  {key:'F', I:'F7', IV:'Bb7', V:'C7'},
+  {key:'G', I:'G7', IV:'C7', V:'D7'},
+  {key:'D', I:'D7', IV:'G7', V:'A7'},
+];
+const DOM7 = {C7:['C','E','G','Bb'],F7:['F','A','C','Eb'],G7:['G','B','D','F'],Bb7:['Bb','D','F','Ab'],D7:['D','F#','A','C'],A7:['A','C#','E','G']};
+const FORM = ['I','IV','I','I','IV','IV','I','I','V','IV','I','V'];
+
+// pitch class map
+const PC = {C:0,'C#':1,Db:1,D:2,'D#':3,Eb:3,E:4,F:5,'F#':6,Gb:6,G:7,'G#':8,Ab:8,A:9,'A#':10,Bb:10,B:11};
+const WHITE = [0,2,4,5,7,9,11];
+const BLACK = {1:0,3:1,6:3,8:4,10:5}; // pc -> index of white key it sits after
+
+// Assign octaves so notes ascend from the root, starting in octave 3
+function withOctaves(notes){
+  let oct=3, prev=-1, out=[];
+  for(const n of notes){ const pc=PC[n]; if(pc<prev) oct++; prev=pc; out.push({name:n,pc,oct,midi:oct*12+pc}); }
+  return out;
+}
+
+// Draw a keyboard from C3 to C5 (25 keys, 15 white). Highlight given notes.
+function keyboard(notes, opts={}){
+  const oct = withOctaves(notes);
+  const hl = new Map(oct.map(n=>[n.midi,n]));
+  let lo=36, hi=60;
+  if(opts.tight){
+    lo=Math.min(...oct.map(n=>n.midi)); while(lo%12!==0 && lo%12!==5) lo--;
+    hi=Math.max(...oct.map(n=>n.midi))+1; while(!WHITE.includes(hi%12)) hi++;
+  }
+  const W=40, H=120, BW=24, BH=74;
+  let whiteCount=0; for(let m=lo;m<=hi;m++) if(WHITE.includes(m%12)) whiteCount++;
+  let svg=`<svg class="kb" viewBox="0 0 ${W*whiteCount} ${H+18}" xmlns="http://www.w3.org/2000/svg">`;
+  let wi=0;
+  const whites=[], blacks=[];
+  for(let midi=lo; midi<=hi; midi++){
+    const pc=midi%12;
+    if(WHITE.includes(pc)){
+      const x=wi*W;
+      const h=hl.get(midi);
+      const fill=h?(opts.mark&&opts.mark.includes(h.name)?'var(--clay)':'var(--ocean)'):'var(--white-key)';
+      whites.push(`<rect ${opts.clickable?`data-pc="${pc}"`:''} x="${x}" y="0" width="${W}" height="${H}" rx="4" fill="${fill}" stroke="#bfb3a0"/>`+
+        (h?`<text x="${x+W/2}" y="${H-10}" text-anchor="middle" font-size="16" font-weight="600" fill="#fff">${h.name}</text>`:''));
+      wi++;
+    }else{
+      const x=wi*W-BW/2;
+      const h=hl.get(midi);
+      const fill=h?(opts.mark&&opts.mark.includes(h.name)?'var(--clay)':'var(--ocean)'):'var(--black-key)';
+      blacks.push(`<rect ${opts.clickable?`data-pc="${pc}" data-black="1"`:''} x="${x}" y="0" width="${BW}" height="${BH}" rx="3" fill="${fill}" stroke="#1a1612"/>`+
+        (h?`<text x="${x+BW/2}" y="${BH-8}" text-anchor="middle" font-size="13" font-weight="600" fill="#fff">${h.name}</text>`:''));
+    }
+  }
+  return svg+whites.join('')+blacks.join('')+'</svg>';
+}
+
+// ---------- bass fretboard ----------
+const STRINGS=[{name:'G',midi:43},{name:'D',midi:38},{name:'A',midi:33},{name:'E',midi:28}]; // top to bottom
+const NFRETS=12;
+const NAMES_FLAT=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const NAMES_SHARP=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+// marks: [{pc, label, color}] applied to every position with that pitch class. opts.interactive adds hit targets.
+function fretboard(marks=[], opts={}){
+  const FW=110, X0=70, SY=44, Y0=40, W=X0+FW*NFRETS+30, H=Y0+SY*3+50;
+  let out=`<svg class="fb" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  out+=`<rect x="${X0}" y="${Y0-16}" width="${FW*NFRETS}" height="${SY*3+32}" rx="6" fill="#5a4634"/>`;
+  out+=`<rect x="${X0-8}" y="${Y0-16}" width="10" height="${SY*3+32}" fill="#e9e2d3"/>`;
+  for(let f=1;f<=NFRETS;f++){ out+=`<line x1="${X0+FW*f}" y1="${Y0-16}" x2="${X0+FW*f}" y2="${Y0+SY*3+16}" stroke="#c9c2b4" stroke-width="3"/>`; }
+  for(const f of [3,5,7,9]) out+=`<circle cx="${X0+FW*f-FW/2}" cy="${Y0+SY*1.5}" r="7" fill="#d9cdb8" opacity=".8"/>`;
+  out+=`<circle cx="${X0+FW*12-FW/2}" cy="${Y0+SY*0.5}" r="7" fill="#d9cdb8" opacity=".8"/><circle cx="${X0+FW*12-FW/2}" cy="${Y0+SY*2.5}" r="7" fill="#d9cdb8" opacity=".8"/>`;
+  for(let f=0;f<=NFRETS;f++) out+=`<text x="${f===0?X0-3:X0+FW*f-FW/2}" y="${Y0+SY*3+44}" text-anchor="middle" font-size="18" fill="#6e6357">${f}</text>`;
+  STRINGS.forEach((st,i)=>{
+    const y=Y0+SY*i;
+    out+=`<line x1="${X0-8}" y1="${y}" x2="${X0+FW*NFRETS}" y2="${y}" stroke="#e8dfcc" stroke-width="${2+i*1.2}"/>`;
+    out+=`<text x="${X0-22}" y="${y+7}" text-anchor="end" font-size="22" font-weight="600" fill="#2b2620">${st.name}</text>`;
+    for(let f=0;f<=NFRETS;f++){
+      const midi=st.midi+f, pc=midi%12, cx=f===0?X0-3:X0+FW*f-FW/2;
+      const m=marks.find(k=>k.pc===pc);
+      if(m) out+=`<g><circle cx="${cx}" cy="${y}" r="19" fill="${m.color}" stroke="#fff" stroke-width="2"/><text x="${cx}" y="${y+6}" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">${m.label}</text></g>`;
+      if(opts.interactive) out+=`<circle class="fret-hit" data-midi="${midi}" data-string="${i}" data-fret="${f}" cx="${cx}" cy="${y}" r="21" fill="transparent"/>`;
+    }
+  });
+  return out+'</svg>';
+}
+
+// vertical fretboard: nut at top, strings E A D G left to right, frets downward
+function fretboardV(marks=[], opts={}){
+  const SX=90, FH=64, X0=70, Y0=60, W=X0+SX*3+70, H=Y0+FH*NFRETS+30;
+  const strings=[...STRINGS].reverse(); // E A D G
+  let out=`<svg class="fbv" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  out+=`<rect x="${X0-22}" y="${Y0}" width="${SX*3+44}" height="${FH*NFRETS}" rx="6" fill="#5a4634"/>`;
+  out+=`<rect x="${X0-22}" y="${Y0-8}" width="${SX*3+44}" height="10" fill="#e9e2d3"/>`;
+  for(let f=1;f<=NFRETS;f++) out+=`<line x1="${X0-22}" y1="${Y0+FH*f}" x2="${X0+SX*3+22}" y2="${Y0+FH*f}" stroke="#c9c2b4" stroke-width="3"/>`;
+  for(const f of [3,5,7,9]) out+=`<circle cx="${X0+SX*1.5}" cy="${Y0+FH*f-FH/2}" r="7" fill="#d9cdb8" opacity=".8"/>`;
+  out+=`<circle cx="${X0+SX*0.5}" cy="${Y0+FH*12-FH/2}" r="7" fill="#d9cdb8" opacity=".8"/><circle cx="${X0+SX*2.5}" cy="${Y0+FH*12-FH/2}" r="7" fill="#d9cdb8" opacity=".8"/>`;
+  for(let f=1;f<=NFRETS;f++) out+=`<text x="${X0-40}" y="${Y0+FH*f-FH/2+7}" text-anchor="end" font-size="20" fill="#6e6357">${f}</text>`;
+  strings.forEach((st,i)=>{
+    const x=X0+SX*i, si=3-i;
+    out+=`<line x1="${x}" y1="${Y0-8}" x2="${x}" y2="${Y0+FH*NFRETS}" stroke="#e8dfcc" stroke-width="${5-i*1.1}"/>`;
+    out+=`<text x="${x}" y="${Y0-26}" text-anchor="middle" font-size="26" font-weight="600" fill="#2b2620">${st.name}</text>`;
+    for(let f=0;f<=NFRETS;f++){
+      const midi=st.midi+f, pc=midi%12, cy=f===0?Y0-3:Y0+FH*f-FH/2;
+      const m=marks.find(k=>k.pc===pc);
+      if(m) out+=`<g><circle cx="${x}" cy="${cy}" r="22" fill="${m.color}" stroke="#fff" stroke-width="2"/><text x="${x}" y="${cy+7}" text-anchor="middle" font-size="18" font-weight="700" fill="#fff">${m.label}</text></g>`;
+      if(opts.interactive) out+=`<circle class="fret-hit" data-midi="${midi}" data-string="${si}" data-fret="${f}" cx="${x}" cy="${cy}" r="26" fill="transparent"/>`;
+    }
+  });
+  return out+'</svg>';
+}
+
+// ---------- bass slide (interactive) ----------
+const bassSlide=document.createElement('section');
+bassSlide.className='slide'; bassSlide.dataset.id='bass'; bassSlide.dataset.title='Notes on the bass';
+bassSlide.innerHTML=`
+  <h1>Notes on the <span class="ocean">bass</span></h1>
+  <div class="bass-wrap">
+    <div class="bass-left">
+      <div id="bassPiano">${keyboard([],{clickable:true})}</div>
+      <div class="ctl">
+        <button class="btn on" id="modeNote">Note mode</button>
+        <button class="btn clay" id="modeDo">Moveable do</button>
+        <button class="btn" id="fbClear">Clear</button>
+      </div>
+      <p class="hint">Note mode: click a piano key or a fret and every place that note lives lights up.<br>Moveable do: click a fret to set do, and every sol lights up.</p>
+      <div class="status" id="fbStatus"></div>
+    </div>
+    <div id="bassFb">${fretboardV([],{interactive:true})}</div>
+  </div>
+  <div class="foot"><span>Open strings E, A, D, G. Fret 12 is the same note as the open string, one octave up.</span><span>Prof. Kramer Gibson</span></div>`;
+let bassMode='note';
+function bassRender(marks,status){
+  document.getElementById('bassFb').innerHTML=fretboardV(marks,{interactive:true});
+  document.getElementById('fbStatus').textContent=status||'';
+  const pcs=marks.map(m=>m.pc);
+  document.querySelectorAll('#bassPiano rect[data-pc]').forEach(r=>{
+    const m=marks.find(k=>k.pc===+r.dataset.pc);
+    r.setAttribute('fill', m?m.color:(r.dataset.black?'var(--black-key)':'var(--white-key)'));
+  });
+}
+function bassPick(pc, isFlatKey){
+  if(bassMode==='note'){
+    const name=(isFlatKey?NAMES_FLAT:NAMES_SHARP)[pc];
+    bassRender([{pc,label:name,color:'var(--ocean)'}], name);
+  }else{
+    const doName=NAMES_FLAT[pc], solPc=(pc+7)%12, solName=NAMES_FLAT[solPc];
+    bassRender([{pc,label:'do',color:'var(--clay)'},{pc:solPc,label:'sol',color:'var(--ocean)'}], `do = ${doName}, sol = ${solName}`);
+  }
+}
+bassSlide.addEventListener('click',e=>{
+  if(e.target.closest('.bass-wrap')) e.stopPropagation();
+  const key=e.target.closest('#bassPiano rect[data-pc]'); if(key){ bassPick(+key.dataset.pc, true); return; }
+  const hit=e.target.closest('.fret-hit'); if(hit){ bassPick(+hit.dataset.midi%12, true); return; }
+  if(e.target.id==='modeNote'){ bassMode='note'; modeNote.classList.add('on'); modeDo.classList.remove('on'); bassRender([],''); return; }
+  if(e.target.id==='modeDo'){ bassMode='do'; modeDo.classList.add('on'); modeNote.classList.remove('on'); bassRender([],'click a fret to set do'); return; }
+  if(e.target.id==='fbClear'){ bassRender([],''); return; }
+});
+
+// ---------- scale slides ----------
+const scalesEl=document.getElementById('scales');
+KEYS.forEach((k,i)=>{
+  const b7 = k.mix[6];
+  const s=document.createElement('section');
+  s.className='slide scale';
+  s.dataset.id='scale-'+k.root; s.dataset.title=`${k.root} major and ${k.root} Mixolydian`;
+  s.innerHTML=`
+    <h1>${k.root} <span class="ocean">major</span> and ${k.root} <span class="accent">Mixolydian</span></h1>
+    <div class="row">
+      <div class="col card" data-zoom-title="${k.root} major" data-zoom-notes="${[...k.major,k.root].join(' ')}" data-zoom-kb="${[...k.major,k.root].join(',')}">
+        <h3>${k.root} major</h3>
+        <p class="notes">${k.major.join(' &nbsp; ')} &nbsp; ${k.root}</p>
+        ${keyboard([...k.major,k.root])}
+        <p>Up and down together, slow. Sing the top note.</p>
+      </div>
+      <div class="col card" data-zoom-title="${k.root} Mixolydian" data-zoom-notes="${[...k.mix,k.root].join(' ')}" data-zoom-kb="${[...k.mix,k.root].join(',')}" data-zoom-mark="${b7}">
+        <h3>${k.root} Mixolydian <span class="accent">(one note changes)</span></h3>
+        <p class="notes">${k.mix.map(n=>n===b7?`<span class="accent">${n}</span>`:n).join(' &nbsp; ')} &nbsp; ${k.root}</p>
+        ${keyboard([...k.mix,k.root],{mark:[b7]})}
+        <p>Lower the 7th. This is the blues sound. Every chord in the jam lives here.</p>
+      </div>
+    </div>
+    <div class="chords">
+      <div class="card" data-zoom-title="${k.root}maj7" data-zoom-notes="${k.maj7.join(' ')}" data-zoom-kb="${k.maj7.join(',')}" data-zoom-tight="1"><h3>${k.root}maj7 <span class="sage">bright</span></h3><p class="notes">${k.maj7.join(' &nbsp; ')}</p>${keyboard(k.maj7,{tight:true})}</div>
+      <div class="card" data-zoom-title="${k.root}m7" data-zoom-notes="${k.m7.join(' ')}" data-zoom-kb="${k.m7.join(',')}" data-zoom-tight="1"><h3>${k.root}m7 <span class="ocean">soft</span></h3><p class="notes">${k.m7.join(' &nbsp; ')}</p>${keyboard(k.m7,{tight:true})}</div>
+      <div class="card" data-zoom-title="${k.root}7" data-zoom-notes="${k.dom7.join(' ')}" data-zoom-kb="${k.dom7.join(',')}" data-zoom-tight="1"><h3>${k.root}7 <span class="accent">blues</span></h3><p class="notes">${k.dom7.join(' &nbsp; ')}</p>${keyboard(k.dom7,{tight:true})}</div>
+    </div>
+    <div class="foot"><span>Scale ${i+1} of 5</span><span>Play each chord four times, then hold it and listen.</span></div>`;
+  scalesEl.appendChild(s);
+  if(k.root==='C') scalesEl.appendChild(bassSlide);
+});
+
+// ---------- blues slides ----------
+const bluesEl=document.getElementById('blues');
+BLUES.forEach((b,i)=>{
+  const s=document.createElement('section');
+  s.className='slide';
+  s.dataset.id='blues-'+b.key; s.dataset.title=`Blues ${i+1}: ${b.key}`;
+  const bars=FORM.map((d,n)=>`<div class="bar ${d==='I'?'one':d==='IV'?'four':'five'}" data-zoom-title="${b[d]}" data-zoom-notes="${DOM7[b[d]].join(' ')}" data-zoom-kb="${DOM7[b[d]].join(',')}" data-zoom-tight="1"><span class="n">${n+1}</span><span class="c">${b[d]}</span><span class="d">${d}</span></div>`).join('');
+  s.innerHTML=`
+    <h1>Blues ${i+1}: <span class="ocean">${b.key}</span></h1>
+    <p class="sub"><span class="pill">I = ${b.I}</span><span class="pill sage">IV = ${b.IV}</span><span class="pill clay">V = ${b.V}</span> &nbsp; Four times through the form. Then stop on ${b.I}.</p>
+    <textarea class="players" data-key="players-${b.key}" placeholder="Players: cajón, bass, keyboard, piano x2, shakers x2. Solo order..."></textarea>
+    <div class="grid">${bars}</div>
+    <div class="foot"><span>Blues ${i+1} of ${BLUES.length}. Click a chord to see it on the piano. &nbsp; <button class="btn" data-bluesmap="${i}">Show piano chords and bass diagram</button></span><span>Count in: one, two, one two three four.</span></div>`;
+  bluesEl.appendChild(s);
+});
+
+// ---------- navigation ----------
+const slides=[...document.querySelectorAll('.slide')];
+let cur=0;
+const nav=document.getElementById('nav');
+// ---------- per-slide notes (saved to JSON via the local server, localStorage fallback) ----------
+const LS_KEY='lens101-9a-week3-scales-blues-notes';
+let notes={}, serverOk=false, saveTimer=null;
+const notesEl=document.getElementById('notes'), saveState=document.getElementById('saveState');
+function slideId(){ return slides[cur].dataset.id || 'slide-'+(cur+1); }
+async function loadNotes(){
+  try{ const r=await fetch('/notes'); if(r.ok){ notes=await r.json(); serverOk=true; } }catch(e){}
+  if(!serverOk){ try{ notes=JSON.parse(localStorage.getItem(LS_KEY)||'{}'); }catch(e){ notes={}; } }
+  saveState.textContent=serverOk?'saving to file':'no server, saving in this browser only (run run.sh)';
+  saveState.className=serverOk?'ok':'local';
+  notesEl.value=(notes[slideId()]&&notes[slideId()].text)||'';
+  loadPlayers();
+}
+async function refreshNotes(){ if(!serverOk) return; try{ const r=await fetch('/notes'); if(r.ok) notes=await r.json(); }catch(e){} }
+async function saveNotes(){
+  const id=slideId(), text=notesEl.value;
+  await refreshNotes();
+  if(text.trim()) notes[id]={slide:slides[cur].dataset.title||id, text, updated:new Date().toISOString()};
+  else delete notes[id];
+  try{ localStorage.setItem(LS_KEY,JSON.stringify(notes)); }catch(e){}
+  if(!serverOk) return;
+  try{
+    const r=await fetch('/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(notes)});
+    saveState.textContent=r.ok?'saved':'save failed'; saveState.className=r.ok?'ok':'err';
+  }catch(e){ saveState.textContent='save failed'; saveState.className='err'; }
+}
+notesEl.addEventListener('input',()=>{ clearTimeout(saveTimer); saveState.textContent='typing...'; saveState.className=''; saveTimer=setTimeout(saveNotes,600); });
+notesEl.addEventListener('blur',()=>{ clearTimeout(saveTimer); saveNotes(); });
+
+function show(n){
+  cur=Math.max(0,Math.min(slides.length-1,n));
+  slides.forEach((s,i)=>s.classList.toggle('on',i===cur));
+  nav.textContent=`${cur+1} / ${slides.length}`;
+  location.hash=cur+1;
+  notesEl.value=(notes[slideId()]&&notes[slideId()].text)||'';
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&zoom.classList.contains('on')){ zoom.classList.remove('on'); return; }
+  if(e.target===notesEl||e.target.classList.contains('players')){ if(e.key==='Escape') e.target.blur(); return; }
+  if(['ArrowRight','ArrowDown','PageDown',' '].includes(e.key)){e.preventDefault();show(cur+1);}
+  if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();show(cur-1);}
+  if(e.key==='Home')show(0); if(e.key==='End')show(slides.length-1);
+  if(e.key==='n')document.body.classList.toggle('hidenotes');
+});
+// ---------- zoom overlay (click any scale/chord card or blues bar) ----------
+const zoom=document.getElementById('zoom');
+function openZoom(el){
+  const d=el.dataset, notesList=d.zoomKb.split(',');
+  zoom.innerHTML=`<h2>${d.zoomTitle}</h2><p class="notes">${d.zoomNotes.split(' ').map(n=>n===d.zoomMark?`<span class="accent">${n}</span>`:n).join(' &nbsp; ')}</p>
+    <div class="kbwrap">${keyboard(notesList,{tight:!!d.zoomTight,mark:d.zoomMark?[d.zoomMark]:null})}</div><p class="hint">Click or press Escape to go back.</p>`;
+  zoom.classList.add('on');
+}
+zoom.addEventListener('click',e=>{ if(!e.target.closest('.trio')) zoom.classList.remove('on'); });
+function openBluesMap(i){
+  const b=BLUES[i], cols=[['I','one','var(--ocean)'],['IV','four','var(--sage)'],['V','five','var(--clay)']];
+  const marks=[];
+  cols.forEach(([d,cls,col])=>{ const n=DOM7[b[d]]; if(!marks.find(m=>m.pc===PC[n[0]])) marks.push({pc:PC[n[0]],label:n[0],color:col}); });
+  cols.forEach(([d,cls,col])=>{ const n=DOM7[b[d]]; if(!marks.find(m=>m.pc===PC[n[2]])) marks.push({pc:PC[n[2]],label:n[2],color:'#7a6d5f'}); });
+  zoom.innerHTML=`<h2>Blues in ${b.key}: piano chords and bass notes</h2><div class="trio">
+    <div class="pianos">${cols.map(([d,cls,col])=>{ const ch=b[d], n=DOM7[ch];
+      return `<div class="card"><h3 style="color:${col}">${d} = ${ch} <span class="notes">${n.join(' &nbsp; ')}</span></h3>${keyboard(n,{tight:true})}</div>`; }).join('')}</div>
+    <div class="bassv"><div class="card">${fretboardV(marks)}<p class="b">Roots in chord colors. Fifths in grey. Root on the beat, fifth to walk.</p></div></div>
+  </div><p class="hint">Click outside the cards or press Escape to go back.</p>`;
+  zoom.classList.add('on');
+}
+
+// ---------- players box on each blues slide, saved alongside the notes ----------
+document.querySelectorAll('.players').forEach(t=>{
+  t.addEventListener('input',()=>{ clearTimeout(saveTimer); saveTimer=setTimeout(()=>savePlayers(t),600); });
+  t.addEventListener('blur',()=>{ clearTimeout(saveTimer); savePlayers(t); });
+});
+function loadPlayers(){ document.querySelectorAll('.players').forEach(t=>{ t.value=(notes[t.dataset.key]&&notes[t.dataset.key].text)||''; }); }
+async function savePlayers(t){
+  const k=t.dataset.key;
+  await refreshNotes();
+  if(t.value.trim()) notes[k]={slide:'players '+k.slice(8), text:t.value, updated:new Date().toISOString()}; else delete notes[k];
+  try{ localStorage.setItem(LS_KEY,JSON.stringify(notes)); }catch(e){}
+  if(!serverOk) return;
+  try{ await fetch('/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(notes)}); }catch(e){}
+}
+
+document.addEventListener('click',e=>{
+  if(e.target.closest('#notesWrap,.players,#zoom'))return;
+  const bm=e.target.closest('[data-bluesmap]'); if(bm){ openBluesMap(+bm.dataset.bluesmap); return; }
+  if(e.target.closest('.slide[data-id="bass"] .bass-wrap'))return;
+  const z=e.target.closest('[data-zoom-kb]'); if(z){ openZoom(z); return; }
+  if(e.clientX>innerWidth*0.5)show(cur+1); else show(cur-1);
+});
+show(parseInt(location.hash.slice(1))-1||0);
+loadNotes();
+</script>
+</body>
+</html>
