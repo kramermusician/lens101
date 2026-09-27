@@ -239,6 +239,16 @@ Bonjour, ça va? 0123456789</textarea></div>
         <button class="primary" id="dlFont">Download font (.ttf)</button>
         <button id="resetBtn">Start over</button>
       </div>
+      <details class="ios" id="macHelp">
+        <summary>Installing on a Mac</summary>
+        <ol>
+          <li>Click the <b>.ttf</b> download button. The file lands in your Downloads folder.</li>
+          <li>Double-click the .ttf file. Font Book opens and shows your letters.</li>
+          <li>Click <b>Install</b>. You don’t need an administrator password; the font installs for your account only.</li>
+          <li>Quit and reopen any app that was already open. Your font now appears in the font menu of Pages, Keynote, TextEdit, Word and Adobe apps. Search for it by the name you gave it.</li>
+        </ol>
+        <p class="small muted">If Font Book asks about a problem with the file, choose to install it anyway. To update your font, first open Font Book, find your font, and right-click it to remove it. Then double-click the new file and reopen your apps. If you skip the removal, Font Book keeps both copies and apps may keep using the old one. Font Book’s info panel shows when each copy was built.</p>
+      </details>
       <details class="ios" id="iosHelp">
         <summary>Installing on iPhone or iPad</summary>
         <ol>
@@ -923,7 +933,9 @@ function buildTTF(family, defs) {
 
   let hsh = 5381; for (const ch of family) hsh = ((hsh * 33) ^ ch.codePointAt(0)) >>> 0;
   const asc = family.replace(/[^A-Za-z0-9-]/g, ''), ps = ((asc.length >= family.replace(/\s/g, '').length / 2 ? asc : (asc || 'Handwriting') + hsh.toString(36).slice(0, 5)) || 'Handwriting').slice(0, 55) + '-Regular';
-  const recs = [[1, family], [2, 'Regular'], [3, family + ' Regular 1.0'], [4, family], [5, 'Version 1.000'], [6, ps]];
+  const now = new Date(), pad = v => String(v).padStart(2, '0');
+  const built = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const recs = [[1, family], [2, 'Regular'], [3, `${family} Regular 1.0 ${built}`], [4, family], [5, `Version 1.000; built ${built}`], [6, ps]];
   const name = new Buf(); name.u16(0); name.u16(recs.length); name.u16(6 + 12 * recs.length);
   let off = 0; const strs = [];
   for (const [id, s] of recs) { const e = utf16be(s); name.u16(3); name.u16(1); name.u16(0x409); name.u16(id); name.u16(e.length); name.u16(off); off += e.length; strs.push(e); }
@@ -1591,6 +1603,7 @@ $('restoreInput').addEventListener('change', async e => {
 // ---------- init ----------
 const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isAndroid = /Android/i.test(navigator.userAgent);
+const isMac = !isIOS && /Macintosh/.test(navigator.userAgent);
 if (!isIOS) { $('dlIOS').classList.remove('primary'); $('dlIOS').parentElement.insertBefore($('dlFont'), $('dlIOS')); }
 else $('dlFont').classList.remove('primary');
 if (isAndroid) {                  // put the Android guide first and open it
@@ -1598,6 +1611,8 @@ if (isAndroid) {                  // put the Android guide first and open it
   $('dlFont').textContent = 'Download font for Android (.ttf)';
 }
 if (isIOS) $('iosHelp').open = true;
+if (isMac) { $('macHelp').open = true; $('dlFont').textContent = 'Download font for Mac (.ttf)'; }
+else if (isIOS || isAndroid) $('macHelp').parentElement.insertBefore($('macHelp'), $('fontCount'));
 (async () => {
 await load();
 renderSetBoxes();
