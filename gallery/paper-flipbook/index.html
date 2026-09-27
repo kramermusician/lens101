@@ -1,0 +1,1136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Paper Flipbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEF3F5; --sheet:#FFFFFF; --ink:#23272A; --muted:#58646C;
+  --blue:#3E93C4; --blue-soft:#D6EAF5; --red:#CF3B2A; --line:#C9D6DD;
+  --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Helvetica Neue", Arial, system-ui, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#14191C; --sheet:#1C2429; --ink:#E7ECEE; --muted:#9DABB3;
+    --blue:#6CB8E2; --blue-soft:#1D3644; --red:#F0654F; --line:#2E3B42; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#14191C; --sheet:#1C2429; --ink:#E7ECEE; --muted:#9DABB3;
+  --blue:#6CB8E2; --blue-soft:#1D3644; --red:#F0654F; --line:#2E3B42; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:1.0625rem;line-height:1.55;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:28px 28px;background-attachment:fixed}
+main{max-width:760px;margin:0 auto;padding:1.25rem 1rem 4rem}
+h1,h2{font-family:var(--display);line-height:1.05;margin:0}
+h1{font-size:clamp(2.4rem,9vw,4rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:1.6rem;font-weight:700;letter-spacing:-.01em}
+p{margin:.5rem 0}
+.muted{color:var(--muted)}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1fr;gap:1.25rem;align-items:center;padding:1rem 0 2rem}
+@media (min-width:640px){.hero{grid-template-columns:1.2fr 1fr}}
+.hero p{font-size:1.15rem;max-width:32ch}
+.demo{display:flex;gap:.75rem;align-items:center;justify-content:center}
+.demo svg{display:block}
+.sheetdemo{background:var(--sheet);border-radius:4px;box-shadow:0 1px 0 var(--line),4px 6px 0 var(--blue-soft);padding:8px;transform:rotate(-2.5deg)}
+
+/* steps */
+.step{position:relative;background:var(--sheet);border:1.5px solid var(--line);border-radius:6px;padding:1.25rem 1.1rem 1.35rem 1.1rem;margin:0 0 1.5rem}
+.step > header{display:flex;gap:.8rem;align-items:baseline;margin-bottom:.5rem}
+.num{font-family:var(--display);font-weight:800;font-size:2.2rem;line-height:1;color:var(--blue);min-width:1.4ch}
+.step.locked{opacity:.5}
+.step.locked .body{pointer-events:none}
+
+.btn{display:inline-flex;align-items:center;gap:.45rem;border:2px solid var(--ink);background:var(--sheet);border-radius:999px;padding:.55rem 1.05rem;font-weight:700;cursor:pointer;min-height:44px}
+.btn.primary{background:var(--ink);color:var(--sheet)}
+.btn.red{background:var(--red);border-color:var(--red);color:#fff}
+.btn:disabled{opacity:.45;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:.75rem 0}
+.tips{margin:.5rem 0 0;padding-left:1.2rem}
+.tips li{margin:.2rem 0}
+.status{font-weight:700;margin:.6rem 0}
+.status.ok{color:var(--blue)} .status.warn{color:var(--red)}
+
+.templ{display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap}
+.templ img{width:120px;border:1px solid var(--line);background:#fff;border-radius:3px}
+
+.seg{display:inline-flex;border:2px solid var(--ink);border-radius:999px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:.45rem .9rem;cursor:pointer;min-height:40px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--sheet);font-weight:700}
+
+.editwrap{display:flex;justify-content:center;margin:.75rem 0;background:#0f1214;border-radius:4px;padding:6px}
+#editor{touch-action:none;display:block;cursor:crosshair;border-radius:2px}
+
+.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:330px}
+.thumbs.dense{gap:3px}
+.thumbs.dense .thumb{border-width:1px;border-radius:2px}
+.thumbs.dense .thumb span{font-size:.55rem;left:1px;top:0;padding:0 2px}
+.thumbs.dense .thumb[aria-pressed="false"]::after{content:"";}
+.thumb{position:relative;padding:0;border:2px solid var(--line);background:#fff;border-radius:4px;cursor:pointer;aspect-ratio:1;overflow:hidden}
+.thumb canvas{width:100%;height:100%;display:block}
+.thumb span{position:absolute;left:4px;top:2px;font:700 .8rem var(--display);color:#23272A;background:rgba(255,255,255,.8);padding:0 4px;border-radius:3px}
+.thumb[aria-pressed="false"]{border-style:dashed}
+.thumb[aria-pressed="false"] canvas{opacity:.18}
+.thumb[aria-pressed="false"]::after{content:"skipped";position:absolute;inset:auto 0 6px;text-align:center;font-size:.75rem;color:#58646C}
+.thumb[aria-pressed="true"].now{border-color:var(--red)}
+
+.previewgrid{display:grid;grid-template-columns:1fr;gap:1.25rem}
+@media (min-width:640px){.previewgrid{grid-template-columns:minmax(0,1.1fr) 1fr}}
+#preview{width:100%;max-width:330px;aspect-ratio:1;background:#fff;border-radius:4px;border:2px solid var(--ink);display:block}
+.controls label{display:block;margin:.7rem 0 .15rem;font-weight:700}
+.controls .val{font-weight:400;color:var(--muted)}
+.controls input[type=range]{width:100%;accent-color:var(--blue)}
+.check{display:flex;gap:.5rem;align-items:center;margin:.5rem 0;font-weight:400 !important}
+.check input{width:20px;height:20px;accent-color:var(--blue)}
+select{padding:.4rem .6rem;border:2px solid var(--ink);border-radius:6px;background:var(--sheet)}
+
+.result{margin-top:1rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start}
+.seg.fmt{display:grid;grid-template-columns:1fr 1fr;border-radius:14px;margin:.25rem 0 .25rem;width:100%;max-width:420px}
+.seg.fmt button+button{border-left:0}
+#outView{max-width:100%;overflow-x:auto}
+.result img,.result video{display:block;max-width:min(100%,360px);border:2px solid var(--ink);border-radius:4px;background:#fff}
+.hidden{display:none !important}
+footer{color:var(--muted);font-size:.9rem;text-align:center;margin-top:2rem}
+@media (prefers-reduced-motion: reduce){.sheetdemo{transform:none}}
+</style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div>
+      <h1>Paper Flipbook</h1>
+      <p>Draw a whole animation on one sheet of paper, snap a photo, and get back a GIF, a video, or frames.</p>
+    </div>
+    <div class="demo" aria-hidden="true">
+      <div class="sheetdemo"><svg id="demoSheet" width="168" height="168" viewBox="0 0 168 168"></svg></div>
+      <svg id="demoPlay" width="120" height="120" viewBox="0 0 100 100" style="background:#fff;border:2px solid var(--ink);border-radius:4px"></svg>
+    </div>
+  </section>
+
+  <section class="step" id="s1">
+    <header><span class="num">1</span><h2>Print the sheet</h2></header>
+    <div class="body">
+      <div class="row">
+        <label for="layout1"><strong>Grid</strong></label>
+        <select id="layout1" class="layoutSel">
+          <option value="3x3">3 × 3 (9 frames)</option>
+          <option value="4x3">4 × 3 (12 frames)</option>
+          <option value="5x5">5 × 5 (25 frames)</option>
+          <option value="10x10">10 × 10 (100 frames)</option>
+        </select>
+      </div>
+      <div class="templ">
+        <img id="tplThumb" alt="Template: a three-by-three grid of squares with a black square mark outside each corner">
+        <div style="flex:1;min-width:220px">
+          <p>Every sheet fits US Letter (8.5 × 11 in). The four black corner marks let the app find the grid even when the photo is tilted or taken at an angle. Print at 100% or fit to page; either works.</p>
+          <div class="row">
+            <button class="btn primary" id="tplSave">Save template</button>
+          </div>
+          <p class="muted hidden" id="tplHint">Long-press the template image to save it, then print it.</p>
+        </div>
+      </div>
+      <p class="muted">Draw frames left to right, top to bottom. Keep drawings inside the squares. Pick the same grid size here and in step 3 as the sheet you printed.</p>
+    </div>
+  </section>
+
+  <section class="step" id="s2">
+    <header><span class="num">2</span><h2>Photograph it</h2></header>
+    <div class="body">
+      <ul class="tips">
+        <li>Lay the sheet flat and fit all four corner marks in the shot.</li>
+        <li>Even light helps most. Avoid your own shadow across the page.</li>
+        <li>An angle is fine. Blur is not.</li>
+      </ul>
+      <div class="row">
+        <label class="btn red" for="file">Choose photo</label>
+        <input type="file" id="file" accept="image/*" class="hidden">
+        <span class="muted" id="fileName"></span>
+      </div>
+      <p class="status warn hidden" id="fileErr"></p>
+    </div>
+  </section>
+
+  <section class="step locked" id="s3">
+    <header><span class="num">3</span><h2>Line up the corners</h2></header>
+    <div class="body">
+      <div class="row">
+        <div class="seg" role="group" aria-label="Sheet type">
+          <button id="modeT" aria-pressed="true">Printed template</button>
+          <button id="modeC" aria-pressed="false">My own grid</button>
+        </div>
+        <select id="layout3" class="layoutSel" aria-label="Grid size">
+          <option value="3x3">3 × 3</option>
+          <option value="4x3">4 × 3</option>
+          <option value="5x5">5 × 5</option>
+          <option value="10x10">10 × 10</option>
+        </select>
+      </div>
+      <p class="status" id="detStatus">Choose a photo first.</p>
+      <p class="muted" id="modeHelp">Each red dot belongs on the center of a black corner mark. Drag to adjust; a magnifier appears while you drag.</p>
+      <div class="editwrap"><canvas id="editor" aria-label="Photo with draggable corner handles"></canvas></div>
+      <div class="row">
+        <button class="btn" id="redetect">Find marks again</button>
+        <button class="btn" id="rotate">Rotate order 90°</button>
+      </div>
+      <p class="muted">If frame 1 isn't in the top-left of your drawing, tap Rotate until it is.</p>
+    </div>
+  </section>
+
+  <section class="step locked" id="s4">
+    <header><span class="num">4</span><h2>Preview and tune</h2></header>
+    <div class="body">
+      <div class="previewgrid">
+        <div>
+          <canvas id="preview" width="360" height="360"></canvas>
+          <div class="row" style="margin-top:.75rem"><span class="muted">Tap a frame to skip or restore it.</span> <button class="btn" id="restoreAll" style="min-height:36px;padding:.3rem .8rem">Restore all</button></div>
+          <div class="thumbs" id="thumbs"></div>
+        </div>
+        <div class="controls">
+          <label for="fps">Speed <span class="val" id="fpsVal"></span></label>
+          <input type="range" id="fps" min="1" max="24" value="8">
+          <label>Playback</label>
+          <div class="seg" role="group" aria-label="Playback">
+            <button id="pbLoop" aria-pressed="true">Loop</button>
+            <button id="pbBoom" aria-pressed="false">Back and forth</button>
+          </div>
+          <label for="inset">Trim edges <span class="val" id="insetVal"></span></label>
+          <input type="range" id="inset" min="0" max="15" value="4">
+          <label for="clean">Whiten paper <span class="val" id="cleanVal"></span></label>
+          <input type="range" id="clean" min="0" max="100" value="70">
+          <label class="check"><input type="checkbox" id="even" checked> Match brightness across frames</label>
+          <label class="check"><input type="checkbox" id="onion"> Onion skin (preview only)</label>
+          <label for="size">GIF size</label>
+          <select id="size">
+            <option value="120">120 × 120</option>
+            <option value="160">160 × 160</option>
+            <option value="240">240 × 240</option>
+            <option value="360" selected>360 × 360</option>
+            <option value="480">480 × 480</option>
+            <option value="600">600 × 600</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="step locked" id="s5">
+    <header><span class="num">5</span><h2>Export</h2></header>
+    <div class="body">
+      <div class="seg fmt" id="fmtSeg" role="group" aria-label="Export format">
+        <button data-fmt="gif" aria-pressed="true">GIF</button>
+        <button data-fmt="video">Video</button>
+        <button data-fmt="zip">Frames (ZIP)</button>
+        <button data-fmt="strip">Sprite sheet</button>
+      </div>
+      <p class="muted" id="fmtHelp"></p>
+      <div class="row hidden" id="videoOpts">
+        <label for="reps"><strong>Play through</strong></label>
+        <select id="reps"><option value="1">once</option><option value="3" selected>3 times</option><option value="5">5 times</option></select>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="make">Make GIF</button>
+        <span class="muted" id="outInfo"></span>
+      </div>
+      <div class="result hidden" id="result">
+        <div id="outView"></div>
+        <div>
+          <button class="btn red" id="outSave">Save</button>
+          <p class="muted hidden" id="outHint"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+  <footer>Photos stay on your device; nothing is uploaded.</footer>
+</main>
+<script>
+/* ---------- Geometry ---------- */
+function solveLinear(A, b) {
+  const n = b.length;
+  const M = A.map((row, i) => row.concat([b[i]]));
+  for (let c = 0; c < n; c++) {
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    if (Math.abs(M[p][c]) < 1e-12) return null;
+    [M[c], M[p]] = [M[p], M[c]];
+    for (let r = 0; r < n; r++) {
+      if (r === c) continue;
+      const f = M[r][c] / M[c][c];
+      if (f === 0) continue;
+      for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k];
+    }
+  }
+  return M.map((row, i) => row[n] / row[i]);
+}
+
+// Maps src points (template space) -> dst points (image space)
+function homography(src, dst) {
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) {
+    const [u, v] = src[i], [x, y] = dst[i];
+    A.push([u, v, 1, 0, 0, 0, -u * x, -v * x]); b.push(x);
+    A.push([0, 0, 0, u, v, 1, -u * y, -v * y]); b.push(y);
+  }
+  const h = solveLinear(A, b);
+  if (!h) return null;
+  h.push(1);
+  return h;
+}
+function applyH(h, u, v) {
+  const w = h[6] * u + h[7] * v + h[8];
+  return [(h[0] * u + h[1] * v + h[2]) / w, (h[3] * u + h[4] * v + h[5]) / w];
+}
+
+/* ---------- Corner-mark detection ---------- */
+// rgba: Uint8ClampedArray, w,h. Returns 4 points [TL,TR,BR,BL] or null.
+function detectMarks(rgba, w, h) {
+  const N = w * h;
+  const g = new Uint8Array(N);
+  for (let i = 0, j = 0; i < N; i++, j += 4) g[i] = (rgba[j] * 77 + rgba[j + 1] * 150 + rgba[j + 2] * 29) >> 8;
+  const W1 = w + 1;
+  const I = new Float64Array(W1 * (h + 1));
+  for (let y = 0; y < h; y++) {
+    let row = 0;
+    for (let x = 0; x < w; x++) {
+      row += g[y * w + x];
+      I[(y + 1) * W1 + x + 1] = I[y * W1 + x + 1] + row;
+    }
+  }
+  const r = Math.max(8, Math.round(Math.max(w, h) / 14));
+  const dark = new Uint8Array(N);
+  for (let y = 0; y < h; y++) {
+    const y0 = Math.max(0, y - r), y1 = Math.min(h, y + r + 1);
+    for (let x = 0; x < w; x++) {
+      const x0 = Math.max(0, x - r), x1 = Math.min(w, x + r + 1);
+      const s = I[y1 * W1 + x1] - I[y0 * W1 + x1] - I[y1 * W1 + x0] + I[y0 * W1 + x0];
+      const mean = s / ((x1 - x0) * (y1 - y0));
+      const v = g[y * w + x];
+      if (v < mean * 0.6 && v < 150) dark[y * w + x] = 1;
+    }
+  }
+  // connected components
+  const label = new Int32Array(N);
+  const stack = new Int32Array(N);
+  const comps = [];
+  const minA = N * 0.0001, maxA = N * 0.02;
+  let id = 0;
+  for (let s = 0; s < N; s++) {
+    if (!dark[s] || label[s]) continue;
+    id++;
+    let sp = 0; stack[sp++] = s; label[s] = id;
+    let area = 0, sx = 0, sy = 0, mnx = w, mny = h, mxx = 0, mxy = 0;
+    while (sp) {
+      const p = stack[--sp];
+      const x = p % w, y = (p - x) / w;
+      area++; sx += x; sy += y;
+      if (x < mnx) mnx = x; if (x > mxx) mxx = x; if (y < mny) mny = y; if (y > mxy) mxy = y;
+      if (x > 0 && dark[p - 1] && !label[p - 1]) { label[p - 1] = id; stack[sp++] = p - 1; }
+      if (x < w - 1 && dark[p + 1] && !label[p + 1]) { label[p + 1] = id; stack[sp++] = p + 1; }
+      if (y > 0 && dark[p - w] && !label[p - w]) { label[p - w] = id; stack[sp++] = p - w; }
+      if (y < h - 1 && dark[p + w] && !label[p + w]) { label[p + w] = id; stack[sp++] = p + w; }
+    }
+    if (area < minA || area > maxA) continue;
+    const bw = mxx - mnx + 1, bh = mxy - mny + 1;
+    const asp = bw / bh;
+    const fill = area / (bw * bh);
+    if (asp < 0.4 || asp > 2.5 || fill < 0.45) continue;
+    comps.push({ x: sx / area + 0.5, y: sy / area + 0.5, area, fill });
+  }
+  comps.sort((a, b) => b.area - a.area);
+  const C = comps.slice(0, 30);
+  let best = null, bestScore = 0;
+  const n = C.length;
+  for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) for (let c = b + 1; c < n; c++) for (let d = c + 1; d < n; d++) {
+    const q = orderQuad([C[a], C[b], C[c], C[d]]);
+    if (!q) continue;
+    const areas = [C[a].area, C[b].area, C[c].area, C[d].area];
+    const amin = Math.min(...areas), amax = Math.max(...areas);
+    if (amax / amin > 3) continue;
+    const qa = quadArea(q);
+    if (qa < N * 0.04) continue;
+    const rel = Math.sqrt((amin + amax) / 2) / Math.sqrt(qa); // template: 8/192 ≈ 0.042
+    if (rel < 0.015 || rel > 0.1) continue;
+    const score = qa * (amin / amax);
+    if (score > bestScore) { bestScore = score; best = q; }
+  }
+  return best ? best.map(p => [p.x, p.y]) : null;
+}
+function orderQuad(pts) {
+  const cx = (pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4;
+  const cy = (pts[0].y + pts[1].y + pts[2].y + pts[3].y) / 4;
+  const s = pts.slice().sort((p, q) => Math.atan2(p.y - cy, p.x - cx) - Math.atan2(q.y - cy, q.x - cx));
+  let tl = 0;
+  for (let i = 1; i < 4; i++) if (s[i].x + s[i].y < s[tl].x + s[tl].y) tl = i;
+  const q = [s[tl], s[(tl + 1) % 4], s[(tl + 2) % 4], s[(tl + 3) % 4]];
+  let sign = 0;
+  for (let i = 0; i < 4; i++) {
+    const A = q[i], B = q[(i + 1) % 4], Cc = q[(i + 2) % 4];
+    const cr = (B.x - A.x) * (Cc.y - B.y) - (B.y - A.y) * (Cc.x - B.x);
+    const sg = Math.sign(cr);
+    if (sg === 0) return null;
+    if (!sign) sign = sg; else if (sg !== sign) return null;
+  }
+  return q;
+}
+function quadArea(q) {
+  let a = 0;
+  for (let i = 0; i < 4; i++) { const p = q[i], r = q[(i + 1) % 4]; a += p.x * r.y - r.x * p.y; }
+  return Math.abs(a) / 2;
+}
+
+/* ---------- Palette (median cut) ---------- */
+function buildPalette(images) {
+  const hist = new Uint32Array(32768);
+  for (const im of images) {
+    const d = im.data;
+    for (let i = 0; i < d.length; i += 4) hist[((d[i] >> 3) << 10) | ((d[i + 1] >> 3) << 5) | (d[i + 2] >> 3)]++;
+  }
+  const keys = [];
+  for (let k = 0; k < 32768; k++) if (hist[k]) keys.push(k);
+  const ch = (k, c) => c === 0 ? (k >> 10) & 31 : c === 1 ? (k >> 5) & 31 : k & 31;
+  const mk = arr => {
+    const mn = [31, 31, 31], mx = [0, 0, 0]; let cnt = 0;
+    for (const k of arr) { cnt += hist[k]; for (let c = 0; c < 3; c++) { const v = ch(k, c); if (v < mn[c]) mn[c] = v; if (v > mx[c]) mx[c] = v; } }
+    const rng = [mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]];
+    const axis = rng.indexOf(Math.max(...rng));
+    return { arr, cnt, axis, range: rng[axis] };
+  };
+  const boxes = [mk(keys)];
+  while (boxes.length < 256) {
+    let bi = -1, bs = 0;
+    for (let i = 0; i < boxes.length; i++) {
+      const b = boxes[i];
+      if (b.arr.length < 2 || b.range === 0) continue;
+      const sc = b.range * Math.sqrt(b.cnt);
+      if (sc > bs) { bs = sc; bi = i; }
+    }
+    if (bi < 0) break;
+    const b = boxes[bi];
+    const ax = b.axis;
+    b.arr.sort((p, q) => ch(p, ax) - ch(q, ax));
+    let acc = 0, cut = 1;
+    for (let i = 0; i < b.arr.length; i++) { acc += hist[b.arr[i]]; if (acc >= b.cnt / 2) { cut = i + 1; break; } }
+    cut = Math.min(Math.max(cut, 1), b.arr.length - 1);
+    boxes.splice(bi, 1, mk(b.arr.slice(0, cut)), mk(b.arr.slice(cut)));
+  }
+  const pal = new Uint8Array(768);
+  boxes.forEach((b, i) => {
+    let r = 0, gg = 0, bb = 0, c = 0;
+    for (const k of b.arr) { const n = hist[k]; r += ((ch(k, 0) << 3) | 4) * n; gg += ((ch(k, 1) << 3) | 4) * n; bb += ((ch(k, 2) << 3) | 4) * n; c += n; }
+    pal[i * 3] = Math.round(r / c); pal[i * 3 + 1] = Math.round(gg / c); pal[i * 3 + 2] = Math.round(bb / c);
+  });
+  return { pal, count: boxes.length };
+}
+function indexImage(im, P, cache) {
+  const d = im.data, out = new Uint8Array(d.length / 4);
+  const { pal, count } = P;
+  for (let i = 0, j = 0; j < d.length; i++, j += 4) {
+    const key = ((d[j] >> 3) << 10) | ((d[j + 1] >> 3) << 5) | (d[j + 2] >> 3);
+    let idx = cache[key];
+    if (idx < 0) {
+      const r = ((key >> 10) << 3) | 4, g = (((key >> 5) & 31) << 3) | 4, b = ((key & 31) << 3) | 4;
+      let bd = 1e9;
+      for (let p = 0; p < count; p++) {
+        const dr = pal[p * 3] - r, dg = pal[p * 3 + 1] - g, db = pal[p * 3 + 2] - b;
+        const dd = dr * dr * 2 + dg * dg * 4 + db * db * 3;
+        if (dd < bd) { bd = dd; idx = p; }
+      }
+      cache[key] = idx;
+    }
+    out[i] = idx;
+  }
+  return out;
+}
+
+/* ---------- GIF encoder ---------- */
+class ByteOut {
+  constructor(n = 1 << 16) { this.b = new Uint8Array(n); this.n = 0; }
+  grow(k) { if (this.n + k > this.b.length) { const nb = new Uint8Array(Math.max(this.b.length * 2, this.n + k)); nb.set(this.b.subarray(0, this.n)); this.b = nb; } }
+  byte(v) { this.grow(1); this.b[this.n++] = v; }
+  bytes(a) { this.grow(a.length); this.b.set(a, this.n); this.n += a.length; }
+  u16(v) { this.byte(v & 255); this.byte((v >> 8) & 255); }
+  str(s) { for (let i = 0; i < s.length; i++) this.byte(s.charCodeAt(i)); }
+  out() { return this.b.subarray(0, this.n); }
+}
+function lzwBlocks(px, minCode) {
+  const clear = 1 << minCode, eoi = clear + 1;
+  let size = minCode + 1, next = eoi + 1;
+  let dict = new Map();
+  const raw = new ByteOut(px.length);
+  let cur = 0, bits = 0;
+  const emit = c => { cur |= c << bits; bits += size; while (bits >= 8) { raw.byte(cur & 255); cur >>>= 8; bits -= 8; } };
+  emit(clear);
+  let p = px[0];
+  for (let i = 1; i < px.length; i++) {
+    const k = px[i], key = (p << 8) | k;
+    const v = dict.get(key);
+    if (v !== undefined) { p = v; continue; }
+    emit(p);
+    if (next < 4096) {
+      dict.set(key, next);
+      if (next >= (1 << size) && size < 12) size++;
+      next++;
+    } else {
+      emit(clear);
+      dict = new Map(); size = minCode + 1; next = eoi + 1;
+    }
+    p = k;
+  }
+  emit(p); emit(eoi);
+  if (bits > 0) raw.byte(cur & 255);
+  const r = raw.out();
+  const o = new ByteOut(r.length + Math.ceil(r.length / 255) + 2);
+  for (let i = 0; i < r.length; i += 255) { const len = Math.min(255, r.length - i); o.byte(len); o.bytes(r.subarray(i, i + len)); }
+  o.byte(0);
+  return o.out();
+}
+// images: ImageData[] (distinct frames), seq: indices into images, delayCs
+function encodeGIF(images, seq, delayCs) {
+  const w = images[0].width, h = images[0].height;
+  const P = buildPalette(seq.filter((v, i, a) => a.indexOf(v) === i).map(i => images[i]));
+  const cache = new Int16Array(32768).fill(-1);
+  const o = new ByteOut(w * h * seq.length / 2);
+  o.str('GIF89a'); o.u16(w); o.u16(h); o.byte(0xF7); o.byte(0); o.byte(0);
+  o.bytes(P.pal);
+  o.byte(0x21); o.byte(0xFF); o.byte(11); o.str('NETSCAPE2.0'); o.byte(3); o.byte(1); o.u16(0); o.byte(0);
+  const done = new Map();
+  for (const f of seq) {
+    let data = done.get(f);
+    if (!data) { data = lzwBlocks(indexImage(images[f], P, cache), 8); done.set(f, data); }
+    o.byte(0x21); o.byte(0xF9); o.byte(4); o.byte(0x04); o.u16(delayCs); o.byte(0); o.byte(0);
+    o.byte(0x2C); o.u16(0); o.u16(0); o.u16(w); o.u16(h); o.byte(0);
+    o.byte(8); o.bytes(data);
+  }
+  o.byte(0x3B);
+  return o.out().slice();
+}
+
+
+/* ---------- Sheet layouts (millimetres, sized for US Letter) ---------- */
+const LAYOUTS = {
+  '3x3':   { cols: 3,  rows: 3,  cell: 54, gut: 6,   size: 360, name: '3 \u00d7 3' },
+  '4x3':   { cols: 4,  rows: 3,  cell: 40, gut: 5,   size: 360, name: '4 \u00d7 3' },
+  '5x5':   { cols: 5,  rows: 5,  cell: 32, gut: 4,   size: 240, name: '5 \u00d7 5' },
+  '10x10': { cols: 10, rows: 10, cell: 15, gut: 2.5, size: 160, name: '10 \u00d7 10' }
+};
+const MARK = { off: 9, size: 8 };
+function curL() { return LAYOUTS[S.layout]; }
+function nFrames() { const L = curL(); return L.cols * L.rows; }
+// grid geometry in "sheet units": mm for the template, one unit per cell for a hand-drawn grid
+function geo(mode = S.mode) {
+  const L = curL();
+  const cell = mode === 'template' ? L.cell : 1, gut = mode === 'template' ? L.gut : 0;
+  return { cols: L.cols, rows: L.rows, cell, gut, W: L.cols * cell + (L.cols - 1) * gut, H: L.rows * cell + (L.rows - 1) * gut };
+}
+function refRect(mode = S.mode) {
+  const g = geo(mode), o = MARK.off;
+  return mode === 'template'
+    ? [[-o, -o], [g.W + o, -o], [g.W + o, g.H + o], [-o, g.H + o]]
+    : [[0, 0], [g.W, 0], [g.W, g.H], [0, g.H]];
+}
+function cellBox(i, insetPct) {
+  const g = geo(), r = Math.floor(i / g.cols), c = i % g.cols, ins = insetPct / 100 * g.cell;
+  return { x0: c * (g.cell + g.gut) + ins, y0: r * (g.cell + g.gut) + ins, s: g.cell - 2 * ins };
+}
+
+const $ = id => document.getElementById(id);
+const S = {
+  src: null, pts: null, mode: 'template', skip: new Set(), fps: 8, boom: false,
+  inset: 4, clean: 70, even: true, onion: false, size: 360, layout: '3x3',
+  raw: [], frames: [], frameCanvases: [], H: null
+};
+
+/* ---------- Downloads capability ---------- */
+/* Outside claude.ai there is no window.claude, so fall back to a normal browser download. */
+const browserDownloads = { async save({ filename, data }) {
+  const blob = data instanceof Blob ? data : new Blob([data]);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+} };
+let downloads = null;
+(async () => {
+  try { if (window.claude && window.claude.use) downloads = await window.claude.use('downloads'); } catch (e) { downloads = null; }
+  if (!downloads) downloads = browserDownloads;
+  if (!downloads) { $('tplSave').classList.add('hidden'); $('tplHint').classList.remove('hidden'); }
+})();
+async function offerSave(filename, blob, hintEl) {
+  if (!downloads) { hintEl.classList.remove('hidden'); return; }
+  try { await downloads.save({ filename, data: blob }); }
+  catch (e) {
+    const c = e && e.code;
+    if (c === 'declined') return;
+    if (c === 'rate_limited') { hintEl.textContent = 'A save prompt is already open. Try again in a moment.'; hintEl.classList.remove('hidden'); return; }
+    hintEl.classList.remove('hidden');
+  }
+}
+
+/* ---------- Template image ---------- */
+function drawTemplate() {
+  const L = curL(), g = geo('template');
+  const dpm = 300 / 25.4, pw = 215.9, ph = 279.4;
+  const c = document.createElement('canvas');
+  c.width = Math.round(pw * dpm); c.height = Math.round(ph * dpm);
+  const x = c.getContext('2d');
+  const ox = pw / 2 - g.W / 2, oy = 24;
+  const P = v => v * dpm;
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  x.fillStyle = '#000';
+  for (const [cx, cy] of refRect('template')) x.fillRect(P(ox + cx - MARK.size / 2), P(oy + cy - MARK.size / 2), P(MARK.size), P(MARK.size));
+  const fsz = Math.min(3.2, Math.max(1.6, g.gut * 0.65)), cross = Math.min(2, g.cell / 12);
+  for (let i = 0; i < L.cols * L.rows; i++) {
+    const r = Math.floor(i / L.cols), q = i % L.cols;
+    const x0 = ox + q * (g.cell + g.gut), y0 = oy + r * (g.cell + g.gut);
+    x.strokeStyle = '#9a9a9a'; x.lineWidth = P(0.3);
+    x.strokeRect(P(x0), P(y0), P(g.cell), P(g.cell));
+    x.strokeStyle = '#e4e4e4'; x.lineWidth = P(0.25);
+    const mx = x0 + g.cell / 2, my = y0 + g.cell / 2;
+    x.beginPath(); x.moveTo(P(mx - cross), P(my)); x.lineTo(P(mx + cross), P(my)); x.moveTo(P(mx), P(my - cross)); x.lineTo(P(mx), P(my + cross)); x.stroke();
+    x.fillStyle = '#777'; x.font = `700 ${P(fsz)}px Arial, sans-serif`; x.textBaseline = 'bottom';
+    x.fillText(String(i + 1), P(x0), P(y0 - 0.5));
+  }
+  const n = L.cols * L.rows, ty = oy + g.H + MARK.off + 17;
+  x.fillStyle = '#222'; x.textBaseline = 'alphabetic';
+  x.font = `700 ${P(6)}px Arial, sans-serif`;
+  x.fillText(`Flipbook sheet, ${L.name} (${n} frames)`, P(ox - 4), P(ty));
+  x.font = `${P(3.6)}px Arial, sans-serif`;
+  const lines = ['Draw one frame per square, left to right, top to bottom.',
+    'Keep the four black corner marks visible and uncovered in your photo.',
+    'Name: ______________________________      Date: ______________'];
+  lines.forEach((l, i) => x.fillText(l, P(ox - 4), P(ty + 10 + i * 8)));
+  return c;
+}
+let tplCanvas = null;
+function refreshTemplate() {
+  tplCanvas = drawTemplate();
+  $('tplThumb').src = tplCanvas.toDataURL('image/png');
+  $('tplThumb').alt = `Template: a ${curL().name} grid of squares with a black square mark outside each corner`;
+}
+$('tplSave').onclick = () => tplCanvas.toBlob(b => offerSave(`flipbook-template-${S.layout}.png`, b, $('tplHint')), 'image/png');
+
+/* ---------- Layout choice ---------- */
+function setLayout(key) {
+  S.layout = key;
+  document.querySelectorAll('select.layoutSel').forEach(el => el.value = key);
+  S.size = curL().size; $('size').value = String(S.size);
+  S.skip.clear();
+  refreshTemplate();
+  buildThumbs();
+  if (S.src) {
+    if (S.mode === 'template') runDetect(); else defaultPts();
+    drawEditor(); recompute();
+  }
+}
+document.querySelectorAll('select.layoutSel').forEach(el => el.onchange = () => setLayout(el.value));
+
+/* ---------- Load photo ---------- */
+$('file').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  $('fileErr').classList.add('hidden');
+  $('fileName').textContent = f.name;
+  let bmp;
+  try { bmp = await createImageBitmap(f, { imageOrientation: 'from-image' }); }
+  catch (err) {
+    try { bmp = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = URL.createObjectURL(f); }); }
+    catch (err2) { $('fileErr').textContent = 'This photo format could not be opened. Try a JPEG or PNG (on iPhone, set Camera > Formats to Most Compatible, or take a screenshot of the photo).'; $('fileErr').classList.remove('hidden'); return; }
+  }
+  const bw = bmp.width || bmp.naturalWidth, bh = bmp.height || bmp.naturalHeight;
+  const sc = Math.min(1, 3000 / Math.max(bw, bh));
+  const w = Math.round(bw * sc), h = Math.round(bh * sc);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const cx = c.getContext('2d', { willReadFrequently: true });
+  cx.drawImage(bmp, 0, 0, w, h);
+  S.src = { w, h, canvas: c, data: cx.getImageData(0, 0, w, h).data };
+  S.skip.clear();
+  ['s3', 's4', 's5'].forEach(id => $(id).classList.remove('locked'));
+  if (S.mode === 'template') runDetect(); else defaultPts();
+  sizeEditor(); drawEditor(); recompute();
+  $('s3').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+});
+
+function defaultPts() {
+  const { w, h } = S.src, m = 0.12;
+  const R = refRect(), rw = R[1][0] - R[0][0], rh = R[2][1] - R[0][1];
+  const k = Math.min(w * (1 - 2 * m) / rw, h * (1 - 2 * m) / rh);
+  const x0 = (w - rw * k) / 2, y0 = (h - rh * k) / 2;
+  S.pts = [[x0, y0], [x0 + rw * k, y0], [x0 + rw * k, y0 + rh * k], [x0, y0 + rh * k]];
+}
+function runDetect() {
+  const st = $('detStatus');
+  const { w, h, canvas } = S.src;
+  const sc = Math.min(1, 1000 / Math.max(w, h));
+  const dw = Math.round(w * sc), dh = Math.round(h * sc);
+  const c = document.createElement('canvas'); c.width = dw; c.height = dh;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(canvas, 0, 0, dw, dh);
+  const q = detectMarks(x.getImageData(0, 0, dw, dh).data, dw, dh);
+  if (q) {
+    S.pts = q.map(([px, py]) => [px / sc, py / sc]);
+    st.textContent = 'Found all four corner marks. Check the blue grid sits on your squares.';
+    st.className = 'status ok';
+  } else {
+    if (!S.pts) defaultPts();
+    st.textContent = 'Couldn\u2019t find the corner marks. Drag each red dot onto a black mark.';
+    st.className = 'status warn';
+  }
+}
+
+/* ---------- Mode + corner tools ---------- */
+function setMode(m) {
+  S.mode = m;
+  $('modeT').setAttribute('aria-pressed', m === 'template');
+  $('modeC').setAttribute('aria-pressed', m === 'custom');
+  $('redetect').classList.toggle('hidden', m !== 'template');
+  $('modeHelp').textContent = m === 'template'
+    ? 'Each red dot belongs on the center of a black corner mark. Drag to adjust; a magnifier appears while you drag.'
+    : 'Drag each red dot onto an outer corner of your grid. It is split into equal squares using the grid size chosen here.';
+  if (S.src) {
+    if (m === 'template') runDetect();
+    else { $('detStatus').textContent = 'Place the dots on your grid\u2019s outer corners.'; $('detStatus').className = 'status'; }
+    drawEditor(); recompute();
+  }
+}
+$('modeT').onclick = () => setMode('template');
+$('modeC').onclick = () => setMode('custom');
+$('redetect').onclick = () => { if (S.src) { runDetect(); drawEditor(); recompute(); } };
+$('rotate').onclick = () => { if (!S.pts) return; S.pts = [S.pts[3], S.pts[0], S.pts[1], S.pts[2]]; drawEditor(); recompute(); };
+
+/* ---------- Editor canvas ---------- */
+const ed = $('editor'), ectx = ed.getContext('2d');
+let dpr = 1, drag = null;
+function sizeEditor() {
+  if (!S.src) return;
+  const wrap = ed.parentElement.clientWidth - 12;
+  const maxH = Math.max(260, window.innerHeight * 0.68);
+  const cssW = Math.min(wrap, maxH * S.src.w / S.src.h);
+  const cssH = cssW * S.src.h / S.src.w;
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  ed.style.width = cssW + 'px'; ed.style.height = cssH + 'px';
+  ed.width = Math.round(cssW * dpr); ed.height = Math.round(cssH * dpr);
+}
+window.addEventListener('resize', () => { sizeEditor(); drawEditor(); });
+
+function currentH() { return homography(refRect(), S.pts); }
+
+function drawEditor() {
+  if (!S.src || !S.pts) return;
+  const k = ed.width / S.src.w;
+  ectx.setTransform(1, 0, 0, 1, 0, 0);
+  ectx.drawImage(S.src.canvas, 0, 0, ed.width, ed.height);
+  const H = currentH();
+  const blue = '#3E93C4', red = '#E0402C';
+  if (H) {
+    const n = nFrames(), labels = n <= 25;
+    ectx.lineWidth = (n > 25 ? 1 : 2) * dpr;
+    ectx.strokeStyle = blue;
+    ectx.fillStyle = 'rgba(62,147,196,.14)';
+    for (let i = 0; i < n; i++) {
+      const { x0, y0, s } = cellBox(i, S.inset);
+      const q = [[x0, y0], [x0 + s, y0], [x0 + s, y0 + s], [x0, y0 + s]].map(([u, v]) => applyH(H, u, v));
+      ectx.beginPath();
+      q.forEach(([px, py], j) => j ? ectx.lineTo(px * k, py * k) : ectx.moveTo(px * k, py * k));
+      ectx.closePath(); ectx.fill(); ectx.stroke();
+      if (!labels && i !== 0) continue;
+      const [cx, cy] = applyH(H, x0 + s / 2, y0 + s / 2);
+      const cellPx = Math.hypot(q[1][0] - q[0][0], q[1][1] - q[0][1]) * k;
+      const fs = Math.max(10 * dpr, Math.min(18 * dpr, cellPx * 0.45));
+      ectx.save();
+      ectx.font = `800 ${fs}px "Bricolage Grotesque", sans-serif`;
+      ectx.textAlign = 'center'; ectx.textBaseline = 'middle';
+      ectx.lineWidth = 3.5 * dpr; ectx.strokeStyle = 'rgba(255,255,255,.9)';
+      ectx.strokeText(String(i + 1), cx * k, cy * k);
+      ectx.fillStyle = blue; ectx.fillText(String(i + 1), cx * k, cy * k);
+      ectx.restore();
+    }
+  }
+  S.pts.forEach(([px, py], i) => {
+    const x = px * k, y = py * k, R = 13 * dpr;
+    ectx.lineWidth = 3 * dpr;
+    ectx.strokeStyle = '#fff'; ectx.beginPath(); ectx.arc(x, y, R + 2 * dpr, 0, Math.PI * 2); ectx.stroke();
+    ectx.strokeStyle = red; ectx.beginPath(); ectx.arc(x, y, R, 0, Math.PI * 2); ectx.stroke();
+    ectx.lineWidth = 1.5 * dpr;
+    ectx.beginPath(); ectx.moveTo(x - R, y); ectx.lineTo(x + R, y); ectx.moveTo(x, y - R); ectx.lineTo(x, y + R); ectx.stroke();
+  });
+  if (drag) drawLoupe(drag.i, k);
+}
+function drawLoupe(i, k) {
+  const [px, py] = S.pts[i];
+  const R = 58 * dpr, zoom = 4;
+  let lx = px * k, ly = py * k - 95 * dpr;
+  if (ly < R + 4) ly = py * k + 95 * dpr;
+  lx = Math.min(Math.max(lx, R + 4), ed.width - R - 4);
+  const srcR = R / (k * zoom);
+  ectx.save();
+  ectx.beginPath(); ectx.arc(lx, ly, R, 0, Math.PI * 2); ectx.clip();
+  ectx.fillStyle = '#000'; ectx.fillRect(lx - R, ly - R, 2 * R, 2 * R);
+  ectx.imageSmoothingEnabled = true;
+  ectx.drawImage(S.src.canvas, px - srcR, py - srcR, 2 * srcR, 2 * srcR, lx - R, ly - R, 2 * R, 2 * R);
+  ectx.strokeStyle = '#E0402C'; ectx.lineWidth = 1.5 * dpr;
+  ectx.beginPath(); ectx.moveTo(lx - R, ly); ectx.lineTo(lx + R, ly); ectx.moveTo(lx, ly - R); ectx.lineTo(lx, ly + R); ectx.stroke();
+  ectx.restore();
+  ectx.strokeStyle = '#fff'; ectx.lineWidth = 3 * dpr;
+  ectx.beginPath(); ectx.arc(lx, ly, R, 0, Math.PI * 2); ectx.stroke();
+}
+function evtToSrc(e) {
+  const r = ed.getBoundingClientRect();
+  return [(e.clientX - r.left) / r.width * S.src.w, (e.clientY - r.top) / r.height * S.src.h];
+}
+ed.addEventListener('pointerdown', e => {
+  if (!S.pts) return;
+  const [x, y] = evtToSrc(e);
+  const r = ed.getBoundingClientRect();
+  const thr = 44 * S.src.w / r.width;
+  let bi = -1, bd = Infinity;
+  S.pts.forEach(([px, py], i) => { const d = Math.hypot(px - x, py - y); if (d < bd) { bd = d; bi = i; } });
+  if (bd > thr) return;
+  drag = { i: bi, dx: S.pts[bi][0] - x, dy: S.pts[bi][1] - y };
+  ed.setPointerCapture(e.pointerId);
+  e.preventDefault();
+  drawEditor();
+});
+ed.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const [x, y] = evtToSrc(e);
+  S.pts[drag.i] = [Math.min(Math.max(x + drag.dx, 0), S.src.w), Math.min(Math.max(y + drag.dy, 0), S.src.h)];
+  drawEditor();
+});
+const endDrag = () => { if (!drag) return; drag = null; drawEditor(); recompute(); };
+ed.addEventListener('pointerup', endDrag);
+ed.addEventListener('pointercancel', endDrag);
+
+/* ---------- Frame extraction ---------- */
+function extractRaw() {
+  const H = currentH();
+  if (!H) return;
+  const size = S.size;
+  const { w: sw, h: sh, data: d } = S.src;
+  S.raw = [];
+  for (let i = 0; i < nFrames(); i++) {
+    const { x0, y0, s: sz } = cellBox(i, S.inset);
+    const out = new ImageData(size, size), o = out.data;
+    for (let py = 0; py < size; py++) {
+      const v = y0 + (py + 0.5) / size * sz;
+      for (let px = 0; px < size; px++) {
+        const u = x0 + (px + 0.5) / size * sz;
+        const ww = H[6] * u + H[7] * v + 1;
+        let x = (H[0] * u + H[1] * v + H[2]) / ww - 0.5;
+        let y = (H[3] * u + H[4] * v + H[5]) / ww - 0.5;
+        x = Math.min(Math.max(x, 0), sw - 1.001); y = Math.min(Math.max(y, 0), sh - 1.001);
+        const xi = x | 0, yi = y | 0, fx = x - xi, fy = y - yi;
+        const i00 = (yi * sw + xi) * 4, i10 = i00 + 4, i01 = i00 + sw * 4, i11 = i01 + 4;
+        const j = (py * size + px) * 4;
+        for (let ch = 0; ch < 3; ch++) {
+          const a = d[i00 + ch] + (d[i10 + ch] - d[i00 + ch]) * fx;
+          const b = d[i01 + ch] + (d[i11 + ch] - d[i01 + ch]) * fx;
+          o[j + ch] = a + (b - a) * fy;
+        }
+        o[j + 3] = 255;
+      }
+    }
+    S.raw.push(out);
+  }
+}
+function lumHist(ims) {
+  const hst = new Uint32Array(256); let n = 0;
+  for (const im of ims) { const d = im.data; for (let i = 0; i < d.length; i += 16) { hst[(d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8]++; n++; } }
+  return q => { let acc = 0; const t = q * n; for (let v = 0; v < 256; v++) { acc += hst[v]; if (acc >= t) return v; } return 255; };
+}
+function applyClean() {
+  const s = S.clean / 100;
+  const globalP = lumHist(S.raw);
+  S.frames = S.raw.map(im => {
+    const p = S.even ? lumHist([im]) : globalP;
+    const paper = p(0.62), ink = p(0.02);
+    const white = 255 + (Math.min(255, paper * 0.97) - 255) * s;
+    const black = ink * s * 0.8;
+    const scale = 255 / Math.max(90, white - black);
+    const out = new ImageData(im.width, im.height), o = out.data, d = im.data;
+    for (let i = 0; i < d.length; i += 4) {
+      o[i] = (d[i] - black) * scale; o[i + 1] = (d[i + 1] - black) * scale; o[i + 2] = (d[i + 2] - black) * scale; o[i + 3] = 255;
+    }
+    return out;
+  });
+  S.frameCanvases = S.frames.map(im => { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; c.getContext('2d').putImageData(im, 0, 0); return c; });
+  renderThumbs();
+  invalidateExport();
+}
+let recomputeTimer = null;
+function recompute() {
+  if (!S.src || !S.pts) return;
+  clearTimeout(recomputeTimer);
+  recomputeTimer = setTimeout(() => { extractRaw(); applyClean(); restartPreview(); }, 30);
+}
+
+/* ---------- Thumbnails ---------- */
+const thumbsEl = $('thumbs');
+let thumbBtns = [];
+const TH = 96;
+function buildThumbs() {
+  const L = curL(), n = nFrames();
+  thumbsEl.innerHTML = '';
+  thumbsEl.style.gridTemplateColumns = `repeat(${L.cols}, 1fr)`;
+  thumbsEl.style.maxWidth = L.cols > 5 ? '100%' : (L.cols * 110) + 'px';
+  thumbsEl.classList.toggle('dense', L.cols > 5);
+  thumbBtns = [];
+  for (let i = 0; i < n; i++) {
+    const b = document.createElement('button');
+    b.className = 'thumb'; b.setAttribute('aria-pressed', !S.skip.has(i)); b.setAttribute('aria-label', `Frame ${i + 1}`);
+    const c = document.createElement('canvas'); c.width = TH; c.height = TH;
+    const sp = document.createElement('span'); sp.textContent = i + 1;
+    b.append(c, sp);
+    b.onclick = () => {
+      if (S.skip.has(i)) S.skip.delete(i);
+      else if (n - S.skip.size > 1) S.skip.add(i);
+      b.setAttribute('aria-pressed', !S.skip.has(i));
+      invalidateExport(); restartPreview();
+    };
+    thumbsEl.append(b); thumbBtns.push({ b, c });
+  }
+}
+function renderThumbs() {
+  S.frameCanvases.forEach((fc, i) => {
+    if (!thumbBtns[i]) return;
+    const x = thumbBtns[i].c.getContext('2d');
+    x.imageSmoothingQuality = 'high';
+    x.drawImage(fc, 0, 0, TH, TH);
+    thumbBtns[i].b.setAttribute('aria-pressed', !S.skip.has(i));
+  });
+}
+$('restoreAll').onclick = () => { S.skip.clear(); thumbBtns.forEach(({ b }) => b.setAttribute('aria-pressed', 'true')); invalidateExport(); restartPreview(); };
+
+/* ---------- Preview ---------- */
+const pv = $('preview'), pctx = pv.getContext('2d');
+let seqPos = 0, pvTimer = null;
+function sequence() {
+  const act = [...Array(nFrames()).keys()].filter(i => !S.skip.has(i));
+  return S.boom && act.length > 2 ? act.concat(act.slice(1, -1).reverse()) : act;
+}
+function restartPreview() { clearTimeout(pvTimer); seqPos = 0; tick(); }
+function tick() {
+  if (!S.frameCanvases.length) return;
+  const seq = sequence();
+  const f = seq[seqPos % seq.length];
+  const prev = seq[(seqPos - 1 + seq.length) % seq.length];
+  pv.width = S.size; pv.height = S.size;
+  pctx.globalAlpha = 1; pctx.globalCompositeOperation = 'source-over';
+  pctx.drawImage(S.frameCanvases[f], 0, 0);
+  if (S.onion && seq.length > 1) {
+    pctx.globalCompositeOperation = 'multiply'; pctx.globalAlpha = 0.3;
+    pctx.drawImage(S.frameCanvases[prev], 0, 0);
+    pctx.globalAlpha = 1; pctx.globalCompositeOperation = 'source-over';
+  }
+  thumbBtns.forEach(({ b }, i) => b.classList.toggle('now', i === f));
+  seqPos = (seqPos + 1) % seq.length;
+  pvTimer = setTimeout(tick, 1000 / S.fps);
+}
+
+/* ---------- Controls ---------- */
+function bindRange(id, key, fmt, onChange) {
+  const el = $(id), val = $(id + 'Val');
+  const upd = () => { S[key] = +el.value; if (val) val.textContent = fmt(S[key]); };
+  upd();
+  el.addEventListener('input', () => { upd(); onChange(); });
+}
+bindRange('fps', 'fps', v => `${v} frames per second`, () => invalidateExport());
+bindRange('inset', 'inset', v => `${v}%`, () => { drawEditor(); recompute(); });
+let cleanTimer;
+bindRange('clean', 'clean', v => v ? `${v}%` : 'off', () => { clearTimeout(cleanTimer); cleanTimer = setTimeout(() => { if (S.raw.length) { applyClean(); } }, 60); });
+$('even').onchange = e => { S.even = e.target.checked; if (S.raw.length) applyClean(); };
+$('onion').onchange = e => { S.onion = e.target.checked; };
+$('size').onchange = e => { S.size = +e.target.value; recompute(); };
+function setBoom(b) { S.boom = b; $('pbLoop').setAttribute('aria-pressed', !b); $('pbBoom').setAttribute('aria-pressed', b); invalidateExport(); restartPreview(); }
+$('pbLoop').onclick = () => setBoom(false);
+$('pbBoom').onclick = () => setBoom(true);
+
+/* ---------- Export ---------- */
+const FORMATS = {
+  gif: { make: 'Make GIF', help: 'Plays almost anywhere: slides, Google Docs, messages, websites.' },
+  video: { make: 'Make video', help: 'MP4 or WebM, depending on your browser. Good for Instagram, YouTube, or a video editor. It records in real time, so it takes as long as it plays.' },
+  zip: { make: 'Make ZIP', help: 'Each frame as its own PNG, numbered in playback order. Handy for Scratch, Procreate, or retouching single frames.' },
+  strip: { make: 'Make sprite sheet', help: 'All frames side by side in one PNG (rows of 10 for longer animations), the format game engines and CSS animations use.' }
+};
+let fmt = 'gif', out = null;
+function setFormat(f) {
+  fmt = f;
+  document.querySelectorAll('#fmtSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.fmt === f));
+  $('fmtHelp').textContent = FORMATS[f].help;
+  $('videoOpts').classList.toggle('hidden', f !== 'video');
+  $('make').textContent = FORMATS[f].make;
+  invalidateExport();
+}
+document.querySelectorAll('#fmtSeg button').forEach(b => b.onclick = () => setFormat(b.dataset.fmt));
+
+function invalidateExport() {
+  if (out && out.url) URL.revokeObjectURL(out.url);
+  out = null;
+  $('result').classList.add('hidden');
+  $('outView').innerHTML = '';
+  $('outInfo').textContent = '';
+}
+function activeFrames() { return [...Array(nFrames()).keys()].filter(i => !S.skip.has(i)); }
+const kb = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round(n / 1024) + ' KB';
+const canvasBlob = (c, type = 'image/png') => new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('encode')), type));
+
+async function makeGif() {
+  const seq = sequence();
+  const bytes = encodeGIF(S.frames, seq, Math.max(2, Math.round(100 / S.fps)));
+  return { blob: new Blob([bytes], { type: 'image/gif' }), name: 'flipbook.gif', kind: 'img', info: `${seq.length} frames, ${kb(bytes.length)}` };
+}
+async function makeVideo() {
+  if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) throw new Error('This browser can\u2019t record video. Try the GIF instead.');
+  const type = ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t));
+  if (!type) throw new Error('This browser can\u2019t record video. Try the GIF instead.');
+  const seq = sequence(), reps = +$('reps').value, dt = 1000 / S.fps, dur = seq.length * reps * dt;
+  const c = document.createElement('canvas'); c.width = c.height = S.size;
+  const x = c.getContext('2d');
+  x.drawImage(S.frameCanvases[seq[0]], 0, 0);
+  const stream = c.captureStream(30);
+  const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 5e6 });
+  const chunks = [];
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  const stopped = new Promise(r => rec.onstop = r);
+  rec.start(250);
+  await new Promise(res => {
+    const t0 = performance.now();
+    const step = () => {
+      const el = performance.now() - t0;
+      if (el >= dur) return res();
+      const k = Math.floor(el / dt);
+      x.drawImage(S.frameCanvases[seq[k % seq.length]], 0, 0);
+      $('make').textContent = `Recording\u2026 ${Math.round(el / dur * 100)}%`;
+      setTimeout(step, 1000 / 30);
+    };
+    step();
+  });
+  rec.stop(); await stopped;
+  stream.getTracks().forEach(t => t.stop());
+  const mime = type.split(';')[0], ext = mime === 'video/mp4' ? 'mp4' : 'webm';
+  const blob = new Blob(chunks, { type: mime });
+  return { blob, name: `flipbook.${ext}`, kind: 'video', info: `${ext.toUpperCase()}, ${(dur / 1000).toFixed(1)} s, ${kb(blob.size)}` };
+}
+
+/* minimal ZIP writer (stored, no compression; PNGs are already compressed) */
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zipBytes(files) {
+  const now = new Date();
+  const dosT = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const dosD = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  const o = new ByteOut(), cd = new ByteOut();
+  const u32 = (b, v) => { b.u16(v & 0xFFFF); b.u16((v >>> 16) & 0xFFFF); };
+  const enc = new TextEncoder();
+  for (const f of files) {
+    const nm = enc.encode(f.name), crc = crc32(f.data), sz = f.data.length, off = o.n;
+    u32(o, 0x04034b50); o.u16(20); o.u16(0); o.u16(0); o.u16(dosT); o.u16(dosD); u32(o, crc); u32(o, sz); u32(o, sz); o.u16(nm.length); o.u16(0); o.bytes(nm); o.bytes(f.data);
+    u32(cd, 0x02014b50); cd.u16(20); cd.u16(20); cd.u16(0); cd.u16(0); cd.u16(dosT); cd.u16(dosD); u32(cd, crc); u32(cd, sz); u32(cd, sz); cd.u16(nm.length); cd.u16(0); cd.u16(0); cd.u16(0); cd.u16(0); u32(cd, 0); u32(cd, off); cd.bytes(nm);
+  }
+  const cdOff = o.n, cdb = cd.out();
+  o.bytes(cdb);
+  u32(o, 0x06054b50); o.u16(0); o.u16(0); o.u16(files.length); o.u16(files.length); u32(o, cdb.length); u32(o, cdOff); o.u16(0);
+  return o.out().slice();
+}
+async function makeZip() {
+  const act = activeFrames(), files = [];
+  for (let k = 0; k < act.length; k++) {
+    const b = await canvasBlob(S.frameCanvases[act[k]]);
+    files.push({ name: `frame-${String(k + 1).padStart(2, '0')}.png`, data: new Uint8Array(await b.arrayBuffer()) });
+  }
+  const bytes = zipBytes(files);
+  return { blob: new Blob([bytes], { type: 'application/zip' }), name: 'flipbook-frames.zip', kind: 'zip', info: `${files.length} PNGs at ${S.size} \u00d7 ${S.size}, ${kb(bytes.length)}` };
+}
+async function makeStrip() {
+  const act = activeFrames(), s = S.size;
+  const per = Math.min(act.length, 10), rowsN = Math.ceil(act.length / per);
+  const c = document.createElement('canvas'); c.width = s * per; c.height = s * rowsN;
+  const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  act.forEach((f, k) => x.drawImage(S.frameCanvases[f], (k % per) * s, Math.floor(k / per) * s));
+  const blob = await canvasBlob(c);
+  return { blob, name: 'flipbook-sprites.png', kind: 'img', info: `${act.length} frames in one ${c.width} \u00d7 ${c.height} PNG${rowsN > 1 ? `, ${per} per row` : ''}, ${kb(blob.size)}` };
+}
+const MAKERS = { gif: makeGif, video: makeVideo, zip: makeZip, strip: makeStrip };
+
+$('make').onclick = async () => {
+  if (!S.frames.length) return;
+  const btn = $('make');
+  btn.disabled = true; btn.textContent = 'Making\u2026';
+  invalidateExport();
+  await new Promise(r => setTimeout(r, 20));
+  try {
+    out = await MAKERS[fmt]();
+    out.url = URL.createObjectURL(out.blob);
+    const view = $('outView');
+    if (out.kind === 'img') {
+      const im = document.createElement('img'); im.src = out.url; im.alt = 'Your exported animation'; view.append(im);
+    } else if (out.kind === 'video') {
+      const v = document.createElement('video'); v.src = out.url; v.controls = true; v.loop = true; v.muted = true; v.playsInline = true; v.autoplay = true; view.append(v);
+    }
+    view.classList.toggle('hidden', out.kind === 'zip');
+    $('outInfo').textContent = out.info;
+    $('outSave').textContent = 'Save ' + out.name.split('.').pop().toUpperCase();
+    $('outSave').classList.toggle('hidden', !downloads);
+    const hint = $('outHint');
+    hint.textContent = out.kind === 'img' ? 'Long-press (or right-click) the image to save it.'
+      : out.kind === 'video' ? 'Use the video\u2019s menu, or long-press it, to save.'
+      : 'Saving a ZIP isn\u2019t available in this view. Try GIF or sprite strip instead.';
+    hint.classList.toggle('hidden', !!downloads);
+    $('result').classList.remove('hidden');
+  } catch (err) {
+    $('outInfo').textContent = (err && err.message && err.message.length > 20) ? err.message : 'The export failed. Try a smaller size.';
+  }
+  btn.disabled = false; btn.textContent = FORMATS[fmt].make;
+};
+$('outSave').onclick = () => { if (out) offerSave(out.name, out.blob, $('outHint')); };
+setFormat('gif');
+
+/* ---------- Hero demo ---------- */
+(function demo() {
+  const ns = 'http://www.w3.org/2000/svg';
+  const ball = t => { const x = 18 + 64 * t, y = 76 - 54 * Math.abs(Math.cos(Math.PI * 1.5 * t)); return { x, y, sq: y > 72 }; };
+  const sheet = $('demoSheet'), play = $('demoPlay');
+  const cellS = 50, gap = 6;
+  const hl = document.createElementNS(ns, 'rect');
+  hl.setAttribute('width', cellS + 4); hl.setAttribute('height', cellS + 4);
+  hl.setAttribute('fill', 'none'); hl.setAttribute('stroke', '#CF3B2A'); hl.setAttribute('stroke-width', '2.5'); hl.setAttribute('rx', '2');
+  const mk = (tag, attrs, parent) => { const el = document.createElementNS(ns, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); parent.append(el); return el; };
+  for (let i = 0; i < 9; i++) {
+    const r = Math.floor(i / 3), c = i % 3, x0 = 4 + c * (cellS + gap), y0 = 4 + r * (cellS + gap), s = cellS / 100;
+    mk('rect', { x: x0, y: y0, width: cellS, height: cellS, fill: '#fff', stroke: '#b9c3c8', 'stroke-width': 1 }, sheet);
+    const b = ball(i / 8);
+    mk('line', { x1: x0 + 6, x2: x0 + cellS - 6, y1: y0 + 86 * s, y2: y0 + 86 * s, stroke: '#23272A', 'stroke-width': 1 }, sheet);
+    mk('ellipse', { cx: x0 + b.x * s, cy: y0 + (b.sq ? b.y + 3 : b.y) * s, rx: (b.sq ? 11 : 8) * s, ry: (b.sq ? 6 : 8) * s, fill: '#CF3B2A', stroke: '#23272A', 'stroke-width': 1 }, sheet);
+  }
+  sheet.append(hl);
+  mk('line', { x1: 8, x2: 92, y1: 86, y2: 86, stroke: '#23272A', 'stroke-width': 2 }, play);
+  const pb = mk('ellipse', { fill: '#CF3B2A', stroke: '#23272A', 'stroke-width': 2 }, play);
+  const show = i => {
+    const r = Math.floor(i / 3), c = i % 3;
+    hl.setAttribute('x', 2 + c * (cellS + gap)); hl.setAttribute('y', 2 + r * (cellS + gap));
+    const b = ball(i / 8);
+    pb.setAttribute('cx', b.x); pb.setAttribute('cy', b.sq ? b.y + 3 : b.y);
+    pb.setAttribute('rx', b.sq ? 11 : 8); pb.setAttribute('ry', b.sq ? 6 : 8);
+  };
+  let i = 0;
+  show(0);
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(() => { i = (i + 1) % 9; show(i); }, 125);
+})();
+
+setLayout('3x3');
+
+</script>
+</body>
+</html>

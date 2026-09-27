@@ -1,0 +1,1618 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Handwriting font maker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --paper:#FBFCFE; --ink:#1F2B45; --muted:#5D6B82; --rule:#C9D8EA; --rule-strong:#9FB6D3; --margin:#D2475A; --margin-ink:#fff; --field:#fff; --tile:#fff;
+  --serif:"Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --sans:"Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --paper:#131926; --ink:#E6EBF4; --muted:#9AA7BD; --rule:#2B3850; --rule-strong:#44587A; --margin:#EE6878; --margin-ink:#1a0d10; --field:#1B2233; --tile:#F7F9FC; color-scheme:dark; }
+}
+:root[data-theme="dark"]{ --paper:#131926; --ink:#E6EBF4; --muted:#9AA7BD; --rule:#2B3850; --rule-strong:#44587A; --margin:#EE6878; --margin-ink:#1a0d10; --field:#1B2233; --tile:#F7F9FC; color-scheme:dark; }
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.55 var(--sans);-webkit-text-size-adjust:100%}
+.sheet{max-width:720px;margin:0 auto;padding:0 20px 64px 64px;position:relative}
+.sheet::before{content:"";position:absolute;top:0;bottom:0;left:46px;width:2px;background:var(--margin);opacity:.55}
+@media (max-width:520px){ .sheet{padding-left:48px;padding-right:16px} .sheet::before{left:34px} }
+
+header{padding:48px 0 12px}
+.title-wrap{padding:10px 0 6px}
+h1{font:400 clamp(44px,9vw,76px)/1.1 var(--serif);margin:0;letter-spacing:-.01em;
+  background:linear-gradient(to bottom,transparent 0,transparent .36em,transparent .36em) ,
+  linear-gradient(to bottom,transparent calc(.84em),var(--rule-strong) calc(.84em),var(--rule-strong) calc(.84em + 2px),transparent calc(.84em + 2px));
+  background-size:100% 1.1em;background-repeat:repeat-y}
+h1.mine{font-family:"hf-mine",var(--serif);line-height:1.1}
+.lede{max-width:34em;color:var(--muted);margin:14px 0 0}
+
+section.step{position:relative;padding:36px 0 8px;border-top:1px solid var(--rule)}
+.num{position:absolute;left:-52px;top:34px;width:34px;text-align:center;font:400 34px/1 var(--serif);color:var(--margin)}
+@media (max-width:520px){ .num{left:-44px;width:26px;font-size:28px} }
+h2{font:400 34px/1.15 var(--serif);margin:0 0 6px}
+p{margin:0 0 14px}
+.muted{color:var(--muted)}
+.small{font-size:15px}
+
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:16px 0}
+button,.btn{font:700 16px/1 var(--sans);color:var(--ink);background:transparent;border:1.5px solid var(--ink);border-radius:999px;padding:13px 20px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-height:46px}
+button.primary,.btn.primary{background:var(--margin);border-color:var(--margin);color:var(--margin-ink)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,.btn:focus-within,input:focus-visible,textarea:focus-visible,.tile:focus-visible{outline:3px solid var(--rule-strong);outline-offset:2px}
+.btn input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.btn{position:relative}
+
+.check{display:flex;gap:10px;align-items:flex-start;margin:6px 0 4px;cursor:pointer}
+.check input{width:20px;height:20px;margin-top:3px;accent-color:var(--margin)}
+
+.thumbs{display:flex;gap:12px;overflow-x:auto;padding:6px 2px 10px}
+.thumbs figure{margin:0;flex:0 0 auto}
+.thumbs svg{width:132px;height:auto;display:block;border:1px solid var(--rule);box-shadow:2px 3px 0 var(--rule);background:#fff}
+.thumbs figcaption{font-size:13px;color:var(--muted);margin-top:6px;max-width:132px}
+
+details{margin:6px 0 12px;border-left:2px solid var(--rule);padding-left:14px}
+summary{cursor:pointer;font-weight:700}
+details ul{margin:8px 0 4px;padding-left:18px}
+details li{margin-bottom:4px}
+details ol{margin:8px 0 8px;padding-left:20px}
+
+.pages{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
+.pages button{border-radius:12px;padding:10px 14px;flex-direction:column;align-items:flex-start;gap:4px;border-width:1.5px;border-color:var(--rule-strong);min-width:120px}
+.pages button[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.pages .st{font-weight:400;font-size:13px;color:var(--muted)}
+.pages .st.done{color:var(--margin)}
+
+#editorWrap{margin-top:8px}
+#editCanvas{display:block;width:100%;max-width:100%;touch-action:none;border-radius:6px;background:#222}
+.status{min-height:1.5em;font-weight:700}
+
+.controls{display:grid;gap:14px;margin:18px 0}
+.field label{display:flex;justify-content:space-between;font-weight:700;font-size:15px;margin-bottom:4px}
+.field label span{font-weight:400;color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--margin)}
+input[type=text]{width:100%;font:18px var(--sans);padding:11px 12px;border:1.5px solid var(--rule-strong);border-radius:10px;background:var(--field);color:var(--ink)}
+
+.gallery{margin:10px 0 6px}
+.tile{position:relative;background:var(--tile);border:1px solid var(--rule);border-radius:6px;aspect-ratio:.72;padding:0;min-height:0;display:block;cursor:pointer}
+.tile canvas{width:100%;height:100%;display:block}
+.tile .lbl{position:absolute;left:4px;top:2px;font:11px var(--sans);color:#7c8aa3}
+.tile.missing{background:transparent;border-style:dashed}
+.tile.missing .lbl{color:var(--muted);font-size:14px;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center}
+.tile.off{opacity:.28}
+.tile.off::after{content:"";position:absolute;left:10%;right:10%;top:50%;border-top:2px solid var(--margin);transform:rotate(-35deg)}
+
+.specimen{margin:18px 0;border-top:2px solid var(--rule-strong);border-bottom:1px dashed var(--rule)}
+.specimen textarea{width:100%;min-height:300px;border:0;background:transparent;color:var(--ink);font:clamp(30px,7vw,44px)/1.35 "hf-mine",var(--serif);padding:12px 0;resize:vertical}
+.empty{padding:18px;border:1.5px dashed var(--rule-strong);border-radius:10px;color:var(--muted)}
+
+.howto{margin:18px 0 8px;padding:18px 0 4px;border-top:1px dashed var(--rule)}
+h3{font:400 26px/1.2 var(--serif);margin:0 0 8px}
+.howto h3:not(:first-child){margin-top:22px}
+.linekey svg{display:block;width:100%;max-width:520px;height:auto;border-radius:6px;border:1px solid var(--rule)}
+.legend{list-style:none;padding:0;margin:14px 0}
+.legend li{margin:0 0 8px;padding-left:14px;border-left:3px solid var(--rule-strong)}
+.examples{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 8px}
+@media (min-width:640px){.examples{grid-template-columns:repeat(8,1fr)}}
+.examples figure{margin:0}
+.examples.cjk{grid-template-columns:repeat(4,1fr);max-width:420px}
+select{font:16px var(--sans);padding:11px 12px;border:1.5px solid var(--rule-strong);border-radius:10px;background:var(--field);color:var(--ink);width:100%;margin-top:4px}
+.progress{display:flex;align-items:center;gap:10px;margin:12px 0 10px}
+.progress .bar{flex:1;height:8px;border-radius:4px;background:var(--rule);overflow:hidden}
+.progress .bar div{height:100%;background:var(--margin);width:0}
+.namefield{margin:18px 0 0;padding:14px;border:1.5px solid var(--rule-strong);border-radius:12px}
+.namefield.need{border-color:var(--margin)}
+.range{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 0}
+.range input{width:72px;font:16px var(--sans);padding:9px 10px;border:1.5px solid var(--rule-strong);border-radius:10px;background:var(--field);color:var(--ink)}
+.gpage{border-left:0;padding-left:0;margin:4px 0;border-bottom:1px solid var(--rule)}
+.gpage summary{padding:10px 0;font-weight:700}
+.gpage .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:6px;margin:4px 0 12px}
+fieldset.sets{border:0;padding:0;margin:10px 0 8px}
+fieldset.sets legend{font-weight:700;margin-bottom:6px;padding:0}
+.examples svg{display:block;width:100%;height:auto;border-radius:4px}
+.examples figcaption{font-size:12.5px;line-height:1.3;color:var(--muted);margin-top:4px}
+#printPages{display:none}
+@media print{
+  @page{size:letter;margin:0}
+  body{background:#fff}
+  .sheet{display:none}
+  #printPages{display:block}
+  #printPages svg{width:8.5in;height:11in;display:block;page-break-after:always;break-after:page}
+}
+@media (prefers-reduced-motion:no-preference){ h1.mine{animation:ink .7s ease-out} @keyframes ink{from{opacity:0;filter:blur(3px)}to{opacity:1;filter:none}} }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header>
+    <div class="title-wrap"><h1 id="heroTitle">Turn your handwriting into a font</h1></div>
+    <p class="lede">Print the sheets, fill each box with a dark pen, photograph the pages, and download a font you can install anywhere.</p>
+  </header>
+
+  <section class="step" aria-labelledby="h-print">
+    <div class="num" aria-hidden="true">1</div>
+    <h2 id="h-print">Print the sheets</h2>
+    <p class="muted">Pick your scripts, then write one character in each box under its printed label. Leave a box empty to skip that character.</p>
+    <fieldset class="sets"><legend>Which characters do you want in your font?</legend><div id="sets"></div></fieldset>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="range" id="rangeRow" hidden>
+      <span>Print pages</span> <input type="number" id="rangeFrom" min="1" value="1" inputmode="numeric" aria-label="First page"> <span>to</span> <input type="number" id="rangeTo" min="1" value="1" inputmode="numeric" aria-label="Last page">
+      <span class="muted small">Print a batch at a time if you like. Page 1 comes with the how-to guide.</span>
+    </div>
+    <div class="row">
+      <button class="primary" id="dlPdf">Download sheets (PDF)</button>
+      <button id="printBtn">Print</button>
+    </div>
+    <div class="howto">
+      <h3>How to fill in the boxes</h3>
+      <p>Each box has four guide lines. Here they are with a few letters written across them:</p>
+      <div class="linekey" id="lineKey"></div>
+      <ul class="legend">
+        <li><b>Capitals line</b> (top, dotted). Capitals, numbers and tall letters like b, d, h, k, l reach up to it.</li>
+        <li><b>Small-letters line</b> (dashed). The top of a, c, e, m, x and other short letters.</li>
+        <li><b>Baseline</b> (solid). Every letter sits on it.</li>
+        <li><b>Tails line</b> (bottom, dotted). The tails of g, j, p, q and y reach down to it.</li>
+      </ul>
+      <p class="muted small">The lines are guides, not limits. Write the way you normally do; only the edge of the box is a hard limit.</p>
+      <h3>Examples, one per box</h3>
+      <div class="examples" id="examples"></div>
+      <div id="cjkHowto" hidden>
+        <h3>Korean, Japanese and Chinese boxes</h3>
+        <p>These boxes have a dotted square instead of lines. Write each character so it fills the square, the way you would on manuscript paper.</p>
+        <ul class="legend">
+          <li><b>Korean:</b> write each consonant and vowel (ㄱ, ㅏ, ㅘ…) on its own, full size. The app shrinks and arranges them into all 11,172 syllables, so 한, 글 and 값 come out without you writing them.</li>
+          <li><b>Chinese:</b> the boxes have a rice-grid (米字格) guide. The pages run in frequency order, so the most useful characters come first, and a font you compile partway through already covers the most common ones. Read each page as you finish it; your progress is saved.</li>
+          <li><b>Japanese:</b> write each kana once. Write the ゛ and ゜ marks where they would sit on が or ぱ, in the top-right corner. The app adds them to the right kana and builds small kana like ゃ and ッ for you.</li>
+        </ul>
+        <div class="examples cjk" id="cjkExamples"></div>
+      </div>
+      <p class="muted small" style="margin-top:14px">The PDF includes this guide as its first page.</p>
+    </div>
+    <details>
+      <summary>More tips for clean letters</summary>
+      <ul>
+        <li>Use a black felt-tip or gel pen. Pencil is usually too faint.</li>
+        <li>Stay inside the box and keep the black corner squares clean.</li>
+        <li>Print at 100% or “fit to page” on Letter or A4. Both work.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="step" aria-labelledby="h-scan">
+    <div class="num" aria-hidden="true">2</div>
+    <h2 id="h-scan">Photograph each page</h2>
+    <p class="muted">Lay the page flat in even light, hold the phone straight above it, and fit all four black squares in the frame.</p>
+    <p class="muted small">Sheets printed from this version carry a small code under the title, so the app recognizes each page on its own.</p>
+    <div class="pages" id="pageButtons" role="group" aria-label="Choose a page"></div>
+    <div id="pageSelectWrap" hidden>
+      <div class="progress"><div class="bar"><div id="pageBar"></div></div><span id="pageProgress" class="small"></span></div>
+      <label class="small" for="pageSelect">Page in this photo</label>
+      <select id="pageSelect"></select>
+    </div>
+    <div class="row">
+      <label class="btn primary">Take photo<input type="file" accept="image/*" capture="environment" id="camInput"></label>
+      <label class="btn">Choose a photo<input type="file" accept="image/*" id="libInput"></label>
+    </div>
+    <div id="editorWrap" hidden>
+      <p class="small">Check that each circle sits on a black corner square. Drag any that missed.</p>
+      <canvas id="editCanvas" aria-label="Photo of the page with four adjustable corner handles"></canvas>
+      <div class="row">
+        <button id="rotateBtn">Rotate photo</button>
+        <button class="primary" id="readBtn">Read page</button>
+      </div>
+    </div>
+    <p class="status" id="scanStatus" role="status" aria-live="polite"></p>
+    <p class="small muted" id="syncStatus"></p>
+  </section>
+
+  <section class="step" aria-labelledby="h-build">
+    <div class="num" aria-hidden="true">3</div>
+    <h2 id="h-build">Tune and download</h2>
+    <div id="buildEmpty" class="empty">Your letters appear here after you read a page.</div>
+    <div id="buildArea" hidden>
+      <div class="controls">
+        <div class="field"><label for="weight">Ink weight <span id="weightVal">As written</span></label><input type="range" id="weight" min="-2" max="2" step="1" value="0"></div>
+        <div class="field"><label for="pickup">Faint-stroke pickup <span id="pickupVal"></span></label><input type="range" id="pickup" min="0" max="100" step="1" value="55"></div>
+        <div class="field"><label for="spacing">Letter spacing <span id="spacingVal"></span></label><input type="range" id="spacing" min="0" max="120" step="2" value="30"></div>
+        <p class="small muted" id="restoredNote" hidden>Weight and pickup only change pages photographed during this visit. To adjust an earlier page, photograph it again.</p>
+      </div>
+      <p class="small muted">Open a page to check its characters. Tap one to leave it out of the font; leaving out a Korean jamo also drops the syllables that use it.</p>
+      <div class="gallery" id="gallery"></div>
+      <div class="specimen"><textarea id="previewText" spellcheck="false" aria-label="Type to preview your font">Sphinx of black quartz, judge my vow!
+Bonjour, ça va? 0123456789</textarea></div>
+      <div class="field namefield">
+        <label for="fontName">Name your font</label>
+        <input type="text" id="fontName" value="" maxlength="40" placeholder="For example, Maple Street Hand" autocomplete="off">
+        <p class="small muted" id="nameHelp">This is the name you’ll pick from font menus in Pages, Keynote and other apps. It’s built into the font and the iPhone profile.</p>
+      </div>
+      <div class="row">
+        <button class="primary" id="dlIOS">Download for iPhone and iPad</button>
+        <button class="primary" id="dlFont">Download font (.ttf)</button>
+        <button id="resetBtn">Start over</button>
+      </div>
+      <details class="ios" id="iosHelp">
+        <summary>Installing on iPhone or iPad</summary>
+        <ol>
+          <li>Tap <b>Download for iPhone and iPad</b> and save the .zip to Files.</li>
+          <li>In the Files app, tap the .zip. It unpacks into a .mobileconfig file.</li>
+          <li>Tap the .mobileconfig file. iOS says “Profile Downloaded”.</li>
+          <li>Open Settings, tap <b>Profile Downloaded</b> near the top (or General → VPN &amp; Device Management), then tap Install.</li>
+          <li>Your font now appears in apps that let you pick fonts, like Pages, Keynote, Notes documents and many drawing apps.</li>
+        </ol>
+        <p class="small muted">iOS will label the profile “Not Signed”. That’s expected for a profile you made yourself. To update the font later, install the new file; it replaces the old one with the same name. To remove it, go to General → VPN &amp; Device Management.</p>
+      </details>
+      <details class="ios" id="androidHelp">
+        <summary>Installing on Android</summary>
+        <p class="small">Android has no profile file like iPhone. The .ttf font file is what you install. How far it reaches depends on your phone.</p>
+        <ol>
+          <li>Tap the <b>.ttf</b> download button and save the file to your Downloads folder.</li>
+          <li><b>In apps that accept your own fonts</b> (this works on every Android phone): open the app’s font or text menu, choose to add or import a font, and pick the .ttf. Many drawing, photo-text and design apps offer this, such as Phonto and ibis Paint X.</li>
+          <li><b>Across the whole phone</b> (menus, messages, notifications): stock Android, including Pixel phones, doesn’t allow custom system fonts. On Samsung, Xiaomi, Oppo, Vivo and Realme phones, the free app zFont 3 can apply a .ttf: open its Local tab, pick your file and follow its steps.</li>
+        </ol>
+        <p class="small muted">zFont 3 is made by an independent developer, not Google or your phone’s maker. Recent Samsung updates tightened font rules, and zFont’s workaround for One UI 8 and later is still experimental, so back up your phone first. Characters your font doesn’t include show in the phone’s normal font.</p>
+      </details>
+      <p class="small muted" id="fontCount"></p>
+      <details class="ios">
+        <summary>Backup</summary>
+        <p class="small">Every page you read is saved in this browser as you go. Browsers can clear saved data, so keep a backup file too, especially on a long project. A backup also moves your work to another device.</p>
+        <div class="row"><button id="backupBtn">Download backup</button><label class="btn">Restore a backup<input type="file" accept=".json,application/json" id="restoreInput"></label></div>
+        <p class="status small" id="backupStatus" role="status"></p>
+      </details>
+      <p class="status" id="fontStatus" role="status" aria-live="polite"></p>
+    </div>
+  </section>
+</div>
+<div id="printPages" aria-hidden="true"></div>
+
+<script>
+// CORE START
+const PAGE_W = 850, PAGE_H = 1100;             // page units = 1/100 inch (US Letter)
+const MS = 40;                                   // marker size
+const MARKERS = [[35, 35], [775, 35], [775, 1025], [35, 1025]]; // TL TR BR BL
+const MARK_CENTERS = MARKERS.map(([x, y]) => [x + MS / 2, y + MS / 2]);
+const COLS = 8, GX = 60, GY = 110, CW = 91.25, RH = 150, LABEL = 16, BOXH = 130, INSET = 3;
+const BOXW = CW - 2 * INSET;
+const S = 2.5;                                   // sampled pixels per page unit
+const BW = Math.round(BOXW * S), BH = Math.round(BOXH * S);
+const UPP = 1250 / BH;                           // font units per sampled pixel
+const TOP = 900;                                 // font units at top of box
+const MARGIN_PX = 6;
+const gy = u => (TOP - u) * BOXH / 1250;         // font units -> offset from box top
+
+const INI = [...'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'];
+const MED = [...'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ'];
+const FIN = ['', ...'ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ'];
+const HIRA = [...'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん'];
+const KATA = [...'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン'];
+const HANZI = [...'的一是不了在人有我他这个们中来上大为和国地到以说时要就出会可也你对生能而子那得于着下自之年过发后作里用道行所然家种事成方多经么去法学如都同现当没动面起看定天分还进好小部其些主样理心她本前开但因只从想实日军者意无力它与长把机十民第公此已工使情明性知全三又关点正业外将两高间由问很最重并物手应战向头文体政美相见被利什二等产或新己制身果加西斯月话合回特代内信表化老给世位次度门任常先海通教儿原东声提立及比员解水名真论处走义各入几口认条平系气题活尔更别打女变四神总何电数安少报才结反受目太量再感建务做接必场件计管期市直德资命山金指克许统区保至队形社便空决治展马科司五基眼书非则听白却界达光放强即像难且权思王象完设式色路记南品住告类求据程北边死张该交规万取拉格望觉术领共确传师观清今切院让识候带导争运笑飞风步改收根干造言联持组每济车亲极林服快办议往元英士证近失转夫令准布始怎呢存未远叫台单影具罗字爱击流备兵连调深商算质团集百需价花党华城石级整府离况亚请技际约示复病息究线似官火断精满支视消越器容照须九增研写称企八功吗包片史委乎查轻易早曾除农找装广显吧阿李标谈吃图念六引历首医局突专费号尽另周较注语仅考落青随选列武红响虽推势参希古众构房半节土投某案黑维革划敌致陈律足态护七兴派孩验责营星够章音跟志底站严巴例防族供效续施留讲型料终答紧黄绝奇察母京段依批群项故按河米围江织害斗双境客纪采举杀攻父苏密低朝友诉止细愿千值仍男钱破网热助倒育属坐帝限船脸职速刻乐否刚威毛状率甚独球般普怕弹校苦创假久错承印晚兰试股拿脑预谁益阳若哪微尼继送急血惊伤素药适波夜省初喜卫源食险待述陆习置居劳财环排福纳欢雷警获模充负云停木游龙树疑层冷洲冲射略范竟句室异激汉村哈策演简卡罪判担州静退既衣您宗积余痛检差富灵协角占配征修皮挥胜降阶审沉坚善妈刘读啊超免压银买皇养伊怀执副乱抗犯追帮宣佛岁航优怪香著田铁控税左右份穿艺背阵草脚概恶块顿敢守酒岛托央户烈洋哥索胡款靠评版宝座释景顾弟登货互付伯慢欧换闻危忙核暗姐介坏讨丽良序升监临亮露永呼味野架域沙掉括舰鱼杂误湾吉减编楚肯测败屋跑梦散温困剑渐封救贵枪缺楼县尚毫移娘朋画班智亦耳恩短掌恐遗固席松秘谢鲁遇康虑幸均销钟诗藏赶剧票损忽巨炮旧端探湖录叶春乡附吸予礼港雨呀板庭妇归睛饭额含顺输摇招婚脱补谓督毒油疗旅泽材灭逐莫笔亡鲜词圣择寻厂睡博勒烟授诺伦岸奥唐卖俄炸载洛健堂旁宫喝借君禁阴园谋宋避抓荣姑孙逃牙束跳顶'];
+const HZ_PAGES = [];
+for (let i = 0; i < HANZI.length; i += 48) HZ_PAGES.push('hz' + String(i / 48 + 1).padStart(2, '0'));
+const PAGE_DEFS = {
+  latin1: { title: 'capitals, numbers and punctuation', kind: 'latin', chars: [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?\'"-():;&'] },
+  latin2: { title: 'lowercase and symbols', kind: 'latin', chars: [...'abcdefghijklmnopqrstuvwxyz@#$%*+=/\\_[]{}<>~^|`€£'] },
+  accents: { title: 'accented letters', kind: 'latin', chars: [...'áàâäãåéèêëíìîïóòôöõúùûüñçß¿¡«»ÁÀÉÈÇÑÖÜÄÔÊÂÎÛœŒ°–'] },
+  hangul: { title: 'Hangul consonants and vowels', kind: 'cjk', chars: [...INI, ...MED] },
+  hira: { title: 'hiragana', kind: 'cjk', chars: HIRA },
+  kata: { title: 'katakana', kind: 'cjk', chars: [...KATA, 'ー'] },
+  jpunct: { title: 'Japanese marks and punctuation', kind: 'cjk', chars: [...'゛゜、。「」『』・〜！？'] },
+  zhpunct: { title: 'Chinese punctuation', kind: 'cjk', chars: [...'，。、！？：；“”‘’《》（）…—'] },
+};
+HZ_PAGES.forEach((id, i) => {
+  const a = i * 48, chars = HANZI.slice(a, a + 48);
+  PAGE_DEFS[id] = { title: `Chinese characters ${a + 1}–${a + chars.length}`, kind: 'cjk', grid: 'mi', chars };
+});
+// numeric id printed on each sheet so a photo identifies its own page
+const PAGE_CODE = { latin1: 1, latin2: 2, accents: 3, hangul: 4, hira: 5, kata: 6, jpunct: 7, zhpunct: 8 };
+HZ_PAGES.forEach((id, i) => { PAGE_CODE[id] = 100 + i; });
+const CODE_PAGE = Object.fromEntries(Object.entries(PAGE_CODE).map(([k, v]) => [v, k]));
+const CODE_X0 = 305, CODE_Y0 = 80, CODE_CELL = 10, CODE_STEP = 15;
+function codeBits(n) {
+  const d = Array.from({ length: 11 }, (_, i) => (n >> (10 - i)) & 1), pc = d.reduce((s, b) => s + b, 0) % 8;
+  return [1, ...d, (pc >> 2) & 1, (pc >> 1) & 1, pc & 1, 1];
+}
+const SETS = [
+  { id: 'latin', label: 'English letters, numbers and punctuation', pages: ['latin1', 'latin2'] },
+  { id: 'accents', label: 'Accented letters (é, ñ, ç, ü, ß, « »)', pages: ['accents'] },
+  { id: 'hangul', label: 'Korean Hangul (writes all 11,172 syllables from 40 jamo)', pages: ['hangul'] },
+  { id: 'hira', label: 'Japanese hiragana', pages: ['hira'] },
+  { id: 'kata', label: 'Japanese katakana', pages: ['kata'] },
+  { id: 'hanzi', label: `Chinese: the ${HANZI.length.toLocaleString('en-US')} most common characters (${HZ_PAGES.length} pages)`, pages: HZ_PAGES },
+];
+function activePages(sets) {
+  const ids = SETS.filter(s => sets.includes(s.id)).flatMap(s => s.pages);
+  if (sets.includes('hira') || sets.includes('kata')) ids.push('jpunct');
+  if (sets.includes('hanzi')) ids.push('zhpunct');
+  return ids;
+}
+const CJK_CHARS = new Set(Object.values(PAGE_DEFS).filter(p => p.kind === 'cjk').flatMap(p => p.chars));
+// square writing frame inside a box (page units, relative to box)
+const FR = { x0: 4.6, x1: 80.6, y0: 22, y1: 98 };
+
+function boxRect(i) {
+  const c = i % COLS, r = Math.floor(i / COLS);
+  const x = GX + c * CW + INSET, y0 = GY + r * RH;
+  return { x, y: y0 + LABEL, labelY: y0 + 12 };
+}
+
+function pageLayout(id, index, total) {
+  const P = PAGE_DEFS[id], items = [];
+  MARKERS.forEach(([x, y]) => items.push({ t: 'rect', x, y, w: MS, h: MS, fill: '#000000' }));
+  items.push({ t: 'text', x: 425, y: 62, pt: 12, str: `Page ${index + 1} of ${total}: ${P.title}`, anchor: 'middle', color: '#222222' });
+  codeBits(PAGE_CODE[id]).forEach((b, i) => { if (b) items.push({ t: 'rect', x: CODE_X0 + i * CODE_STEP, y: CODE_Y0, w: CODE_CELL, h: CODE_CELL, fill: '#000000' }); });
+  items.push({ t: 'text', x: 425, y: 1050, pt: 8, str: P.kind === 'cjk'
+    ? 'One character per box, dark pen. Fill the dotted square. Keep all four black squares in the photo.'
+    : 'One character per box, dark pen. Sit letters on the solid line. Keep all four black squares in the photo.', anchor: 'middle', color: '#555555' });
+  P.chars.forEach((ch, i) => {
+    const b = boxRect(i);
+    items.push({ t: 'text', x: b.x + 2, y: b.labelY + (P.grid ? 1.5 : 0), pt: P.grid ? 11 : 9, str: ch, anchor: 'start', color: '#222222', cjk: CJK_CHARS.has(ch) });
+    items.push({ t: 'srect', x: b.x, y: b.y, w: BOXW, h: BOXH, color: '#cfd9e4', lw: 0.8 });
+    if (P.kind === 'cjk') items.push(...frameLines(b.x, b.y, 1, PAL_PRINT, P.grid === 'mi'));
+    else {
+      const line = (u, color, lw, dash) => items.push({ t: 'line', x1: b.x, y1: b.y + gy(u), x2: b.x + BOXW, y2: b.y + gy(u), color, lw, dash });
+      line(700, '#dbe4ef', 0.7, [1, 2]);
+      line(470, '#c5d5e8', 0.8, [3, 2]);
+      line(0, '#b9cbe0', 1.1, null);
+      line(-250, '#dbe4ef', 0.7, [1, 2]);
+    }
+  });
+  return items;
+}
+function frameLines(x, y, s, pal, diag) {
+  const L = (x1, y1, x2, y2, color, dash) => ({ t: 'line', x1: x + x1 * s, y1: y + y1 * s, x2: x + x2 * s, y2: y + y2 * s, color, lw: 0.8 * s, dash: dash.map(v => v * s) });
+  const cx = (FR.x0 + FR.x1) / 2, cy = (FR.y0 + FR.y1) / 2;
+  return [
+    L(FR.x0, FR.y0, FR.x1, FR.y0, pal.xh, [3, 2]), L(FR.x1, FR.y0, FR.x1, FR.y1, pal.xh, [3, 2]),
+    L(FR.x1, FR.y1, FR.x0, FR.y1, pal.xh, [3, 2]), L(FR.x0, FR.y1, FR.x0, FR.y0, pal.xh, [3, 2]),
+    L(cx, FR.y0, cx, FR.y1, pal.cap, [1, 2]), L(FR.x0, cy, FR.x1, cy, pal.cap, [1, 2]),
+    ...(diag ? [L(FR.x0, FR.y0, FR.x1, FR.y1, pal.cap, [1, 3]), L(FR.x1, FR.y0, FR.x0, FR.y1, pal.cap, [1, 3])] : []),
+  ];
+}
+
+// ---------- worked examples ----------
+const GB = 93.6, GC = 20.8, GX_ = 44.7, GD = 119.6;
+const ell = (cx, cy, rx, ry, n = 48) => Array.from({ length: n + 1 }, (_, i) => [cx + rx * Math.cos(i / n * 2 * Math.PI), cy + ry * Math.sin(i / n * 2 * Math.PI)]);
+const bez = (p0, p1, p2, p3, n = 18) => Array.from({ length: n + 1 }, (_, i) => { const t = i / n, u = 1 - t; return [0, 1].map(k => u * u * u * p0[k] + 3 * u * u * t * p1[k] + 3 * u * t * t * p2[k] + t * t * t * p3[k]); });
+const EXAMPLES = {
+  'H': [[[24, GC], [24, GB]], [[61, GC], [61, GB]], [[24, 57], [61, 57]]],
+  'd': [ell(38, 69.2, 15, 24.5), [[53, GC], [53, GB]]],
+  'x': [[[26, GX_], [58, GB]], [[58, GX_], [26, GB]]],
+  'g': [ell(40, 69.2, 15, 24.5), [[55, GX_], [55, 106], ...bez([55, 106], [55, 122], [30, 122], [26, 111]).slice(1)]],
+  '7': [[[26, GC], [60, GC], [36, GB]]],
+  ',': [{ dot: [44, 89, 4.5] }, [[47.5, 90], [46, 99], [39, 106]]],
+  '?': [[...bez([28, 33], [28, 14], [60, 14], [58, 35]), ...bez([58, 35], [57, 48], [43, 49], [43, 64]).slice(1), [43, 75]], { dot: [43, 89, 4] }],
+  'É': [[[58, GC], [28, GC], [28, GB], [58, GB]], [[28, 57], [52, 57]], [[38, 14], [50, 5]]],
+};
+const EXAMPLE_ORDER = ['H', 'd', 'x', 'g', '7', ',', '?', 'É'];
+const CJK_EXAMPLES = {
+  'ㄱ': [[[18, 34], [64, 34], ...bez([64, 34], [64, 62], [56, 80], [38, 92]).slice(1)]],
+  'ㅏ': [[[36, 27], [36, 94]], [[36, 58], [64, 58]]],
+  'ㅗ': [[[42, 46], [42, 72]], [[12, 72], [72, 72]]],
+  '゛': [[[60, 26], [65, 39]], [[69, 24], [74, 37]]],
+};
+const CJK_NOTES = { 'ㄱ': ['Fill the', 'dotted square'], 'ㅏ': ['Each jamo', 'full size'], 'ㅗ': ['Center it,', 'as written alone'], '゛': ['Marks go in the', 'top-right corner'] };
+const EXAMPLE_NOTES = {
+  'H': ['Capitals reach', 'the top line'], 'd': ['Tall strokes', 'reach it too'], 'x': ['Small letters stop', 'at the dashed line'],
+  'g': ['Tails drop to', 'the bottom line'], '7': ['Numbers are', 'capital height'], ',': ['Sits on the solid', 'line, tail dips'],
+  '?': ['Capital height,', 'dot on the line'], 'É': ['Accents go', 'above the top line'],
+};
+const PAL_PRINT = { cap: '#dbe4ef', xh: '#c5d5e8', base: '#b9cbe0', box: '#cfd9e4', ink: '#1F2B45', tag: '#555555' };
+const PAL_SHOW = { cap: '#8FA8C8', xh: '#8FA8C8', base: '#5F81AE', box: '#B9CBE0', ink: '#1F2B45', tag: '#5D6B82' };
+function inkItems(ch, x0, y0, s, ink) {
+  return (EXAMPLES[ch] || CJK_EXAMPLES[ch] || []).map(st => st.dot
+    ? { t: 'dot', cx: x0 + st.dot[0] * s, cy: y0 + st.dot[1] * s, r: st.dot[2] * s, color: ink }
+    : { t: 'stroke', pts: st.map(([x, y]) => [x0 + x * s, y0 + y * s]), lw: 3.4 * s, color: ink });
+}
+function guideLines(x0, y0, w, s, pal) {
+  const L = (y, color, lw, dash) => ({ t: 'line', x1: x0, y1: y0 + y * s, x2: x0 + w, y2: y0 + y * s, color, lw: lw * s, dash: dash && dash.map(v => v * s) });
+  return [L(GC, pal.cap, 0.8, [1, 2]), L(GX_, pal.xh, 0.9, [3, 2]), L(GB, pal.base, 1.3, null), L(GD, pal.cap, 0.8, [1, 2])];
+}
+// one example box exactly like the sheet: label above, box, guides, ink
+function exampleBoxItems(ch, x, y, s, pal) {
+  return [
+    { t: 'text', x: x + 2 * s, y: y + 12 * s, pt: 9 * s, str: ch, anchor: 'start', color: '#333333', cjk: !!CJK_EXAMPLES[ch] },
+    { t: 'srect', x, y: y + LABEL * s, w: BOXW * s, h: BOXH * s, color: pal.box, lw: 0.8 * s },
+    ...(CJK_EXAMPLES[ch] ? frameLines(x, y + LABEL * s, s, pal) : guideLines(x, y + LABEL * s, BOXW * s, s, pal)),
+    ...inkItems(ch, x, y + LABEL * s, s, pal.ink),
+  ];
+}
+// a strip of the four lines with a few letters written across it and a tag on each line
+function lineKeyItems(x, y, s, pal, tagPt) {
+  const letters = ['H', 'x', 'g', 'd'], W = 200, items = [];
+  items.push(...guideLines(x, y, W * s, s, pal));
+  letters.forEach((ch, i) => items.push(...inkItems(ch, x + (i * 50 + 25 - 42) * s, y, s, pal.ink)));
+  const tags = [[GC, 'capitals'], [GX_, 'small letters'], [GB, 'baseline'], [GD, 'tails']];
+  tags.forEach(([gyy, str]) => items.push({ t: 'text', x: x + (W + 6) * s, y: y + gyy * s + tagPt * 0.45, pt: tagPt * 72 / 100, str, anchor: 'start', color: pal.tag, bold: true }));
+  return items;
+}
+function guidePageLayout(withCJK) {
+  const items = [], pal = PAL_SHOW;
+  items.push({ t: 'text', x: 70, y: 95, pt: 22, str: 'How to fill in the sheets', anchor: 'start', color: '#1F2B45', bold: true });
+  items.push({ t: 'text', x: 70, y: 122, pt: 10.5, str: 'Keep this page as a reference. Only photograph the pages with black corner squares.', anchor: 'start', color: '#555555' });
+  items.push({ t: 'text', x: 70, y: 175, pt: 13, str: 'What the lines mean', anchor: 'start', color: '#1F2B45', bold: true });
+  items.push(...lineKeyItems(90, 195, 2.1, pal, 16));
+  items.push({ t: 'text', x: 70, y: 500, pt: 13, str: 'Examples', anchor: 'start', color: '#1F2B45', bold: true });
+  EXAMPLE_ORDER.forEach((ch, i) => {
+    const x = GX + i * CW + INSET, y = 515;
+    items.push(...exampleBoxItems(ch, x, y, 1, pal));
+    EXAMPLE_NOTES[ch].forEach((ln, k) => items.push({ t: 'text', x: x + BOXW / 2, y: y + LABEL + BOXH + 16 + k * 11, pt: 7, str: ln, anchor: 'middle', color: '#555555' }));
+  });
+  items.push({ t: 'text', x: 70, y: 745, pt: 13, str: 'Tips', anchor: 'start', color: '#1F2B45', bold: true });
+  ['Write each character once, in the box under its label. Leave a box blank to skip it.',
+   'Use a black felt-tip or gel pen. Pencil is usually too faint to read.',
+   'The dotted and dashed lines are guides, not limits. Only the box edge is a hard limit.',
+   'Write at your normal size and style. The font keeps your quirks, and that is the point.',
+   'Keep the black corner squares clean, and photograph each page flat, in even light.',
+  ].forEach((t, i) => items.push({ t: 'text', x: 70, y: 775 + i * 24, pt: 10.5, str: '•  ' + t, anchor: 'start', color: '#333333' }));
+  if (withCJK) {
+    items.push({ t: 'text', x: 70, y: 925, pt: 13, str: 'Korean, Japanese and Chinese pages', anchor: 'start', color: '#1F2B45', bold: true });
+    Object.keys(CJK_EXAMPLES).forEach((ch, i) => {
+      const x = 70 + i * 75, y = 935;
+      items.push(...exampleBoxItems(ch, x, y, 0.72, pal));
+    });
+    ['These boxes have a dotted square instead of lines.', 'Write each character to fill the square.',
+     'For Korean, write each jamo on its own, full size.', 'The app builds every syllable from them.',
+     'Write ゛ and ゜ where they sit on が or ぱ. Chinese pages', 'follow frequency order; read each page as you finish it.'].forEach((t, i) =>
+      items.push({ t: 'text', x: 375, y: 955 + i * 18, pt: 10, str: t, anchor: 'start', color: '#333333', cjk: true }));
+  }
+  return items;
+}
+
+// ---------- linear algebra ----------
+function solve(A, b) {
+  const n = b.length, M = A.map((r, i) => [...r, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    [M[c], M[p]] = [M[p], M[c]];
+    const d = M[c][c] || 1e-12;
+    for (let r = 0; r < n; r++) {
+      if (r === c) continue;
+      const f = M[r][c] / d;
+      for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k];
+    }
+  }
+  return M.map((r, i) => r[n] / (r[i] || 1e-12));
+}
+function homography(src, dst) {
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = src[i], [X, Y] = dst[i];
+    A.push([x, y, 1, 0, 0, 0, -X * x, -X * y]); b.push(X);
+    A.push([0, 0, 0, x, y, 1, -Y * x, -Y * y]); b.push(Y);
+  }
+  return [...solve(A, b), 1];
+}
+
+// ---------- marker detection ----------
+function otsu(g) {
+  const h = new Float64Array(256); for (let i = 0; i < g.length; i++) h[g[i]]++;
+  const n = g.length; let sum = 0; for (let i = 0; i < 256; i++) sum += i * h[i];
+  let sB = 0, wB = 0, best = -1, thr = 100;
+  for (let t = 0; t < 256; t++) {
+    wB += h[t]; if (!wB) continue; const wF = n - wB; if (!wF) break;
+    sB += t * h[t]; const mB = sB / wB, mF = (sum - sB) / wF, v = wB * wF * (mB - mF) ** 2;
+    if (v > best) { best = v; thr = t; }
+  }
+  return thr;
+}
+function findMarkers(g, w, h) {
+  const thr = Math.min(otsu(g), 150);
+  const lab = new Int32Array(w * h), stack = new Int32Array(w * h), comps = [];
+  let id = 0;
+  for (let i = 0; i < w * h; i++) {
+    if (lab[i] || g[i] > thr) continue;
+    id++; let sp = 0; stack[sp++] = i; lab[i] = id;
+    let area = 0, minx = w, maxx = 0, miny = h, maxy = 0, sx = 0, sy = 0, edge = false;
+    while (sp) {
+      const p = stack[--sp], x = p % w, y = (p / w) | 0;
+      area++; sx += x; sy += y;
+      if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y;
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) edge = true;
+      if (x > 0) { const q = p - 1; if (!lab[q] && g[q] <= thr) { lab[q] = id; stack[sp++] = q; } }
+      if (x < w - 1) { const q = p + 1; if (!lab[q] && g[q] <= thr) { lab[q] = id; stack[sp++] = q; } }
+      if (y > 0) { const q = p - w; if (!lab[q] && g[q] <= thr) { lab[q] = id; stack[sp++] = q; } }
+      if (y < h - 1) { const q = p + w; if (!lab[q] && g[q] <= thr) { lab[q] = id; stack[sp++] = q; } }
+    }
+    const bw = maxx - minx + 1, bh = maxy - miny + 1, fill = area / (bw * bh), asp = bw / bh;
+    if (!edge && bw >= 5 && bh >= 5 && asp > 0.5 && asp < 2 && fill > 0.6 && area < 0.03 * w * h && area > 0.00006 * w * h)
+      comps.push({ cx: sx / area + 0.5, cy: sy / area + 0.5, area });
+  }
+  if (comps.length < 4) return null;
+  // keep the larger blobs (markers are the biggest solid squares on the page)
+  comps.sort((a, b) => b.area - a.area);
+  const big = comps.filter(c => c.area > comps[Math.min(3, comps.length - 1)].area * 0.35);
+  const corners = [[0, 0], [w, 0], [w, h], [0, h]], chosen = [];
+  for (const [X, Y] of corners) {
+    let best = null, bd = Infinity;
+    for (const c of big) { if (chosen.includes(c)) continue; const d = Math.hypot(c.cx - X, c.cy - Y); if (d < bd) { bd = d; best = c; } }
+    if (!best) return null;
+    chosen.push(best);
+  }
+  return chosen.map(c => [c.cx, c.cy]);
+}
+
+// ---------- sampling ----------
+function sampleBox(gray, w, h, H, bx, by) {
+  const out = new Uint8Array(BW * BH);
+  for (let j = 0; j < BH; j++) {
+    const v = by + (j + 0.5) / S;
+    for (let i = 0; i < BW; i++) {
+      const u = bx + (i + 0.5) / S;
+      const d = H[6] * u + H[7] * v + H[8];
+      let x = (H[0] * u + H[1] * v + H[2]) / d - 0.5, y = (H[3] * u + H[4] * v + H[5]) / d - 0.5;
+      if (x < 0) x = 0; if (y < 0) y = 0; if (x > w - 2) x = w - 2; if (y > h - 2) y = h - 2;
+      const x0 = x | 0, y0 = y | 0, fx = x - x0, fy = y - y0, k = y0 * w + x0;
+      const a = gray[k] + (gray[k + 1] - gray[k]) * fx, b = gray[k + w] + (gray[k + w + 1] - gray[k + w]) * fx;
+      out[j * BW + i] = a + (b - a) * fy;
+    }
+  }
+  return out;
+}
+function readPageCells(gray, w, h, corners, id) {
+  const H = homography(MARK_CENTERS, corners), cells = {};
+  PAGE_DEFS[id].chars.forEach((ch, i) => { const b = boxRect(i); cells[ch] = sampleBox(gray, w, h, H, b.x, b.y); });
+  return cells;
+}
+
+function regionMean(gray, w, h, H, u0, v0, u1, v1) {
+  let s = 0, n = 0;
+  for (let v = v0; v <= v1; v += 0.5) for (let u = u0; u <= u1; u += 0.5) {
+    const d = H[6] * u + H[7] * v + H[8], x = Math.round((H[0] * u + H[1] * v + H[2]) / d), y = Math.round((H[3] * u + H[4] * v + H[5]) / d);
+    if (x < 0 || y < 0 || x >= w || y >= h) return -1;
+    s += gray[y * w + x]; n++;
+  }
+  return s / n;
+}
+// returns the page id printed on the sheet, or null (older sheets have no code)
+function decodePage(gray, w, h, corners) {
+  const H = homography(MARK_CENTERS, corners);
+  const vals = Array.from({ length: 16 }, (_, i) => { const x = CODE_X0 + i * CODE_STEP; return regionMean(gray, w, h, H, x + 2.5, CODE_Y0 + 2.5, x + 7.5, CODE_Y0 + 7.5); });
+  const paper = regionMean(gray, w, h, H, 565, 80, 600, 90);
+  if (vals.some(v => v < 0) || paper < 0) return null;
+  const black = (vals[0] + vals[15]) / 2;
+  if (paper - black < 40) return null;
+  const bits = vals.map(v => v < (paper + black) / 2 ? 1 : 0), n = bits.slice(1, 12).reduce((a, b) => a * 2 + b, 0);
+  const expect = codeBits(n);
+  return bits.every((b, i) => b === expect[i]) && CODE_PAGE[n] ? CODE_PAGE[n] : null;
+}
+
+// ---------- binarize + trace ----------
+function morph(b, w, h, grow) {
+  const o = new Uint8Array(b);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x;
+    if (grow) { if (!b[i] && (b[i - 1] || b[i + 1] || b[i - w] || b[i + w])) o[i] = 1; }
+    else if (b[i] && (!b[i - 1] || !b[i + 1] || !b[i - w] || !b[i + w])) o[i] = 0;
+  }
+  return o;
+}
+function binarize(gray, sens, weight) {
+  const w = BW, h = BH, bl = new Uint8Array(w * h), hist = new Uint32Array(256);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let s = 0, n = 0;
+    for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue;
+      for (let dx = -1; dx <= 1; dx++) { const xx = x + dx; if (xx < 0 || xx >= w) continue; s += gray[yy * w + xx]; n++; } }
+    const v = (s / n) | 0; bl[y * w + x] = v;
+    if (x >= MARGIN_PX && y >= MARGIN_PX && x < w - MARGIN_PX && y < h - MARGIN_PX) hist[v]++;
+  }
+  let tot = 0; for (const c of hist) tot += c;
+  const pct = p => { let acc = 0; for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= tot * p) return v; } return 255; };
+  const bg = pct(0.9), dark = pct(0.005);
+  if (bg - dark < 45) return null;
+  const thr = bg * (1 - sens);
+  let bin = new Uint8Array(w * h), cnt = 0;
+  for (let y = MARGIN_PX; y < h - MARGIN_PX; y++) for (let x = MARGIN_PX; x < w - MARGIN_PX; x++) {
+    const i = y * w + x; if (bl[i] < thr) { bin[i] = 1; cnt++; }
+  }
+  if (cnt < 20) return null;
+  for (let k = 0; k < Math.abs(weight); k++) bin = morph(bin, w, h, weight > 0);
+  return bin;
+}
+function traceLoops(bin, w, h) {
+  const W1 = w + 1, N = W1 * (h + 1);
+  const out1 = new Int32Array(N).fill(-1), out2 = new Int32Array(N).fill(-1);
+  const ex = [], ey = [], edx = [], edy = [];
+  const add = (x, y, dx, dy) => { const e = ex.length; ex.push(x); ey.push(y); edx.push(dx); edy.push(dy); const k = y * W1 + x; if (out1[k] < 0) out1[k] = e; else out2[k] = e; };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (!bin[i]) continue;
+    if (y === 0 || !bin[i - w]) add(x, y, 1, 0);
+    if (x === w - 1 || !bin[i + 1]) add(x + 1, y, 0, 1);
+    if (y === h - 1 || !bin[i + w]) add(x + 1, y + 1, -1, 0);
+    if (x === 0 || !bin[i - 1]) add(x, y + 1, 0, -1);
+  }
+  const used = new Uint8Array(ex.length), loops = [];
+  for (let s = 0; s < ex.length; s++) {
+    if (used[s]) continue;
+    const pts = []; let e = s;
+    for (;;) {
+      used[e] = 1; pts.push([ex[e], ey[e]]);
+      const k = (ey[e] + edy[e]) * W1 + ex[e] + edx[e];
+      const cand = [out1[k], out2[k]].filter(c => c >= 0 && (!used[c] || c === s));
+      let next = -1;
+      if (cand.length === 1) next = cand[0];
+      else if (cand.length === 2) { const rdx = -edy[e], rdy = edx[e]; next = (edx[cand[0]] === rdx && edy[cand[0]] === rdy) ? cand[0] : cand[1]; }
+      if (next < 0 || next === s) break;
+      e = next;
+    }
+    loops.push(pts);
+  }
+  return loops;
+}
+function rdp(pts, eps) {
+  const n = pts.length; if (n < 3) return pts.slice();
+  const keep = new Uint8Array(n); keep[0] = keep[n - 1] = 1;
+  const st = [[0, n - 1]];
+  while (st.length) {
+    const [a, b] = st.pop(); if (b - a < 2) continue;
+    const [ax, ay] = pts[a], [bx, by] = pts[b], dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy);
+    let md = -1, mi = -1;
+    for (let i = a + 1; i < b; i++) {
+      const d = L < 1e-9 ? Math.hypot(pts[i][0] - ax, pts[i][1] - ay) : Math.abs(dy * (pts[i][0] - ax) - dx * (pts[i][1] - ay)) / L;
+      if (d > md) { md = d; mi = i; }
+    }
+    if (md > eps) { keep[mi] = 1; st.push([a, mi], [mi, b]); }
+  }
+  return pts.filter((_, i) => keep[i]);
+}
+function rdpClosed(pts, eps) {
+  let far = 0, fd = -1;
+  for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - pts[0][0], pts[i][1] - pts[0][1]); if (d > fd) { fd = d; far = i; } }
+  const a = rdp(pts.slice(0, far + 1), eps), b = rdp(pts.slice(far).concat([pts[0]]), eps);
+  return a.concat(b.slice(1, -1));
+}
+// returns contours in font units (y up), or null for an empty box
+function vectorize(gray, sens, weight) {
+  const bin = binarize(gray, sens, weight); if (!bin) return null;
+  const loops = traceLoops(bin, BW, BH), contours = [];
+  for (const L of loops) {
+    const n = L.length; if (n < 4) continue;
+    const mids = L.map((p, i) => { const q = L[(i + 1) % n]; return [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]; });
+    let area = 0; for (let i = 0; i < mids.length; i++) { const p = mids[i], q = mids[(i + 1) % mids.length]; area += p[0] * q[1] - q[0] * p[1]; }
+    if (Math.abs(area / 2) < 14) continue;
+    const simp = rdpClosed(mids, 0.75); if (simp.length < 3) continue;
+    contours.push(simp.map(([x, y]) => [Math.round(x * UPP), Math.round(TOP - y * UPP)]));
+  }
+  return contours.length ? contours : null;
+}
+
+// ---------- glyph assembly ----------
+const CJK_W = 820, CJK_Y0 = -70, CJK_Y1 = 750;
+const PU = 1250 / BOXH;                                   // font units per page unit inside a box
+const FRF = { x0: FR.x0 * PU, x1: FR.x1 * PU, yb: TOP - FR.y1 * PU, side: (FR.x1 - FR.x0) * PU };
+const FIN_SPLIT = { 'ㄳ': 'ㄱㅅ', 'ㄵ': 'ㄴㅈ', 'ㄶ': 'ㄴㅎ', 'ㄺ': 'ㄹㄱ', 'ㄻ': 'ㄹㅁ', 'ㄼ': 'ㄹㅂ', 'ㄽ': 'ㄹㅅ', 'ㄾ': 'ㄹㅌ', 'ㄿ': 'ㄹㅍ', 'ㅀ': 'ㄹㅎ', 'ㅄ': 'ㅂㅅ' };
+const MIX = { 'ㅘ': 'ㅗㅏ', 'ㅙ': 'ㅗㅐ', 'ㅚ': 'ㅗㅣ', 'ㅝ': 'ㅜㅓ', 'ㅞ': 'ㅜㅔ', 'ㅟ': 'ㅜㅣ', 'ㅢ': 'ㅡㅣ' };
+const HORIZ = new Set([...'ㅗㅛㅜㅠㅡ']);
+const SLOTS = {   // [left, top, right, bottom] as fractions of the character square, top-down
+  V: { ini: [0.04, 0.1, 0.55, 0.9], v: [0.57, 0.02, 0.98, 0.98] },
+  VF: { ini: [0.06, 0.04, 0.54, 0.5], v: [0.58, 0.0, 0.96, 0.6], f: [0.14, 0.64, 0.86, 0.98] },
+  H: { ini: [0.18, 0.04, 0.82, 0.5], v: [0.04, 0.55, 0.96, 0.9] },
+  HF: { ini: [0.22, 0.02, 0.78, 0.35], v: [0.06, 0.38, 0.94, 0.6], f: [0.18, 0.66, 0.82, 0.98] },
+  M: { ini: [0.06, 0.04, 0.52, 0.48], h: [0.02, 0.52, 0.62, 0.88], v: [0.62, 0.02, 0.98, 0.98] },
+  MF: { ini: [0.08, 0.02, 0.5, 0.33], h: [0.04, 0.36, 0.6, 0.6], v: [0.62, 0.0, 0.96, 0.62], f: [0.16, 0.66, 0.84, 0.98] },
+};
+const VOICED = ['かが', 'きぎ', 'くぐ', 'けげ', 'こご', 'さざ', 'しじ', 'すず', 'せぜ', 'そぞ', 'ただ', 'ちぢ', 'つづ', 'てで', 'とど', 'はばぱ', 'ひびぴ', 'ふぶぷ', 'へべぺ', 'ほぼぽ', 'うゔ'];
+const SMALL = [...'あいうえおつやゆよわ'];
+
+function bboxOf(contours) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const c of contours) for (const [x, y] of c) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  return [x0, y0, x1, y1];
+}
+function fitInto(bb, slot) {
+  const iw = Math.max(bb[2] - bb[0], 20), ih = Math.max(bb[3] - bb[1], 20), sw = slot[2] - slot[0], sh = slot[3] - slot[1];
+  let sx = sw / iw, sy = sh / ih; const s = Math.min(sx, sy);
+  sx = Math.min(sx, s * 1.3, 1.95); sy = Math.min(sy, s * 1.3, 1.95);
+  return { sx, sy, dx: slot[0] + (sw - sx * iw) / 2 - sx * bb[0], dy: slot[1] + (sh - sy * ih) / 2 - sy * bb[1] };
+}
+
+// store: {char: contours (box font units)} plus 'cmp:<jamo>' bolder copies; returns glyph defs for buildTTF
+function prepareGlyphs(store, excluded, sb) {
+  const defs = [], ok = ch => store[ch] && !excluded.has(ch);
+  const cjkAdv = CJK_W + 2 * sb, k = CJK_W / FRF.side;
+  const toCJK = cs => cs.map(c => c.map(([x, y]) => [Math.round((x - FRF.x0) * k + sb), Math.round((y - FRF.yb) * k + CJK_Y0)]));
+  let anyCJK = false;
+  for (const ch of Object.keys(store)) {
+    if (ch.startsWith('cmp:') || !ok(ch)) continue;
+    const code = ch.codePointAt(0);
+    if (CJK_CHARS.has(ch)) { defs.push({ key: ch, code, adv: cjkAdv, contours: toCJK(store[ch]) }); anyCJK = true; }
+    else {
+      const bb = bboxOf(store[ch]), dx = sb - bb[0];
+      defs.push({ key: ch, code, adv: Math.max(1, bb[2] - bb[0] + 2 * sb), contours: store[ch].map(c => c.map(([x, y]) => [x + dx, y])) });
+    }
+  }
+  if (anyCJK) defs.push({ key: 'ideo-space', code: 0x3000, adv: cjkAdv, contours: [] });
+  const have = new Set(defs.map(d => d.key));
+
+  // Japanese: voiced marks and small kana as composites of the written glyphs
+  for (const off of [0, 0x60]) {
+    const shift = s => String.fromCodePoint(s.codePointAt(0) + off);
+    for (const row of VOICED) {
+      const base = shift(row[0]);
+      if (!have.has(base)) continue;
+      [...row].slice(1).forEach((v, i) => {
+        const mark = i === 0 || row === 'うゔ' ? '゛' : '゜', code = shift(v).codePointAt(0);
+        if (have.has(mark) && !have.has(shift(v))) defs.push({ key: shift(v), code, adv: cjkAdv, comps: [{ key: base, sx: 1, sy: 1, dx: 0, dy: 0 }, { key: mark, sx: 1, sy: 1, dx: 0, dy: 0 }] });
+      });
+    }
+    for (const s of SMALL) {
+      const base = shift(s), small = String.fromCodePoint(base.codePointAt(0) - 1);
+      if (!have.has(base) || have.has(small)) continue;
+      const sc = 0.74, ax = sb + CJK_W / 2, ay = CJK_Y0 + 20;
+      defs.push({ key: small, code: small.codePointAt(0), adv: cjkAdv, comps: [{ key: base, sx: sc, sy: sc, dx: ax * (1 - sc), dy: ay * (1 - sc) }] });
+    }
+  }
+  if (have.has('カ') && !have.has('ヵ')) defs.push({ key: 'ヵ', code: 0x30F5, adv: cjkAdv, comps: [{ key: 'カ', sx: 0.74, sy: 0.74, dx: (sb + CJK_W / 2) * 0.26, dy: (CJK_Y0 + 20) * 0.26 }] });
+  if (have.has('ケ') && !have.has('ヶ')) defs.push({ key: 'ヶ', code: 0x30F6, adv: cjkAdv, comps: [{ key: 'ケ', sx: 0.74, sy: 0.74, dx: (sb + CJK_W / 2) * 0.26, dy: (CJK_Y0 + 20) * 0.26 }] });
+
+  // Korean: every syllable assembled from the bolder jamo copies
+  const J = {};
+  for (const ch of [...INI, ...MED]) if (ok(ch) && store['cmp:' + ch]) {
+    J[ch] = bboxOf(store['cmp:' + ch]);
+    defs.push({ key: 'cmp:' + ch, code: null, adv: 0, contours: store['cmp:' + ch] });
+  }
+  const slot = r => [sb + r[0] * CJK_W, CJK_Y1 - r[3] * (CJK_Y1 - CJK_Y0), sb + r[2] * CJK_W, CJK_Y1 - r[1] * (CJK_Y1 - CJK_Y0)];
+  const place = (j, r) => ({ key: 'cmp:' + j, ...fitInto(J[j], slot(r)) });
+  for (let i = 0; i < 19; i++) {
+    if (!J[INI[i]]) continue;
+    for (let m = 0; m < 21; m++) {
+      const v = MED[m], parts = MIX[v] ? [...MIX[v]] : [v];
+      if (!parts.every(p => J[p])) continue;
+      const type = MIX[v] ? 'M' : HORIZ.has(v) ? 'H' : 'V';
+      for (let f = 0; f < 28; f++) {
+        const fin = FIN[f], fparts = !fin ? [] : FIN_SPLIT[fin] ? [...FIN_SPLIT[fin]] : [fin];
+        if (!fparts.every(p => J[p])) continue;
+        const S = SLOTS[type + (fin ? 'F' : '')], comps = [place(INI[i], S.ini)];
+        if (type === 'M') { comps.push(place(parts[0], S.h), place(parts[1], S.v)); }
+        else comps.push(place(v, S.v));
+        if (fparts.length === 1) comps.push(place(fparts[0], S.f));
+        else if (fparts.length === 2) {
+          const [l, t, r, b] = S.f, mid = (l + r) / 2;
+          comps.push(place(fparts[0], [l - 0.04, t, mid + 0.01, b]), place(fparts[1], [mid - 0.01, t, r + 0.04, b]));
+        }
+        defs.push({ key: 'syl' + (0xAC00 + (i * 21 + m) * 28 + f), code: 0xAC00 + (i * 21 + m) * 28 + f, adv: cjkAdv, comps });
+      }
+    }
+  }
+  return defs;
+}
+
+// ---------- TrueType writer ----------
+class Buf {
+  constructor() { this.a = []; }
+  u8(v) { this.a.push(v & 255); }
+  u16(v) { v = Math.round(v); if (v < 0) v += 65536; this.a.push((v >> 8) & 255, v & 255); }
+  i16(v) { this.u16(Math.max(-32768, Math.min(32767, Math.round(v)))); }
+  u32(v) { v = v >>> 0; this.a.push((v >>> 24) & 255, (v >>> 16) & 255, (v >>> 8) & 255, v & 255); }
+  bytes(arr) { for (const x of arr) this.a.push(x); }
+  pad4() { while (this.a.length % 4) this.a.push(0); }
+  get length() { return this.a.length; }
+}
+function utf16be(s) { const o = []; for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); o.push(c >> 8, c & 255); } return o; }
+function checksum(a) { let s = 0; for (let i = 0; i < a.length; i += 4) s = (s + (((a[i] << 24) | (a[i + 1] << 16) | (a[i + 2] << 8) | a[i + 3]) >>> 0)) >>> 0; return s; }
+function ttPoints(contours) {
+  return contours.map(poly => {
+    const n = poly.length, pts = [];
+    for (let i = 0; i < n; i++) {
+      const p = poly[i], q = poly[(i + 1) % n];
+      pts.push({ x: Math.round(p[0]), y: Math.round(p[1]), on: false });
+      pts.push({ x: Math.round((p[0] + q[0]) / 2), y: Math.round((p[1] + q[1]) / 2), on: true });
+    }
+    return pts;
+  });
+}
+
+function buildTTF(family, defs) {
+  const mapped = defs.filter(d => d.code != null).sort((a, b) => a.code - b.code);
+  const others = defs.filter(d => d.code == null);
+  const glyphs = [{ key: '.notdef', code: null, adv: 500, contours: [] }];
+  const lower = mapped.filter(d => d.code >= 97 && d.code <= 122 && d.contours);
+  const pool = lower.length ? lower : mapped.filter(d => d.code < 0x2E80);
+  const avgAdv = pool.length ? pool.reduce((s, g) => s + g.adv, 0) / pool.length : 500;
+  if (!mapped.some(d => d.code === 32)) glyphs.push({ key: 'space', code: 32, adv: Math.round(Math.min(420, Math.max(200, avgAdv * 0.62))), contours: [] });
+  glyphs.push(...mapped.filter(d => d.code !== 32 || true), ...others);
+  glyphs.sort((a, b) => (a.key === '.notdef' ? -1 : b.key === '.notdef' ? 1 : (a.code ?? 1e9) - (b.code ?? 1e9)));
+  const gid = {}; glyphs.forEach((g, i) => { gid[g.key] = i; });
+  const nG = glyphs.length;
+
+  // simple glyph data first so composites can read their boxes
+  for (const g of glyphs) {
+    if (g.comps) continue;
+    g.tt = ttPoints(g.contours || []);
+    g.np = g.tt.reduce((s, c) => s + c.length, 0);
+    if (g.np) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const c of g.tt) for (const p of c) { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; }
+      g.bb = [x0, y0, x1, y1];
+    }
+  }
+  const byKey = {}; glyphs.forEach(g => { byKey[g.key] = g; });
+  for (const g of glyphs) {
+    if (!g.comps) continue;
+    g.comps = g.comps.filter(c => byKey[c.key] && byKey[c.key].bb);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const c of g.comps) {
+      const b = byKey[c.key].bb;
+      x0 = Math.min(x0, b[0] * c.sx + c.dx); x1 = Math.max(x1, b[2] * c.sx + c.dx);
+      y0 = Math.min(y0, b[1] * c.sy + c.dy); y1 = Math.max(y1, b[3] * c.sy + c.dy);
+    }
+    if (g.comps.length) g.bb = [Math.floor(x0), Math.floor(y0), Math.ceil(x1), Math.ceil(y1)];
+  }
+
+  let gxMin = 0, gyMin = -350, gxMax = 0, gyMax = 900, maxPts = 0, maxCont = 0, advMax = 0, minL = 0, minR = 0, xMaxExt = 0, first = true;
+  let maxCompPts = 0, maxCompCont = 0, maxCompEl = 0;
+  const glyf = new Buf(), locs = [];
+  const f2 = v => Math.round(Math.max(-1.99, Math.min(1.99, v)) * 16384);
+  for (const g of glyphs) {
+    locs.push(glyf.length);
+    advMax = Math.max(advMax, g.adv);
+    if (!g.bb) continue;
+    const [bx0, by0, bx1, by1] = g.bb;
+    if (g.comps) {
+      glyf.i16(-1); glyf.i16(bx0); glyf.i16(by0); glyf.i16(bx1); glyf.i16(by1);
+      let cp = 0, cc = 0;
+      g.comps.forEach((c, i) => {
+        const scaled = Math.abs(c.sx - 1) > 1e-4 || Math.abs(c.sy - 1) > 1e-4;
+        let flags = 0x0001 | 0x0002 | 0x0004 | 0x1000;
+        if (scaled) flags |= 0x0040;
+        if (i < g.comps.length - 1) flags |= 0x0020;
+        glyf.u16(flags); glyf.u16(gid[c.key]); glyf.i16(c.dx); glyf.i16(c.dy);
+        if (scaled) { glyf.i16(f2(c.sx)); glyf.i16(f2(c.sy)); }
+        cp += byKey[c.key].np; cc += byKey[c.key].tt.length;
+      });
+      maxCompPts = Math.max(maxCompPts, cp); maxCompCont = Math.max(maxCompCont, cc); maxCompEl = Math.max(maxCompEl, g.comps.length);
+    } else {
+      let end = -1;
+      glyf.i16(g.tt.length); glyf.i16(bx0); glyf.i16(by0); glyf.i16(bx1); glyf.i16(by1);
+      for (const c of g.tt) { end += c.length; glyf.u16(end); }
+      glyf.u16(0);
+      for (const c of g.tt) for (const p of c) glyf.u8(p.on ? 1 : 0);
+      let px = 0; for (const c of g.tt) for (const p of c) { glyf.i16(p.x - px); px = p.x; }
+      let py = 0; for (const c of g.tt) for (const p of c) { glyf.i16(p.y - py); py = p.y; }
+      maxPts = Math.max(maxPts, g.np); maxCont = Math.max(maxCont, g.tt.length);
+    }
+    glyf.pad4();
+    if (g.code == null) continue;               // component-only glyphs don't set the font's metrics
+    if (first) { gxMin = bx0; gxMax = bx1; minL = bx0; minR = g.adv - bx1; xMaxExt = bx1; first = false; }
+    gxMin = Math.min(gxMin, bx0); gxMax = Math.max(gxMax, bx1); gyMin = Math.min(gyMin, by0); gyMax = Math.max(gyMax, by1);
+    minL = Math.min(minL, bx0); minR = Math.min(minR, g.adv - bx1); xMaxExt = Math.max(xMaxExt, bx1);
+  }
+  for (const g of glyphs) if (g.bb && g.code == null && g.key !== '.notdef') {
+    gxMin = Math.min(gxMin, g.bb[0]); gxMax = Math.max(gxMax, g.bb[2]); gyMin = Math.min(gyMin, g.bb[1]); gyMax = Math.max(gyMax, g.bb[3]);
+  }
+  locs.push(glyf.length);
+  const loca = new Buf(); locs.forEach(o => loca.u32(o));
+
+  const dt = b => { const s = Math.floor(Date.now() / 1000) + 2082844800; b.u32(Math.floor(s / 4294967296)); b.u32(s >>> 0); };
+  const head = new Buf();
+  head.u32(0x00010000); head.u32(0x00010000); head.u32(0); head.u32(0x5F0F3CF5); head.u16(0x000B); head.u16(1000);
+  dt(head); dt(head); head.i16(gxMin); head.i16(gyMin); head.i16(gxMax); head.i16(gyMax);
+  head.u16(0); head.u16(8); head.i16(2); head.i16(1); head.i16(0);
+
+  const hhea = new Buf();
+  hhea.u32(0x00010000); hhea.i16(900); hhea.i16(-350); hhea.i16(0); hhea.u16(advMax); hhea.i16(minL); hhea.i16(minR); hhea.i16(xMaxExt);
+  hhea.i16(1); hhea.i16(0); hhea.i16(0); for (let i = 0; i < 4; i++) hhea.i16(0); hhea.i16(0); hhea.u16(nG);
+
+  const maxp = new Buf();
+  maxp.u32(0x00010000); maxp.u16(nG); maxp.u16(maxPts); maxp.u16(maxCont); maxp.u16(maxCompPts); maxp.u16(maxCompCont); maxp.u16(2);
+  for (let i = 0; i < 6; i++) maxp.u16(0);
+  maxp.u16(maxCompEl); maxp.u16(maxCompEl ? 1 : 0);
+
+  const hmtx = new Buf(); glyphs.forEach(g => { hmtx.u16(g.adv); hmtx.i16(g.bb ? g.bb[0] : 0); });
+
+  const map = glyphs.map((g, i) => [g.code, i]).filter(x => x[0] != null && x[0] <= 0xFFFF);
+  const segs = [];
+  for (const [c, i] of map) {
+    const d = (i - c + 65536) % 65536, last = segs[segs.length - 1];
+    if (last && last.e === c - 1 && last.d === d) last.e = c; else segs.push({ s: c, e: c, d });
+  }
+  segs.push({ s: 0xFFFF, e: 0xFFFF, d: 1 });
+  const sc = segs.length, sr = 2 * 2 ** Math.floor(Math.log2(sc));
+  const sub = new Buf();
+  sub.u16(4); sub.u16(16 + 8 * sc); sub.u16(0); sub.u16(sc * 2); sub.u16(sr); sub.u16(Math.log2(sr / 2)); sub.u16(2 * sc - sr);
+  segs.forEach(g => sub.u16(g.e)); sub.u16(0); segs.forEach(g => sub.u16(g.s)); segs.forEach(g => sub.u16(g.d)); segs.forEach(() => sub.u16(0));
+  const cmap = new Buf(); cmap.u16(0); cmap.u16(2); cmap.u16(0); cmap.u16(3); cmap.u32(20); cmap.u16(3); cmap.u16(1); cmap.u32(20); cmap.bytes(sub.a);
+
+  let hsh = 5381; for (const ch of family) hsh = ((hsh * 33) ^ ch.codePointAt(0)) >>> 0;
+  const asc = family.replace(/[^A-Za-z0-9-]/g, ''), ps = ((asc.length >= family.replace(/\s/g, '').length / 2 ? asc : (asc || 'Handwriting') + hsh.toString(36).slice(0, 5)) || 'Handwriting').slice(0, 55) + '-Regular';
+  const recs = [[1, family], [2, 'Regular'], [3, family + ' Regular 1.0'], [4, family], [5, 'Version 1.000'], [6, ps]];
+  const name = new Buf(); name.u16(0); name.u16(recs.length); name.u16(6 + 12 * recs.length);
+  let off = 0; const strs = [];
+  for (const [id, s] of recs) { const e = utf16be(s); name.u16(3); name.u16(1); name.u16(0x409); name.u16(id); name.u16(e.length); name.u16(off); off += e.length; strs.push(e); }
+  strs.forEach(e => name.bytes(e));
+
+  const codes = map.map(m => m[0]), inR = (a, b) => codes.some(c => c >= a && c <= b);
+  let ur1 = 0, ur2 = 0, ur3 = 0, cp1 = 0;
+  if (inR(0x20, 0x7E)) { ur1 |= 1; cp1 |= 1; } if (inR(0x80, 0xFF)) ur1 |= 2; if (inR(0x100, 0x17F)) ur1 |= 4;
+  if (inR(0x2000, 0x206F)) ur1 |= 1 << 31; if (inR(0x20A0, 0x20CF)) ur2 |= 1 << 1;
+  if (inR(0x3000, 0x303F)) ur2 |= 1 << 16; if (inR(0x3040, 0x309F)) { ur2 |= 1 << 17; cp1 |= 1 << 17; } if (inR(0x30A0, 0x30FF)) { ur2 |= 1 << 18; cp1 |= 1 << 17; }
+  if (inR(0x3130, 0x318F)) ur2 |= 1 << 20; if (inR(0xAC00, 0xD7AF)) { ur2 |= 1 << 24; cp1 |= 1 << 19; }
+  if (inR(0xFF00, 0xFFEF)) ur3 |= 1 << 4;
+  if (!cp1) cp1 = 1;
+
+  const withAdv = glyphs.filter(g => g.adv > 0 && g.code != null);
+  const os2 = new Buf();
+  os2.u16(4); os2.i16(Math.round(withAdv.reduce((s, g) => s + g.adv, 0) / Math.max(1, withAdv.length))); os2.u16(400); os2.u16(5); os2.u16(0);
+  [650, 600, 0, 75, 650, 600, 0, 350, 50, 250].forEach(v => os2.i16(v)); os2.i16(0);
+  for (let i = 0; i < 10; i++) os2.u8(0);
+  os2.u32(ur1); os2.u32(ur2); os2.u32(ur3); os2.u32(0); os2.bytes([72, 78, 68, 87]);
+  os2.u16(0x40); os2.u16(codes.length ? codes[0] : 32); os2.u16(codes.length ? Math.min(0xFFFF, codes[codes.length - 1]) : 32);
+  os2.i16(900); os2.i16(-350); os2.i16(0); os2.u16(Math.max(900, gyMax)); os2.u16(Math.max(350, -gyMin));
+  os2.u32(cp1); os2.u32(0); os2.i16(470); os2.i16(700); os2.u16(0); os2.u16(32); os2.u16(0);
+
+  const post = new Buf(); post.u32(0x00030000); post.u32(0); post.i16(-120); post.i16(50); for (let i = 0; i < 5; i++) post.u32(0);
+
+  const tables = { 'OS/2': os2, cmap, glyf, head, hhea, hmtx, loca, maxp, name, post };
+  const tags = Object.keys(tables).sort();
+  const n = tags.length, srT = 16 * 2 ** Math.floor(Math.log2(n));
+  const out = new Buf();
+  out.u32(0x00010000); out.u16(n); out.u16(srT); out.u16(Math.log2(srT / 16)); out.u16(n * 16 - srT);
+  let offset = 12 + 16 * n, headOff = 0; const bodies = [];
+  for (const t of tags) {
+    const data = tables[t].a, len = data.length; while (data.length % 4) data.push(0);
+    for (let i = 0; i < 4; i++) out.u8(t.charCodeAt(i));
+    out.u32(checksum(data)); out.u32(offset); out.u32(len);
+    if (t === 'head') headOff = offset;
+    bodies.push(data); offset += data.length;
+  }
+  bodies.forEach(b => { for (let i = 0; i < b.length; i++) out.a.push(b[i]); });
+  const adj = (0xB1B0AFBA - checksum(out.a)) >>> 0;
+  out.a[headOff + 8] = adj >>> 24; out.a[headOff + 9] = (adj >>> 16) & 255; out.a[headOff + 10] = (adj >>> 8) & 255; out.a[headOff + 11] = adj & 255;
+  return new Uint8Array(out.a);
+}
+
+</script>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const LEGACY_KEY = 'handfont.v1', SKEY = 'handfont.v2.settings', PKEY = 'handfont.v2.page.';
+const st = {
+  sets: ['latin'], current: 'latin1', previewEdited: false, sens: 0.35, weight: 0, spacing: 30, name: '',
+  pages: {}, glyphs: {}, excluded: new Set(), cells: {}, settingsT: 0,
+  src: null, gray: null, corners: null, drag: -1, fontBytes: null,
+};
+let downloads = null;
+/* Outside claude.ai there is no window.claude, so fall back to a normal browser download. */
+const browserDownloads = { async save({ filename, data }) {
+  const blob = data instanceof Blob ? data : new Blob([data]);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+} };
+
+// glyph outlines are stored compactly: Int16 [nContours, len, x, y, ...] as base64
+function encGlyph(cs) {
+  const a = new Int16Array(1 + cs.length + cs.reduce((s, c) => s + c.length * 2, 0)); let k = 0;
+  a[k++] = cs.length; for (const c of cs) { a[k++] = c.length; for (const [x, y] of c) { a[k++] = x; a[k++] = y; } }
+  const u = new Uint8Array(a.buffer); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+function decGlyph(s) {
+  const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  const a = new Int16Array(u.buffer); let k = 0; const n = a[k++], cs = [];
+  for (let i = 0; i < n; i++) { const len = a[k++], c = []; for (let j = 0; j < len; j++) { c.push([a[k], a[k + 1]]); k += 2; } cs.push(c); }
+  return cs;
+}
+const packPage = pg => ({ t: pg.t, g: Object.entries(pg.g).map(([ch, cs]) => [ch, encGlyph(cs)]) });
+const unpackPage = d => ({ t: d.t || 0, g: Object.fromEntries((d.g || []).map(([ch, s]) => [ch, decGlyph(s)])) });
+const settingsDoc = () => ({ t: st.settingsT, sets: st.sets, sens: st.sens, weight: st.weight, spacing: st.spacing, name: st.name, excluded: [...st.excluded], previewEdited: st.previewEdited, preview: $('previewText').value });
+function applySettings(d) {
+  Object.assign(st, { settingsT: d.t || 0, sets: Array.isArray(d.sets) && d.sets.length ? d.sets : ['latin'], sens: d.sens ?? 0.35, weight: d.weight ?? 0, spacing: d.spacing ?? 30, name: d.name && d.name !== 'My Handwriting' ? d.name : '', previewEdited: !!d.previewEdited });
+  st.excluded = new Set(d.excluded || []);
+  if (d.previewEdited && d.preview) $('previewText').value = d.preview;
+}
+// merged view of every page read so far; newer pages win for characters that appear on two pages
+function rebuildGlyphs() {
+  st.glyphs = {};
+  Object.values(st.pages).sort((a, b) => a.t - b.t).forEach(pg => Object.assign(st.glyphs, pg.g));
+}
+const readCount = id => st.pages[id] ? PAGE_DEFS[id].chars.filter(ch => st.pages[id].g[ch]).length : 0;
+
+// Pages live in this browser's IndexedDB (room for 1,000+ characters); settings in localStorage.
+let idb = null;
+function openIDB() {
+  return new Promise(res => {
+    try {
+      const r = indexedDB.open('handfont', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('pages');
+      r.onsuccess = () => res(r.result); r.onerror = () => res(null); r.onblocked = () => res(null);
+    } catch (e) { res(null); }
+  });
+}
+const idbReq = (mode, fn) => new Promise(res => {
+  if (!idb) return res(null);
+  try { const tx = idb.transaction('pages', mode), q = fn(tx.objectStore('pages')); tx.oncomplete = () => res(q ? q.result ?? true : true); tx.onerror = tx.onabort = () => res(undefined); }
+  catch (e) { res(undefined); }
+});
+function save() {                                    // settings
+  st.settingsT = Date.now();
+  try { localStorage.setItem(SKEY, JSON.stringify(settingsDoc())); } catch (e) {}
+}
+async function savePage(id) {
+  const pg = st.pages[id];
+  if (idb) {
+    const ok = await idbReq('readwrite', s => pg ? s.put(packPage(pg), id) : s.delete(id));
+    if (ok === undefined) setSync('This browser couldn’t save that page. Download a backup to keep your work safe.');
+    return;
+  }
+  try { if (pg) localStorage.setItem(PKEY + id, JSON.stringify(packPage(pg))); else localStorage.removeItem(PKEY + id); }
+  catch (e) { setSync('This browser is out of storage space. Download a backup to keep your work safe.'); }
+}
+async function load() {
+  try { const d = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (d) applySettings(d); } catch (e) {}
+  idb = await openIDB();
+  if (idb) {
+    const keys = await idbReq('readonly', s => s.getAllKeys()) || [], vals = await idbReq('readonly', s => s.getAll()) || [];
+    if (Array.isArray(keys)) keys.forEach((k, i) => { if (PAGE_DEFS[k] && vals[i]) st.pages[k] = unpackPage(vals[i]); });
+  }
+  for (const id of Object.keys(PAGE_DEFS)) {         // pages kept in localStorage by the previous version
+    try {
+      const d = JSON.parse(localStorage.getItem(PKEY + id) || 'null');
+      if (d && (!st.pages[id] || (d.t || 0) > st.pages[id].t)) st.pages[id] = unpackPage(d);
+      if (d && idb) { await savePage(id); localStorage.removeItem(PKEY + id); }
+    } catch (e) {}
+  }
+  try {                                              // one-time move from the first version's storage
+    const d = JSON.parse(localStorage.getItem(LEGACY_KEY) || 'null');
+    if (d && d.glyphs && !Object.keys(st.pages).length) {
+      applySettings({ ...d, sets: Array.isArray(d.sets) ? d.sets : ['latin', ...(d.accents ? ['accents'] : [])] });
+      for (const [id, def] of Object.entries(PAGE_DEFS)) {
+        const g = {}; for (const ch of def.chars) { if (d.glyphs[ch]) g[ch] = d.glyphs[ch]; if (d.glyphs['cmp:' + ch]) g['cmp:' + ch] = d.glyphs['cmp:' + ch]; }
+        if (Object.keys(g).length) { st.pages[id] = { t: 1, g }; await savePage(id); }
+      }
+      save(); localStorage.removeItem(LEGACY_KEY);
+    }
+  } catch (e) {}
+  rebuildGlyphs();
+  try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
+  setSync(idb ? 'Saved in this browser as you go. Download a backup now and then: clearing browser data erases it.'
+              : 'Saved in this browser as you go, with limited room. Download a backup now and then.');
+}
+function setSync(t) { $('syncStatus').textContent = t; }
+
+const pageIds = () => activePages(st.sets);
+const hasCJK = () => st.sets.some(s => ['hangul', 'hira', 'kata', 'hanzi'].includes(s));
+
+// ---------- sheets ----------
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+function itemsToSVG(items, vb, bg) {
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb.join(' ')}">` + (bg ? `<rect x="${vb[0]}" y="${vb[1]}" width="${vb[2]}" height="${vb[3]}" fill="#fff"/>` : '');
+  for (const it of items) {
+    if (it.t === 'rect') s += `<rect x="${it.x}" y="${it.y}" width="${it.w}" height="${it.h}" fill="${it.fill}"/>`;
+    else if (it.t === 'srect') s += `<rect x="${it.x}" y="${it.y}" width="${it.w}" height="${it.h}" fill="none" stroke="${it.color}" stroke-width="${it.lw}"/>`;
+    else if (it.t === 'line') s += `<line x1="${it.x1}" y1="${it.y1}" x2="${it.x2}" y2="${it.y2}" stroke="${it.color}" stroke-width="${it.lw}"${it.dash ? ` stroke-dasharray="${it.dash.join(' ')}"` : ''}/>`;
+    else if (it.t === 'stroke') s += `<polyline points="${it.pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}" fill="none" stroke="${it.color}" stroke-width="${it.lw}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    else if (it.t === 'dot') s += `<circle cx="${it.cx}" cy="${it.cy}" r="${it.r}" fill="${it.color}"/>`;
+    else s += `<text x="${it.x}" y="${it.y}" font-family="Helvetica, Arial, 'Apple SD Gothic Neo', 'Hiragino Sans', 'Noto Sans CJK KR', 'Noto Sans CJK JP', 'Malgun Gothic', 'Yu Gothic', sans-serif"${it.bold ? ' font-weight="700"' : ''} font-size="${(it.pt * 100 / 72).toFixed(2)}" fill="${it.color}" text-anchor="${it.anchor}">${esc(it.str)}</text>`;
+  }
+  return s + '</svg>';
+}
+const sheetItems = k => k === 'guide' ? guidePageLayout(hasCJK()) : pageLayout(k, pageIds().indexOf(k), pageIds().length);
+const sheetList = () => ['guide', ...pageIds()];
+const pageSVG = k => itemsToSVG(sheetItems(k), [0, 0, PAGE_W, PAGE_H], true);
+function renderSheets() {
+  $('thumbs').innerHTML = sheetList().map(k => `<figure>${pageSVG(k)}<figcaption>${k === 'guide' ? 'How to fill in (keep, don’t photograph)' : `Page ${pageIds().indexOf(k) + 1}: ${PAGE_DEFS[k].title}`}</figcaption></figure>`).join('');
+  $('printPages').innerHTML = '';
+  const n = pageIds().length;
+  $('rangeFrom').max = $('rangeTo').max = n;
+  if (!+$('rangeTo').value || +$('rangeTo').value > n || $('rangeTo').dataset.auto !== '0') { $('rangeTo').value = n; $('rangeTo').dataset.auto = '1'; }
+  if (+$('rangeFrom').value > n || !+$('rangeFrom').value) $('rangeFrom').value = 1;
+  $('rangeRow').hidden = n <= 3;
+}
+function chosenSheets() {
+  const ids = pageIds(), n = ids.length;
+  if (n <= 3) return sheetList();
+  let a = Math.max(1, Math.min(n, +$('rangeFrom').value || 1)), b = Math.max(1, Math.min(n, +$('rangeTo').value || n)); if (a > b) [a, b] = [b, a];
+  return [...(a === 1 ? ['guide'] : []), ...ids.slice(a - 1, b)];
+}
+function renderHowTo() {
+  const key = lineKeyItems(4, 6, 1, PAL_SHOW, 9);
+  $('lineKey').innerHTML = itemsToSVG(key, [0, 0, 272, 132], true);
+  $('examples').innerHTML = EXAMPLE_ORDER.map(ch =>
+    `<figure>${itemsToSVG(exampleBoxItems(ch, 2, 2, 1, PAL_SHOW), [0, 0, BOXW + 4, LABEL + BOXH + 4], true)}<figcaption>${EXAMPLE_NOTES[ch].join(' ')}</figcaption></figure>`).join('');
+  $('cjkExamples').innerHTML = Object.keys(CJK_EXAMPLES).map(ch =>
+    `<figure>${itemsToSVG(exampleBoxItems(ch, 2, 2, 1, PAL_SHOW), [0, 0, BOXW + 4, LABEL + BOXH + 4], true)}<figcaption>${CJK_NOTES[ch].join(' ')}</figcaption></figure>`).join('');
+  $('cjkHowto').hidden = !hasCJK();
+}
+function makePDF(list) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'in', format: 'letter' });
+  const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  list.forEach((k, n) => {
+    if (n) doc.addPage();
+    for (const it of sheetItems(k)) {
+      if (it.t === 'rect') { doc.setFillColor(...hex(it.fill)); doc.rect(it.x / 100, it.y / 100, it.w / 100, it.h / 100, 'F'); }
+      else if (it.t === 'srect') { doc.setDrawColor(...hex(it.color)); doc.setLineWidth(it.lw / 100); doc.setLineDashPattern([], 0); doc.rect(it.x / 100, it.y / 100, it.w / 100, it.h / 100, 'S'); }
+      else if (it.t === 'line') { doc.setDrawColor(...hex(it.color)); doc.setLineWidth(it.lw / 100); doc.setLineCap('butt'); doc.setLineDashPattern(it.dash ? it.dash.map(v => v / 100) : [], 0); doc.line(it.x1 / 100, it.y1 / 100, it.x2 / 100, it.y2 / 100); }
+      else if (it.t === 'stroke') {
+        doc.setDrawColor(...hex(it.color)); doc.setLineWidth(it.lw / 100); doc.setLineDashPattern([], 0); doc.setLineCap('round'); doc.setLineJoin('round');
+        const P = it.pts; doc.lines(P.slice(1).map((p, i) => [(p[0] - P[i][0]) / 100, (p[1] - P[i][1]) / 100]), P[0][0] / 100, P[0][1] / 100, [1, 1], 'S', false);
+      }
+      else if (it.t === 'dot') { doc.setFillColor(...hex(it.color)); doc.circle(it.cx / 100, it.cy / 100, it.r / 100, 'F'); }
+      else if (/[^\x00-\xFF€ŒœŠšŸŽž–—‘’“”•…]/.test(it.str)) textImage(doc, it);
+      else { doc.setFont('helvetica', it.bold ? 'bold' : 'normal'); doc.setFontSize(it.pt); doc.setTextColor(...hex(it.color)); doc.text(it.str, it.x / 100, it.y / 100, { align: it.anchor === 'middle' ? 'center' : 'left' }); }
+    }
+  });
+  return doc.output('arraybuffer');
+}
+// ---------- iOS profile (.mobileconfig) packed in a .zip ----------
+const xmlEsc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function uuid() { return (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16))).toUpperCase(); }
+function b64(bytes) { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/.{76}/g, '$&\n'); }
+function makeMobileconfig(family, fontBytes, fileBase) {
+  const slug = fileBase.toLowerCase().replace(/[^a-z0-9-]/g, '') || 'handwriting-' + nameHash(family);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>Font</key>
+      <data>
+${b64(fontBytes)}
+      </data>
+      <key>Name</key>
+      <string>${xmlEsc(fileBase)}.ttf</string>
+      <key>PayloadDescription</key>
+      <string>Installs the ${xmlEsc(family)} font</string>
+      <key>PayloadDisplayName</key>
+      <string>${xmlEsc(family)}</string>
+      <key>PayloadIdentifier</key>
+      <string>com.handwriting-font.${slug}.font</string>
+      <key>PayloadType</key>
+      <string>com.apple.font</string>
+      <key>PayloadUUID</key>
+      <string>${uuid()}</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+    </dict>
+  </array>
+  <key>PayloadDescription</key>
+  <string>Adds your handwriting font, ${xmlEsc(family)}, to this device.</string>
+  <key>PayloadDisplayName</key>
+  <string>${xmlEsc(family)} font</string>
+  <key>PayloadIdentifier</key>
+  <string>com.handwriting-font.${slug}</string>
+  <key>PayloadRemovalDisallowed</key>
+  <false/>
+  <key>PayloadType</key>
+  <string>Configuration</string>
+  <key>PayloadUUID</key>
+  <string>${uuid()}</string>
+  <key>PayloadVersion</key>
+  <integer>1</integer>
+</dict>
+</plist>
+`;
+}
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+// minimal zip (stored, no compression)
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], central = []; let offset = 0;
+  const d = new Date(), dosT = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), dosD = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  for (const f of files) {
+    const name = enc.encode(f.name), data = f.data, crc = crc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+    lh.setUint16(10, dosT, true); lh.setUint16(12, dosD, true); lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true);
+    lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    parts.push(new Uint8Array(lh.buffer), name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+    ch.setUint16(12, dosT, true); ch.setUint16(14, dosD, true); ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true);
+    ch.setUint16(28, name.length, true); ch.setUint32(42, offset, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    offset += 30 + name.length + data.length;
+  }
+  const cdSize = central.reduce((s, a) => s + a.length, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' });
+}
+
+// Built-in PDF fonts have no Korean or Japanese, so those labels are drawn as small images.
+function textImage(doc, it) {
+  const K = 5, px = it.pt * K, cv = document.createElement('canvas'), x = cv.getContext('2d');
+  const font = `${it.bold ? '700 ' : ''}${px}px Helvetica, Arial, 'Apple SD Gothic Neo', 'Hiragino Sans', 'Noto Sans CJK KR', 'Noto Sans CJK JP', 'Malgun Gothic', 'Yu Gothic', sans-serif`;
+  x.font = font; const w = Math.ceil(x.measureText(it.str).width) + 4, hgt = Math.ceil(px * 1.4);
+  cv.width = w; cv.height = hgt; x.font = font; x.fillStyle = it.color; x.textBaseline = 'alphabetic'; x.fillText(it.str, 2, px * 1.1);
+  const wIn = w / K / 72, hIn = hgt / K / 72, left = it.anchor === 'middle' ? it.x / 100 - wIn / 2 : it.x / 100 - 2 / K / 72;
+  doc.addImage(cv.toDataURL('image/png'), 'PNG', left, it.y / 100 - (px * 1.1) / K / 72, wIn, hIn, undefined, 'FAST');
+}
+async function saveFile(filename, data, statusEl) {
+  try { await (downloads || browserDownloads).save({ filename, data }); statusEl.textContent = `Saved ${filename}.`; }
+  catch (e) {
+    if (e && e.code === 'declined') statusEl.textContent = 'Download cancelled.';
+    else if (e && e.code === 'rate_limited') statusEl.textContent = 'A download prompt is already open. Finish that one first.';
+    else statusEl.textContent = 'That download didn’t go through. Try again in a moment.';
+  }
+}
+
+// ---------- page picker ----------
+const SHORT = { latin1: 'Capitals', latin2: 'Lowercase', accents: 'Accents', hangul: 'Hangul', hira: 'Hiragana', kata: 'Katakana', jpunct: 'Japanese marks', zhpunct: 'Chinese punctuation' };
+const shortName = id => SHORT[id] || PAGE_DEFS[id].title.replace('Chinese characters', 'Chinese');
+function renderPageButtons() {
+  const ids = pageIds();
+  if (!ids.includes(st.current)) st.current = ids.find(i => !readCount(i)) || ids[0];
+  const label = (id, i) => { const d = readCount(id); return { d, text: `Page ${i + 1}: ${shortName(id)}`, st: d ? `${d} of ${PAGE_DEFS[id].chars.length} read` : 'Not read yet' }; };
+  if (ids.length <= 8) {
+    $('pageButtons').innerHTML = ids.map((id, i) => { const L = label(id, i); return `<button type="button" data-p="${id}" aria-pressed="${id === st.current}">${L.text}<span class="st${L.d ? ' done' : ''}">${L.st}</span></button>`; }).join('');
+    $('pageSelectWrap').hidden = true; $('pageButtons').hidden = false;
+  } else {
+    $('pageSelect').innerHTML = ids.map((id, i) => { const L = label(id, i); return `<option value="${id}"${id === st.current ? ' selected' : ''}>${L.d ? '✓ ' : ''}${L.text} (${L.st.toLowerCase()})</option>`; }).join('');
+    const done = ids.filter(readCount).length;
+    $('pageProgress').textContent = `${done} of ${ids.length} pages read`;
+    $('pageBar').style.width = (100 * done / ids.length) + '%';
+    $('pageSelectWrap').hidden = false; $('pageButtons').hidden = true;
+  }
+  $('readBtn').textContent = `Read page ${ids.indexOf(st.current) + 1}`;
+}
+$('pageButtons').addEventListener('click', e => {
+  const b = e.target.closest('button[data-p]'); if (!b) return;
+  st.current = b.dataset.p; renderPageButtons();
+});
+$('pageSelect').addEventListener('change', e => { st.current = e.target.value; renderPageButtons(); });
+// make sure a page that turned up in a photo is part of the current selection
+function adoptPage(id) {
+  if (pageIds().includes(id)) return;
+  const set = SETS.find(s => s.pages.includes(id));
+  if (set) { st.sets = [...st.sets, set.id]; }
+  else if (id === 'jpunct') st.sets = [...st.sets, 'hira'];
+  else if (id === 'zhpunct') st.sets = [...st.sets, 'hanzi'];
+  renderSetBoxes(); renderHowTo(); renderSheets(); setPreviewDefault(); save();
+}
+
+// ---------- photo ----------
+async function loadPhoto(file) {
+  if (!file) return;
+  $('scanStatus').textContent = 'Opening photo…';
+  try {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.src = url; await img.decode();
+    const k = Math.min(1, 3200 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    st.src = c; prepareSource();
+  } catch (e) {
+    $('scanStatus').textContent = 'That file couldn’t be opened as a photo. Try a JPEG or PNG.';
+  }
+}
+function prepareSource() {
+  const c = st.src, w = c.width, h = c.height;
+  const d = c.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data;
+  const g = new Uint8Array(w * h);
+  for (let i = 0, j = 0; i < g.length; i++, j += 4) g[i] = (d[j] * 77 + d[j + 1] * 150 + d[j + 2] * 29) >> 8;
+  st.gray = g;
+  const k = Math.min(1, 800 / Math.max(w, h)), sw = Math.round(w * k), sh = Math.round(h * k), sm = new Uint8Array(sw * sh);
+  for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) sm[y * sw + x] = g[Math.min(h - 1, Math.floor(y / k)) * w + Math.min(w - 1, Math.floor(x / k))];
+  const m = findMarkers(sm, sw, sh);
+  if (m) {
+    st.corners = m.map(([x, y]) => [x / k, y / k]);
+    const id = decodePage(g, w, h, st.corners);
+    if (id) {
+      adoptPage(id); st.current = id; renderPageButtons();
+      $('scanStatus').textContent = `This is page ${pageIds().indexOf(id) + 1}: ${PAGE_DEFS[id].title}. Check the corner circles, then read it.`;
+    } else $('scanStatus').textContent = 'Found the four corner squares. Choose which page this is above, then read it.';
+  } else {
+    st.corners = [[w * .1, h * .1], [w * .9, h * .1], [w * .9, h * .9], [w * .1, h * .9]];
+    $('scanStatus').textContent = 'Couldn’t spot all four corner squares. Drag each circle onto one.';
+  }
+  $('editorWrap').hidden = false;
+  sizeEditor(); drawEditor();
+}
+function rotateSource() {
+  const s = st.src, c = document.createElement('canvas');
+  c.width = s.height; c.height = s.width;
+  const x = c.getContext('2d'); x.translate(c.width, 0); x.rotate(Math.PI / 2); x.drawImage(s, 0, 0);
+  st.src = c; prepareSource();
+}
+
+// ---------- corner editor ----------
+const ec = $('editCanvas'); let escale = 1, dpr = 1;
+function sizeEditor() {
+  if (!st.src) return;
+  dpr = window.devicePixelRatio || 1;
+  const wrapW = $('editorWrap').clientWidth, maxH = window.innerHeight * 0.68;
+  const ar = st.src.width / st.src.height;
+  let cssW = wrapW, cssH = cssW / ar; if (cssH > maxH) { cssH = maxH; cssW = cssH * ar; }
+  ec.style.width = cssW + 'px'; ec.style.height = cssH + 'px';
+  ec.width = Math.round(cssW * dpr); ec.height = Math.round(cssH * dpr);
+  escale = ec.width / st.src.width;
+}
+function drawEditor() {
+  if (!st.src) return;
+  const x = ec.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0);
+  x.drawImage(st.src, 0, 0, ec.width, ec.height);
+  const P = st.corners.map(([a, b]) => [a * escale, b * escale]);
+  x.lineWidth = 2 * dpr; x.strokeStyle = '#EE6878'; x.setLineDash([6 * dpr, 5 * dpr]);
+  x.beginPath(); P.forEach((p, i) => i ? x.lineTo(...p) : x.moveTo(...p)); x.closePath(); x.stroke(); x.setLineDash([]);
+  P.forEach((p, i) => {
+    x.beginPath(); x.arc(p[0], p[1], 15 * dpr, 0, Math.PI * 2);
+    x.fillStyle = i === st.drag ? 'rgba(238,104,120,.35)' : 'rgba(238,104,120,.18)'; x.fill();
+    x.lineWidth = 3 * dpr; x.strokeStyle = '#EE6878'; x.stroke();
+    x.beginPath(); x.moveTo(p[0] - 6 * dpr, p[1]); x.lineTo(p[0] + 6 * dpr, p[1]); x.moveTo(p[0], p[1] - 6 * dpr); x.lineTo(p[0], p[1] + 6 * dpr); x.lineWidth = 1.5 * dpr; x.stroke();
+  });
+  if (st.drag >= 0) {                              // magnifier so a finger doesn't hide the target
+    const [hx, hy] = st.corners[st.drag], R = 62 * dpr, Z = 3;
+    const cx = hx * escale < ec.width / 2 ? ec.width - R - 10 * dpr : R + 10 * dpr, cy = R + 10 * dpr;
+    const srcR = R / (escale * Z);
+    x.save(); x.beginPath(); x.arc(cx, cy, R, 0, Math.PI * 2); x.clip();
+    x.fillStyle = '#222'; x.fillRect(cx - R, cy - R, 2 * R, 2 * R);
+    x.drawImage(st.src, hx - srcR, hy - srcR, 2 * srcR, 2 * srcR, cx - R, cy - R, 2 * R, 2 * R);
+    x.strokeStyle = '#EE6878'; x.lineWidth = 1.5 * dpr;
+    x.beginPath(); x.moveTo(cx - R, cy); x.lineTo(cx + R, cy); x.moveTo(cx, cy - R); x.lineTo(cx, cy + R); x.stroke();
+    x.restore(); x.beginPath(); x.arc(cx, cy, R, 0, Math.PI * 2); x.lineWidth = 3 * dpr; x.strokeStyle = '#fff'; x.stroke();
+  }
+}
+function evPt(e) { const r = ec.getBoundingClientRect(); return [(e.clientX - r.left) * dpr / escale, (e.clientY - r.top) * dpr / escale]; }
+let grabOff = [0, 0];
+ec.addEventListener('pointerdown', e => {
+  if (!st.corners) return;
+  const [px, py] = evPt(e); let best = -1, bd = 44 * dpr / escale;
+  st.corners.forEach(([x, y], i) => { const d = Math.hypot(x - px, y - py); if (d < bd) { bd = d; best = i; } });
+  if (best < 0) return;
+  st.drag = best; grabOff = [st.corners[best][0] - px, st.corners[best][1] - py];
+  ec.setPointerCapture(e.pointerId); drawEditor(); e.preventDefault();
+});
+ec.addEventListener('pointermove', e => {
+  if (st.drag < 0) return;
+  const [px, py] = evPt(e);
+  st.corners[st.drag] = [Math.max(0, Math.min(st.src.width, px + grabOff[0])), Math.max(0, Math.min(st.src.height, py + grabOff[1]))];
+  drawEditor();
+});
+const endDrag = () => { if (st.drag >= 0) { st.drag = -1; drawEditor(); } };
+ec.addEventListener('pointerup', endDrag); ec.addEventListener('pointercancel', endDrag);
+window.addEventListener('resize', () => { sizeEditor(); drawEditor(); });
+
+$('camInput').addEventListener('change', e => { loadPhoto(e.target.files[0]); e.target.value = ''; });
+$('libInput').addEventListener('change', e => { loadPhoto(e.target.files[0]); e.target.value = ''; });
+$('rotateBtn').addEventListener('click', () => st.src && rotateSource());
+$('readBtn').addEventListener('click', () => {
+  if (!st.src) return;
+  const found = decodePage(st.gray, st.src.width, st.src.height, st.corners);
+  if (found && found !== st.current) { adoptPage(found); st.current = found; }
+  const id = st.current, num = pageIds().indexOf(id) + 1, total = PAGE_DEFS[id].chars.length;
+  $('scanStatus').textContent = `Reading page ${num}…`;
+  setTimeout(() => {
+    st.cells[id] = readPageCells(st.gray, st.src.width, st.src.height, st.corners, id);
+    const n = processPage(id);
+    $('scanStatus').textContent = n
+      ? `Page ${num}: read ${n} of ${total} characters.${n < total * 0.5 ? ' That’s fewer than expected. Check the page number and corner circles.' : ''}`
+      : `No writing found on page ${num}. Check that the circles sit on the corner squares and this is page ${num}.`;
+    const next = pageIds().find(i => !readCount(i));
+    if (next !== undefined && n) st.current = next;
+    renderPageButtons(); afterGlyphChange();
+  }, 30);
+});
+
+// ---------- glyphs ----------
+function processPage(id) {
+  const cells = st.cells[id]; if (!cells) return 0; let n = 0; const g = {};
+  for (const ch of PAGE_DEFS[id].chars) {
+    const v = vectorize(cells[ch], st.sens, st.weight);
+    if (v) { g[ch] = v; n++; }
+    if (id === 'hangul' && v) {        // slightly bolder copy used when jamo are shrunk into syllables
+      const b = vectorize(cells[ch], st.sens, Math.min(3, st.weight + 1));
+      if (b) g['cmp:' + ch] = b;
+    }
+  }
+  if (n) st.pages[id] = { t: Date.now(), g }; else delete st.pages[id];
+  rebuildGlyphs(); savePage(id);
+  return n;
+}
+function allChars() { return pageIds().flatMap(id => PAGE_DEFS[id].chars); }
+function drawGlyph(cv, contours) {
+  const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  cv.width = Math.max(1, Math.round(r.width * d)); cv.height = Math.max(1, Math.round(r.height * d));
+  const x = cv.getContext('2d'), s = cv.height / 1300, ox = (cv.width - 820 * s) / 2;
+  x.fillStyle = '#1F2B45';
+  x.beginPath();
+  for (const c of contours) {
+    const n = c.length, P = c.map(([a, b]) => [ox + a * s, (925 - b) * s]);
+    const m = i => { const p = P[i % n], q = P[(i + 1) % n]; return [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]; };
+    x.moveTo(...m(n - 1));
+    for (let i = 0; i < n; i++) x.quadraticCurveTo(P[i][0], P[i][1], ...m(i));
+    x.closePath();
+  }
+  x.fill('nonzero');
+}
+function renderGallery() {
+  const all = pageIds(), ids = all.filter(readCount), openAll = ids.length <= 3, prevOpen = new Set([...$('gallery').querySelectorAll('details[open]')].map(d => d.dataset.p));
+  $('gallery').innerHTML = ids.map((id, i) => {
+    const d = readCount(id), total = PAGE_DEFS[id].chars.length;
+    return `<details class="gpage" data-p="${id}"${openAll || prevOpen.has(id) ? ' open' : ''}><summary>Page ${all.indexOf(id) + 1}: ${esc(PAGE_DEFS[id].title)} <span class="muted">${d ? `${d} of ${total}` : 'not read yet'}</span></summary><div class="tiles"></div></details>`;
+  }).join('') + (all.length > ids.length ? `<p class="small muted">${all.length - ids.length} page${all.length - ids.length === 1 ? '' : 's'} not read yet.</p>` : '');
+  $('gallery').querySelectorAll('details[open]').forEach(fillTiles);
+}
+function fillTiles(det) {
+  const box = det.querySelector('.tiles');
+  box.innerHTML = PAGE_DEFS[det.dataset.p].chars.map(ch => {
+    const has = !!st.glyphs[ch], off = st.excluded.has(ch);
+    return `<button type="button" class="tile${has ? '' : ' missing'}${off ? ' off' : ''}" data-ch="${esc(ch)}" aria-label="${esc(ch)}${has ? (off ? ', left out' : ', included') : ', not read yet'}"${has ? '' : ' disabled'}>${has ? '<canvas></canvas>' : ''}<span class="lbl">${esc(ch)}</span></button>`;
+  }).join('');
+  box.querySelectorAll('.tile:not(.missing)').forEach(t => drawGlyph(t.querySelector('canvas'), st.glyphs[t.dataset.ch]));
+}
+$('gallery').addEventListener('toggle', e => { if (e.target.open && e.target.matches('details.gpage')) fillTiles(e.target); }, true);
+$('gallery').addEventListener('click', e => {
+  const t = e.target.closest('.tile'); if (!t || t.classList.contains('missing')) return;
+  const ch = t.dataset.ch;
+  st.excluded.has(ch) ? st.excluded.delete(ch) : st.excluded.add(ch);
+  $('gallery').querySelectorAll(`.tile[data-ch="${CSS.escape(ch)}"]`).forEach(x => { x.classList.toggle('off', st.excluded.has(ch)); x.setAttribute('aria-label', `${ch}, ${st.excluded.has(ch) ? 'left out' : 'included'}`); });
+  scheduleFont(); save();
+});
+
+// ---------- font ----------
+let fontTimer = 0;
+function scheduleFont() { clearTimeout(fontTimer); fontTimer = setTimeout(buildFont, 250); }
+async function buildFont() {
+  const defs = prepareGlyphs(st.glyphs, st.excluded, st.spacing);
+  const mapped = defs.filter(d => d.code != null && d.code !== 0x3000);
+  if (!mapped.length) { st.fontBytes = null; $('dlFont').disabled = true; $('dlIOS').disabled = true; $('fontCount').textContent = ''; return; }
+  st.fontBytes = buildTTF(fontName() || 'My Handwriting', defs);
+  $('dlFont').disabled = false; $('dlIOS').disabled = false;
+  const syl = mapped.filter(d => d.code >= 0xAC00 && d.code <= 0xD7A3).length, hz = mapped.filter(d => d.code >= 0x4E00 && d.code <= 0x9FFF).length;
+  const extras = [hz ? `${hz.toLocaleString()} Chinese characters` : '', syl ? `${syl.toLocaleString()} Hangul syllables built from your jamo` : ''].filter(Boolean);
+  $('fontCount').textContent = `Your font has ${mapped.length.toLocaleString()} characters` + (extras.length ? `, including ${extras.join(' and ')}.` : '.');
+  try {
+    const ff = new FontFace('hf-mine', st.fontBytes.slice().buffer);
+    await ff.load();
+    for (const f of [...document.fonts]) if (f.family.replace(/"/g, '') === 'hf-mine') document.fonts.delete(f);
+    document.fonts.add(ff);
+    const title = $('heroTitle').textContent.replace(/\s/g, '');
+    $('heroTitle').classList.toggle('mine', [...title].every(ch => st.glyphs[ch] && !st.excluded.has(ch)));
+  } catch (e) {
+    $('fontStatus').textContent = 'The preview couldn’t load this font. The download may still work.';
+  }
+}
+const SAMPLES = { latin: 'Sphinx of black quartz, judge my vow!', accents: 'Bonjour, ça va? ¡Mañana! Grüße', hangul: '안녕하세요! 한글 손글씨 폰트', hira: 'ありがとう、ひらがな。', kata: 'カタカナ、コーヒー、ラーメン', hanzi: '你好！我们一起学习中文。' };
+function setPreviewDefault() {
+  if (st.previewEdited) return;
+  $('previewText').value = st.sets.map(s => SAMPLES[s]).filter(Boolean).join('\n') + (st.sets.includes('latin') ? '\n0123456789' : '');
+}
+function afterGlyphChange(noSave) {
+  const any = Object.keys(st.glyphs).length > 0;
+  $('buildEmpty').hidden = any; $('buildArea').hidden = !any;
+  $('restoredNote').hidden = !Object.keys(st.pages).some(p => !st.cells[p]);
+  if (any) { renderGallery(); scheduleFont(); }
+  if (!noSave) save();
+}
+
+// ---------- controls ----------
+const sensFromPickup = p => 0.6 - p / 100 * 0.45, pickupFromSens = s => Math.round((0.6 - s) / 0.45 * 100);
+function syncLabels() {
+  $('weightVal').textContent = ['Much thinner', 'Thinner', 'As written', 'Bolder', 'Much bolder'][st.weight + 2];
+  $('pickupVal').textContent = +$('pickup').value < 35 ? 'Only dark ink' : +$('pickup').value > 75 ? 'Catch light strokes' : 'Balanced';
+  $('spacingVal').textContent = st.spacing < 20 ? 'Tight' : st.spacing > 60 ? 'Loose' : 'Normal';
+}
+let reTimer = 0;
+function reprocess() {
+  clearTimeout(reTimer);
+  reTimer = setTimeout(() => {
+    for (const p of Object.keys(st.cells)) processPage(p);
+    renderPageButtons(); afterGlyphChange();
+  }, 200);
+}
+$('weight').addEventListener('input', e => { st.weight = +e.target.value; syncLabels(); reprocess(); });
+$('pickup').addEventListener('input', e => { st.sens = sensFromPickup(+e.target.value); syncLabels(); reprocess(); });
+$('spacing').addEventListener('input', e => { st.spacing = +e.target.value; syncLabels(); scheduleFont(); save(); });
+$('fontName').addEventListener('input', e => { st.name = e.target.value; if (fontName()) { $('fontName').closest('.namefield').classList.remove('need'); if (/^Name your font/.test($('fontStatus').textContent)) $('fontStatus').textContent = ''; } scheduleFont(); save(); });
+function renderSetBoxes() {
+  $('sets').innerHTML = SETS.map(s => `<label class="check"><input type="checkbox" value="${s.id}"${st.sets.includes(s.id) ? ' checked' : ''}> <span>${s.label}</span></label>`).join('');
+}
+function syncControls() {
+  $('weight').value = st.weight; $('pickup').value = pickupFromSens(st.sens);
+  $('spacing').value = st.spacing; $('fontName').value = st.name; syncLabels();
+}
+$('sets').addEventListener('change', () => {
+  const chosen = [...$('sets').querySelectorAll('input:checked')].map(i => i.value);
+  if (!chosen.length) { $('sets').querySelector('input[value="latin"]').checked = true; chosen.push('latin'); }
+  st.sets = chosen; renderHowTo(); renderSheets(); renderPageButtons(); setPreviewDefault(); afterGlyphChange();
+});
+let prevTimer = 0;
+$('previewText').addEventListener('input', () => { st.previewEdited = true; clearTimeout(prevTimer); prevTimer = setTimeout(save, 800); });
+$('printBtn').addEventListener('click', () => {
+  $('printPages').innerHTML = chosenSheets().map(pageSVG).join('');
+  try { window.print(); } catch (e) {}
+});
+$('rangeTo').addEventListener('input', () => { $('rangeTo').dataset.auto = '0'; });
+$('dlPdf').addEventListener('click', () => {
+  if (!window.jspdf) { $('pdfStatus').textContent = 'The PDF maker didn’t load. Use Print instead, or reload the page.'; return; }
+  const list = chosenSheets();
+  $('pdfStatus').textContent = `Making a ${list.length}-page PDF…`;
+  setTimeout(() => {
+    const ids = pageIds(), nums = list.filter(k => k !== 'guide').map(k => ids.indexOf(k) + 1);
+    const name = nums.length === ids.length ? 'handwriting-font-sheets.pdf' : `handwriting-font-sheets-p${nums[0]}-${nums[nums.length - 1]}.pdf`;
+    saveFile(name, makePDF(list), $('pdfStatus'));
+  }, 30);
+});
+const fontName = () => st.name.trim();
+function nameHash(s) { let x = 5381; for (const c of s) x = ((x * 33) ^ c.codePointAt(0)) >>> 0; return x.toString(36).slice(0, 5); }
+// ASCII file name; names in other scripts (我的字, 손글씨) get a short stable tag so each font stays distinct
+const fileBase = () => { const n = fontName(), a = n.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-'); return a && a.length >= n.replace(/\s/g, '').length / 2 ? a : (a ? a + '-' : 'handwriting-') + nameHash(n); };
+function needName() {
+  if (fontName()) return false;
+  $('fontStatus').textContent = 'Name your font first. That’s the name you’ll choose it by in apps.';
+  $('fontName').closest('.namefield').classList.add('need');
+  $('fontName').scrollIntoView({ block: 'center', behavior: 'smooth' }); $('fontName').focus();
+  return true;
+}
+// always package a font built with the name exactly as typed right now
+function freshFont() { return buildTTF(fontName(), prepareGlyphs(st.glyphs, st.excluded, st.spacing)); }
+$('dlFont').addEventListener('click', () => {
+  if (!st.fontBytes || needName()) return;
+  saveFile(fileBase() + '.ttf', freshFont(), $('fontStatus'));
+});
+$('dlIOS').addEventListener('click', () => {
+  if (!st.fontBytes || needName()) return;
+  const base = fileBase(), cfg = new TextEncoder().encode(makeMobileconfig(fontName(), freshFont(), base));
+  saveFile(base + '-iOS.zip', makeZip([{ name: base + '.mobileconfig', data: cfg }]), $('fontStatus'));
+});
+$('resetBtn').addEventListener('click', () => {
+  if (!confirm('Clear every letter you’ve read and start over?')) return;
+  const ids = Object.keys(st.pages);
+  st.pages = {}; st.glyphs = {}; st.excluded = new Set(); st.cells = {}; st.previewEdited = false; setPreviewDefault();
+  ids.forEach(savePage);
+  $('heroTitle').classList.remove('mine');
+  renderPageButtons(); afterGlyphChange();
+});
+
+// ---------- backup ----------
+$('backupBtn').addEventListener('click', () => {
+  const data = JSON.stringify({ app: 'handwriting-font-maker', v: 2, saved: new Date().toISOString(), settings: settingsDoc(), pages: Object.fromEntries(Object.entries(st.pages).map(([id, pg]) => [id, packPage(pg)])) });
+  saveFile(`${fontName() ? fileBase() : 'handwriting-font'}-backup-${new Date().toISOString().slice(0, 10)}.json`, data, $('backupStatus'));
+});
+$('restoreInput').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (d.app !== 'handwriting-font-maker' || !d.pages) throw 0;
+    let n = 0;
+    for (const [id, pg] of Object.entries(d.pages)) {
+      if (!PAGE_DEFS[id]) continue;
+      if (!st.pages[id] || (pg.t || 0) >= st.pages[id].t) { st.pages[id] = unpackPage(pg); savePage(id); n++; }
+    }
+    if (d.settings) { applySettings({ ...d.settings, sets: [...new Set([...(d.settings.sets || []), ...st.sets])] }); syncControls(); save(); }
+    rebuildGlyphs(); renderSetBoxes(); renderHowTo(); renderSheets(); renderPageButtons(); afterGlyphChange(true);
+    $('backupStatus').textContent = `Restored ${n} page${n === 1 ? '' : 's'} from the backup.`;
+  } catch (err) { $('backupStatus').textContent = 'That file isn’t a backup from this app.'; }
+});
+
+// ---------- init ----------
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isAndroid = /Android/i.test(navigator.userAgent);
+if (!isIOS) { $('dlIOS').classList.remove('primary'); $('dlIOS').parentElement.insertBefore($('dlFont'), $('dlIOS')); }
+else $('dlFont').classList.remove('primary');
+if (isAndroid) {                  // put the Android guide first and open it
+  $('androidHelp').open = true; $('iosHelp').parentElement.insertBefore($('androidHelp'), $('iosHelp'));
+  $('dlFont').textContent = 'Download font for Android (.ttf)';
+}
+if (isIOS) $('iosHelp').open = true;
+(async () => {
+await load();
+renderSetBoxes();
+setPreviewDefault();
+syncControls();
+const pdfStatus = document.createElement('p'); pdfStatus.className = 'status'; pdfStatus.id = 'pdfStatus'; pdfStatus.setAttribute('role', 'status');
+$('dlPdf').parentElement.after(pdfStatus);
+renderHowTo(); renderSheets(); renderPageButtons(); afterGlyphChange(true);
+})();
+let tries = 0;
+(function hook() {
+  if (window.claude && typeof window.claude.use === 'function') { window.claude.use('downloads').then(d => { downloads = d; }).catch(() => {}); return; }
+  if (++tries < 40) setTimeout(hook, 250);
+})();
+})();
+</script>
+</body>
+</html>
