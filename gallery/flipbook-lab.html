@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Flipbook Lab · LENS 101 Gallery</title>
+<meta name="description" content="A free animation studio in your browser: draw frame by frame, capture stop motion from your camera, or animate with keyframes. Nothing to install, nothing leaves your computer. By Kramer Gibson." />
+<link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="../index.html"><span class="badge">LENS 101</span>ENGAGING WITH THE ARTISTIC SPACE</a>
+    <div class="nav-links">
+      <a href="belafonte.html">Gallery</a>
+      <a href="../guides/procreate-stop-motion.html">Guides</a>
+    </div>
+  </div>
+</nav>
+
+<article class="piece">
+  <div class="crumb"><a href="../index.html">LENS 101</a> &nbsp;/&nbsp; Gallery &nbsp;/&nbsp; Flipbook Lab</div>
+  <h1>Flipbook Lab, an animation studio that runs in your browser.</h1>
+  <div class="meta">Canvas + Web APIs · Browser · 2026 · Kramer Gibson</div>
+
+  <p style="margin:18px 0 10px;">
+    <a class="card" href="flipbook-lab/index.html" target="_blank" rel="noopener" style="display:inline-block;padding:18px 26px;">
+      <h3 style="margin:0;">Open Flipbook Lab &rsaquo;</h3>
+      <p style="margin:6px 0 0;">Opens full screen in a new tab. Works on a laptop, an iPad with a Pencil, or a phone.</p>
+    </a>
+  </p>
+
+  <div class="notes">
+    <h2>What it is</h2>
+    <p>
+      I was not happy with the free stop-motion tools online, so I built one. It does three kinds of animation in the same
+      timeline: draw frame by frame with an onion skin, capture stop motion from your camera with the last shot ghosted over the
+      live picture, or draw one object and move it with keyframes so the in-between frames are filled in for you.
+    </p>
+
+    <h2>Start here</h2>
+    <ul class="plain">
+      <li>Press New and pick the bouncing ball starter. Press Play. Then click the diamonds on the Ball row and drag the sliders on the right. That is keyframing.</li>
+      <li>Press New again, blank this time. Draw something, press N for a new frame, draw it again a little different against the red ghost. Ten frames of that is a second of animation.</li>
+      <li>Press Camera, put anything on your desk, capture, move it, capture. Twelve captures is one second.</li>
+      <li>Press Help for every shortcut. Space plays, comma and period step, N is a new frame, D duplicates.</li>
+    </ul>
+
+    <h2>Habits, not features</h2>
+    <ul class="plain">
+      <li>Save a Version before a risky idea. Then try it. Then compare. This is the whole assignment.</li>
+      <li>Duplicate and nudge instead of redrawing. Hold a frame for two instead of drawing it twice.</li>
+      <li>Watch the loop twenty times. The note you need is on loop twelve.</li>
+      <li>Press Spark when you are stuck. It hands you a constraint.</li>
+    </ul>
+
+    <h2>Your files</h2>
+    <p>
+      Nothing you make is uploaded anywhere. The page autosaves in your browser, and Save downloads a project file
+      (<code>name.flipbook.json</code>) that you can open again on any computer. Export gives you a GIF or a WebM video to
+      hand in, or every frame as PNGs if you want to finish somewhere else.
+    </p>
+
+    <h2>Tools used</h2>
+    <ul class="plain">
+      <li>HTML canvas for every layer and the compositing, pointer events for pen pressure and touch</li>
+      <li>MediaRecorder for video export, getUserMedia for the camera, IndexedDB for autosave</li>
+      <li>One small library (gif.js) fetched only when you export a GIF</li>
+      <li>One file, no build step</li>
+    </ul>
+  </div>
+</article>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>LENS 101 · Engaging with the Artistic Space</div>
+    <div>Prof. Kramer Gibson · Berklee College of Music</div>
+  </div>
+</footer>
+
+</body>
+</html>

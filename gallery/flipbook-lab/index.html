@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Flipbook Lab</title>
+<meta name="description" content="A free browser animation studio for drawing, stop motion, and keyframed motion. Nothing to install, nothing leaves your browser.">
+<style>
+:root{
+  --bg:#1e1c19; --panel:#2a2723; --panel2:#332f2a; --line:#453f38; --ink:#f3ead8; --mute:#a99f90;
+  --coral:#ff7a59; --sage:#8fb996; --ocean:#5b9bc9; --gold:#f2c14e; --red:#e2534b;
+  --rail:56px; --panelw:264px; --tlh:214px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:13px/1.35 system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none}
+button,select,input{font:inherit;color:inherit}
+button{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:5px 9px;cursor:pointer;line-height:1.2}
+button:hover{background:#3e3933}
+button.on{background:var(--coral);border-color:var(--coral);color:#1e1c19}
+button.go{background:var(--sage);border-color:var(--sage);color:#1e1c19}
+button.warn{background:var(--red);border-color:var(--red);color:#fff}
+button:disabled{opacity:.4;cursor:default}
+select{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+input[type=range]{width:100%;accent-color:var(--coral)}
+input[type=text],input[type=number]{background:#1b1917;border:1px solid var(--line);border-radius:6px;padding:5px 7px;width:100%}
+input[type=color]{width:34px;height:28px;border:1px solid var(--line);border-radius:6px;background:none;padding:0}
+label.k{display:block;color:var(--mute);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 4px}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.row>*{flex:0 0 auto}
+.grow{flex:1 1 auto !important}
+small,.mute{color:var(--mute)}
+hr{border:0;border-top:1px solid var(--line);margin:10px 0}
+#app{display:grid;height:100%;grid-template-rows:46px 1fr var(--tlh);grid-template-columns:var(--rail) 1fr var(--panelw);grid-template-areas:"top top top" "rail stage panel" "tl tl tl"}
+#topbar{grid-area:top;display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+#topbar .logo{font-weight:600;letter-spacing:.04em;color:var(--coral);margin-right:4px;white-space:nowrap}
+#topbar .logo span{color:var(--ink);font-weight:400}
+#pname{width:180px;background:transparent;border:1px solid transparent;padding:4px 6px;border-radius:6px}
+#pname:hover,#pname:focus{border-color:var(--line);background:#1b1917;outline:none}
+#rail{grid-area:rail;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:6px 0;gap:3px;overflow-y:auto}
+#rail button{width:44px;height:40px;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-color:transparent;background:transparent}
+#rail button:hover{background:var(--panel2)}
+#rail button.on{background:var(--coral);color:#1e1c19}
+#rail button i{font-style:normal;font-size:17px;line-height:1}
+#rail button b{font-weight:400;font-size:8.5px;letter-spacing:.02em;opacity:.85}
+#stagewrap{grid-area:stage;position:relative;overflow:auto;background:#16140f;background-image:radial-gradient(#221f1a 1px,transparent 1px);background-size:18px 18px}
+#stage{position:absolute;left:0;top:0;transform-origin:0 0;box-shadow:0 10px 40px rgba(0,0,0,.55)}
+#view,#overlay{position:absolute;left:0;top:0;display:block;touch-action:none}
+#overlay{pointer-events:none}
+#view{cursor:crosshair}
+#zoombar{position:sticky;left:0;bottom:0;float:left;display:flex;gap:4px;padding:6px;background:rgba(30,28,25,.85);border-top-right-radius:8px;z-index:5}
+#zoombar button{padding:3px 8px;font-size:12px}
+#panel{grid-area:panel;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:8px 10px 24px}
+#panel h4{margin:8px 0 4px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gold)}
+.sw{display:flex;flex-wrap:wrap;gap:4px}
+.sw div{width:22px;height:22px;border-radius:5px;border:2px solid transparent;cursor:pointer}
+.sw div.sel{border-color:var(--ink)}
+#shapes{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+#shapes button{padding:3px 0;height:34px}
+#shapes svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:.14;stroke-linejoin:round}
+#shapes button.on svg{stroke:#1e1c19}
+.seg{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:0;border-radius:0;flex:1;padding:4px 2px;font-size:12px}
+.seg button+button{border-left:1px solid var(--line)}
+/* timeline */
+#timeline{grid-area:tl;background:var(--panel);border-top:1px solid var(--line);display:grid;grid-template-rows:38px 1fr;min-height:0}
+#transport{display:flex;align-items:center;gap:6px;padding:0 10px;border-bottom:1px solid var(--line);overflow-x:auto;white-space:nowrap}
+#transport .fi{min-width:96px;text-align:center;font-variant-numeric:tabular-nums}
+#transport input[type=range]{width:110px}
+#tlbody{display:grid;grid-template-columns:176px 1fr;min-height:0}
+#layerhead button{padding:2px 6px;font-size:12px}
+#layercol{border-right:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column}
+#layerhead{height:76px;display:flex;align-items:flex-end;justify-content:space-between;padding:4px 6px;border-bottom:1px solid var(--line)}
+#layers{overflow-y:auto;flex:1}
+.lrow{height:30px;display:flex;align-items:center;gap:4px;padding:0 6px;border-bottom:1px solid #35302a;cursor:pointer;font-size:12px}
+.lrow.sel{background:#3d362e}
+.lrow .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lrow .ic{opacity:.55;cursor:pointer;width:16px;text-align:center}
+.lrow .ic.on{opacity:1}
+.lrow .tw{font-size:9px;color:var(--ocean);border:1px solid var(--ocean);border-radius:4px;padding:0 3px}
+#grid{overflow:auto;position:relative}
+#gridin{position:relative;min-width:100%}
+#fhead{height:76px;display:flex;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:2}
+.fc{flex:0 0 auto;border-right:1px solid #35302a;position:relative;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:2px 3px 3px}
+.fc canvas{border-radius:3px;background:#fff;display:block}
+.fc .n{font-size:10px;color:var(--mute);margin-top:2px}
+.fc.sel{background:#3d362e}
+.fc.sel .n{color:var(--coral)}
+.fc .hold{position:absolute;right:3px;top:2px;font-size:9px;color:var(--gold)}
+.fc.dragover{outline:2px dashed var(--coral);outline-offset:-2px}
+.grow-row{height:30px;display:flex;border-bottom:1px solid #35302a}
+.cell{flex:0 0 auto;border-right:1px solid #35302a;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--mute)}
+.cell.sel{background:#3d362e}
+.cell.cur{box-shadow:inset 0 0 0 2px var(--coral)}
+.cell .dot{width:9px;height:9px;border-radius:50%;background:var(--ink)}
+.cell .key{width:9px;height:9px;background:var(--gold);transform:rotate(45deg)}
+.cell .hl{width:100%;height:2px;background:#5a534a}
+#playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--coral);pointer-events:none;opacity:.8;z-index:3}
+/* modals */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
+.modal.open{display:flex}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;width:min(720px,94vw);max-height:90vh;overflow:auto}
+.box h3{margin:0 0 8px;color:var(--coral);font-weight:600}
+.box h5{margin:12px 0 4px;color:var(--gold);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.box p,.box li{line-height:1.45}
+.box kbd{background:#1b1917;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:11px}
+.box .x{float:right}
+#mTut .box{width:min(820px,94vw);padding:0;overflow:hidden}
+.tut-top{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line)}
+.tut-top .n{color:var(--gold);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.tut-body{display:grid;grid-template-columns:1fr 280px;gap:18px;padding:18px;min-height:340px}
+.tut-body h3{margin:0 0 10px;font-size:20px;color:var(--coral)}
+.tut-body p{margin:0 0 10px;font-size:14px;line-height:1.55}
+.tut-body ul{margin:0 0 10px 18px;padding:0}
+.tut-body li{margin:4px 0;font-size:14px;line-height:1.5}
+.tut-try{background:#1b1917;border:1px solid var(--line);border-left:3px solid var(--sage);border-radius:6px;padding:8px 10px;font-size:13px;margin-top:10px}
+.tut-fig{background:#1b1917;border:1px solid var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;padding:10px}
+.tut-fig svg{width:100%;height:auto;max-height:280px}
+.tut-foot{display:flex;align-items:center;gap:6px;padding:10px 18px;border-top:1px solid var(--line)}
+.tut-dots{display:flex;gap:5px;margin:0 auto}
+.tut-dots i{width:8px;height:8px;border-radius:50%;background:var(--line);cursor:pointer}
+.tut-dots i.on{background:var(--coral)}
+@media (max-width:700px){.tut-body{grid-template-columns:1fr}.tut-fig{display:none}}
+#toast{position:fixed;left:50%;bottom:calc(var(--tlh) + 14px);transform:translateX(-50%);background:var(--gold);color:#1e1c19;padding:8px 14px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:60;max-width:70vw;text-align:center}
+#toast.show{opacity:1}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.vgrid .v{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px}
+.vgrid canvas,.vgrid img{width:100%;border-radius:4px;background:#fff;display:block}
+.vgrid .v .t{font-size:12px;margin:4px 0}
+#camwrap{position:relative;background:#000;border-radius:8px;overflow:hidden}
+#camwrap video,#camwrap canvas{position:absolute;left:0;top:0;width:100%;height:100%}
+#camwrap video{object-fit:contain}
+#camwrap canvas{pointer-events:none}
+#camwrap.mirror video{transform:scaleX(-1)}
+#prog{height:8px;background:#1b1917;border-radius:4px;overflow:hidden;margin:8px 0}
+#prog i{display:block;height:100%;width:0;background:var(--sage)}
+@media (max-width:900px){:root{--panelw:220px;--tlh:190px}}
+@media (max-width:700px){#app{grid-template-columns:var(--rail) 1fr 0}#panel{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="logo">FLIPBOOK <span>LAB</span></div>
+    <input id="pname" type="text" value="Untitled" title="Project name" spellcheck="false">
+    <button id="bNew" title="New project">New</button>
+    <button id="bOpen" title="Open a saved .flipbook.json">Open</button>
+    <button id="bSave" title="Download the project file (S)">Save</button>
+    <button id="bVersions" title="Save a snapshot you can come back to (Shift+S)">Versions</button>
+    <button id="bExport" class="go" title="Export GIF, video, or images">Export</button>
+    <span class="grow"></span>
+    <button id="bUndo" title="Undo (Z)">Undo</button>
+    <button id="bRedo" title="Redo (Shift+Z)">Redo</button>
+    <button id="bCam" title="Capture frames from your camera">Camera</button>
+    <button id="bSpark" title="A random challenge to riff on">Spark</button>
+    <button id="bTut" title="Ten slides, start to finish">Tutorial</button>
+    <button id="bHelp" title="Shortcuts and how keyframes work (?)">Help</button>
+  </header>
+
+  <aside id="rail"></aside>
+
+  <div id="stagewrap">
+    <div id="stage"><canvas id="view"></canvas><canvas id="overlay"></canvas></div>
+    <div id="zoombar">
+      <button id="zOut">-</button><button id="zFit">Fit</button><button id="zIn">+</button><button id="z100">1:1</button>
+    </div>
+  </div>
+
+  <aside id="panel">
+    <h4 id="toolTitle">Pen</h4>
+    <div id="optStroke">
+      <label class="k">Size <span id="sizeV" class="mute"></span></label>
+      <input type="range" id="size" min="1" max="120" value="6">
+      <label class="k">Opacity <span id="opV" class="mute"></span></label>
+      <input type="range" id="opacity" min="5" max="100" value="100">
+      <label class="k">Stabilizer <span id="smV" class="mute"></span></label>
+      <input type="range" id="smooth" min="0" max="95" value="45">
+      <div class="row" style="margin-top:6px"><label><input type="checkbox" id="pressure" checked> Pen pressure</label></div>
+    </div>
+    <div id="optFill" style="display:none">
+      <label class="k">Tolerance <span id="tolV" class="mute"></span></label>
+      <input type="range" id="tol" min="0" max="128" value="40">
+      <div class="row" style="margin-top:6px"><label><input type="checkbox" id="fillAll"> Read all layers when filling</label></div>
+      <small>Click inside a closed shape. Fills the current layer. Turn on "all layers" to fill inside lines drawn on another layer.</small>
+    </div>
+    <div id="optShape" style="display:none">
+      <label class="k">Shape</label>
+      <div id="shapes"></div>
+      <label class="k">Style</label>
+      <div class="seg" id="shapeMode"><button data-v="outline">Outline</button><button data-v="fill">Fill</button><button data-v="both" class="on">Both</button></div>
+      <label class="k">Rotate <span id="srotV" class="mute"></span></label>
+      <input type="range" id="srot" min="0" max="359" value="0">
+      <small>Drag on the canvas. Hold Shift to keep it square. Outline uses the ink color, fill uses the fill color.</small>
+    </div>
+    <div id="optText" style="display:none">
+      <label class="k">Text</label>
+      <input type="text" id="textStr" value="hello">
+      <label class="k">Size <span id="tsizeV" class="mute"></span></label>
+      <input type="range" id="tsize" min="10" max="240" value="48">
+      <label class="k">Font</label>
+      <select id="tfont"><option value="system-ui, sans-serif">Sans</option><option value="Georgia, serif">Serif</option><option value="'Courier New', monospace">Mono</option><option value="'Comic Sans MS', 'Chalkboard SE', cursive">Playful</option><option value="Impact, 'Arial Black', sans-serif">Heavy</option></select>
+      <small style="display:block;margin-top:6px">Click on the canvas to stamp the text there.</small>
+    </div>
+    <div id="optMove" style="display:none">
+      <small id="moveHint">Drag to move this frame's drawing. On a motion layer, dragging sets a keyframe.</small>
+    </div>
+
+    <h4>Color</h4>
+    <div class="row">
+      <input type="color" id="ink" value="#1f1d1a" title="Ink color">
+      <input type="color" id="fillc" value="#ff7a59" title="Fill color (shapes)">
+      <button id="swapc" title="Swap ink and fill">Swap</button>
+      <input type="color" id="paper" value="#ffffff" title="Paper color">
+      <small>paper</small>
+    </div>
+    <div class="sw" id="palette" style="margin-top:6px"></div>
+    <label class="k">Recent</label>
+    <div class="sw" id="recent"></div>
+
+    <h4>Onion skin</h4>
+    <div class="row"><label><input type="checkbox" id="onion" checked> On (O)</label><label><input type="checkbox" id="onionTint" checked> Tint</label></div>
+    <div class="row" style="margin-top:4px">
+      <small>Before</small><select id="onionPrev"><option>0</option><option selected>1</option><option>2</option><option>3</option></select>
+      <small>After</small><select id="onionNext"><option>0</option><option selected>1</option><option>2</option><option>3</option></select>
+    </div>
+    <label class="k">Onion opacity</label>
+    <input type="range" id="onionAlpha" min="5" max="80" value="35">
+    <small>Red ghost is the frame before, green is the frame after. Only the layer you are on.</small>
+
+    <h4>Layer</h4>
+    <div id="layerProps">
+      <input type="text" id="lname" placeholder="Layer name">
+      <label class="k">Layer opacity <span id="lopV" class="mute"></span></label>
+      <input type="range" id="lop" min="0" max="100" value="100">
+      <div class="row" style="margin-top:8px">
+        <button id="lToTween" title="Turn this frame's drawing into one object you can animate with keyframes">Make motion layer</button>
+        <button id="lBake" title="Turn the motion back into plain frames you can draw over" style="display:none">Bake to frames</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button id="lFlipH">Flip H</button><button id="lFlipV">Flip V</button><button id="lRot">Rotate 90</button><button id="lClear">Clear</button>
+      </div>
+    </div>
+    <div id="tweenProps" style="display:none">
+      <small>Every keyframe is a diamond on the timeline. Between diamonds the object slides, turns, and scales on its own. Move the playhead, drag the object or the sliders, and a keyframe appears.</small>
+      <div class="row" style="margin-top:8px">
+        <button id="kSet">Set key here</button><button id="kDel">Remove key</button>
+      </div>
+      <label class="k">X <span id="kxV" class="mute"></span></label><input type="range" id="kx" min="-1000" max="1000" value="0">
+      <label class="k">Y <span id="kyV" class="mute"></span></label><input type="range" id="ky" min="-1000" max="1000" value="0">
+      <label class="k">Rotation <span id="krV" class="mute"></span></label><input type="range" id="kr" min="-360" max="360" value="0">
+      <label class="k">Scale X <span id="ksxV" class="mute"></span></label><input type="range" id="ksx" min="5" max="400" value="100">
+      <label class="k">Scale Y <span id="ksyV" class="mute"></span></label><input type="range" id="ksy" min="5" max="400" value="100">
+      <label class="k">Opacity <span id="koV" class="mute"></span></label><input type="range" id="ko" min="0" max="100" value="100">
+      <label class="k">Ease out of this key</label>
+      <select id="kease"><option value="linear">Linear (robot)</option><option value="easeIn">Ease in (speeds up)</option><option value="easeOut">Ease out (slows down)</option><option value="easeInOut" selected>Ease in and out (smooth)</option><option value="bounce">Bounce</option><option value="overshoot">Overshoot</option><option value="hold">Hold (no tween)</option></select>
+      <div class="row" style="margin-top:8px"><label><input type="checkbox" id="showPath" checked> Show motion path</label></div>
+    </div>
+
+    <h4>Canvas</h4>
+    <div class="row"><small id="dims"></small><span class="grow"></span><button id="bResize">Resize</button></div>
+  </aside>
+
+  <footer id="timeline">
+    <div id="transport">
+      <button id="bFirst" title="First frame (Home)">|◀</button>
+      <button id="bPrev" title="Previous (,)">◀</button>
+      <button id="bPlay" class="go" title="Play / stop (Space)">▶ Play</button>
+      <button id="bNext" title="Next (.)">▶</button>
+      <button id="bLast" title="Last frame (End)">▶|</button>
+      <span class="fi" id="fi">1 / 1</span>
+      <small>fps</small><input type="range" id="fps" min="1" max="30" value="12" style="width:70px"><span id="fpsV" style="min-width:18px">12</span>
+      <button id="bLoop" class="on" title="Loop">Loop</button>
+      <button id="bPing" title="Play forward then backward">Ping-pong</button>
+      <span style="width:8px"></span>
+      <button id="bAdd" class="go" title="New blank frame after this one (N)">+ Frame</button>
+      <button id="bDup" title="Duplicate this frame (D)">Duplicate</button>
+      <button id="bIns" title="Insert a blank frame before this one">Insert before</button>
+      <button id="bHoldM" title="Hold shorter (-)">Hold -</button>
+      <button id="bHoldP" title="Hold this frame longer (+)">Hold +</button>
+      <button id="bMoveL" title="Move frame left ([)">◁</button>
+      <button id="bMoveR" title="Move frame right (])">▷</button>
+      <button id="bReverse" title="Reverse the whole animation">Reverse</button>
+      <button id="bDel" class="warn" title="Delete this frame (Backspace)">Delete</button>
+    </div>
+    <div id="tlbody">
+      <div id="layercol">
+        <div id="layerhead"><small>Layers</small><span><button id="lAdd" title="Add a layer">+</button><button id="lDel" title="Delete layer">×</button><button id="lUp" title="Move layer up">↑</button><button id="lDn" title="Move layer down">↓</button></span></div>
+        <div id="layers"></div>
+      </div>
+      <div id="grid"><div id="gridin"><div id="fhead"></div><div id="rows"></div><div id="playhead"></div></div></div>
+    </div>
+  </footer>
+</div>
+
+<div id="toast"></div>
+
+<div class="modal" id="mHelp"><div class="box">
+  <button class="x" data-close>Close</button>
+  <h3>Flipbook Lab</h3>
+  <p>A small animation studio that runs in your browser. Nothing leaves your computer: your work autosaves in this browser, and Save downloads a project file you can open again anywhere.</p>
+  <h5>Three ways to animate</h5>
+  <ul>
+    <li>Frame by frame: draw, press <kbd>N</kbd> for a new frame, draw the next pose with the onion skin showing the last one.</li>
+    <li>Stop motion: press Camera, build something on your desk, capture a frame, move it a little, capture again.</li>
+    <li>Keyframes: draw something on a layer, press "Make motion layer", go to a later frame, drag the object. The frames in between are filled in for you. Change the ease to change the feel.</li>
+  </ul>
+  <h5>Habits that make animation better</h5>
+  <ul>
+    <li>Save a Version before a big change. Versions are cheap. Try the risky idea, then compare.</li>
+    <li>Duplicate a frame and nudge it instead of redrawing from nothing.</li>
+    <li>Hold frames: two frames held for two is often smoother than four drawings. Press <kbd>+</kbd> on a frame.</li>
+    <li>Squash and stretch: on a motion layer set Scale X up and Scale Y down at the moment of impact.</li>
+    <li>Ease in and ease out: things in the world speed up and slow down. Linear looks like a robot. Sometimes that is the point.</li>
+    <li>Watch it loop twenty times. The mistake you see on loop twelve is the note.</li>
+  </ul>
+  <h5>Shortcuts</h5>
+  <p>
+    <kbd>Space</kbd> play <kbd>,</kbd> <kbd>.</kbd> step <kbd>N</kbd> new frame <kbd>D</kbd> duplicate <kbd>Backspace</kbd> delete frame <kbd>+</kbd> <kbd>-</kbd> hold
+    <kbd>[</kbd> <kbd>]</kbd> move frame <kbd>Z</kbd> undo <kbd>Shift Z</kbd> redo <kbd>O</kbd> onion skin <kbd>K</kbd> set key <kbd>↑</kbd> <kbd>↓</kbd> change layer<br>
+    Tools: <kbd>P</kbd> pen <kbd>B</kbd> brush <kbd>C</kbd> pencil <kbd>M</kbd> marker <kbd>A</kbd> spray <kbd>E</kbd> eraser <kbd>G</kbd> fill <kbd>L</kbd> line <kbd>U</kbd> shapes <kbd>T</kbd> text <kbd>I</kbd> eyedropper <kbd>V</kbd> move
+    <kbd>Alt</kbd> + click samples a color with any tool <kbd>Shift</kbd> with the line tool snaps to 45 degrees. Scroll with <kbd>Ctrl</kbd> or pinch to zoom.
+  </p>
+  <h5>Files</h5>
+  <p>Save writes <code>name.flipbook.json</code>. Open reads it back. Export makes a GIF, a WebM video, a PNG of this frame, a sprite sheet, or every frame as PNGs. Import lets you drop images in as frames or as a background.</p>
+</div></div>
+
+<div class="modal" id="mTut"><div class="box">
+  <div class="tut-top"><span class="n" id="tutN">1 of 10</span><span class="grow"></span><button data-close>Close</button></div>
+  <div class="tut-body"><div id="tutText"></div><div class="tut-fig" id="tutFig"></div></div>
+  <div class="tut-foot"><button id="tutPrev">◀ Back</button><div class="tut-dots" id="tutDots"></div><button id="tutNext" class="go">Next ▶</button></div>
+</div></div>
+
+<div class="modal" id="mNew"><div class="box" style="width:min(480px,94vw)">
+  <h3>New project</h3>
+  <label class="k">Size</label>
+  <select id="nSize"><option value="640x480">640 x 480 (4:3, fast)</option><option value="960x540" selected>960 x 540 (16:9)</option><option value="1280x720">1280 x 720 (HD)</option><option value="1080x1080">1080 x 1080 (square)</option><option value="720x1280">720 x 1280 (vertical)</option><option value="custom">Custom</option></select>
+  <div class="row" id="nCustom" style="display:none;margin-top:6px"><input type="number" id="nW" value="800" min="64" max="4096"><small>x</small><input type="number" id="nH" value="600" min="64" max="4096"></div>
+  <label class="k">Frames per second</label>
+  <select id="nFps"><option>8</option><option selected>12</option><option>24</option></select>
+  <label class="k">Start from</label>
+  <select id="nStart"><option value="blank">Blank</option><option value="ball">Starter: bouncing ball (keyframes)</option><option value="flip">Starter: 8 blank frames, ready to flip</option></select>
+  <div class="row" style="margin-top:14px;justify-content:flex-end"><button data-close>Cancel</button><button id="nGo" class="go">Create</button></div>
+  <small style="display:block;margin-top:8px">This replaces the current project. Save or make a Version first if you want to keep it.</small>
+</div></div>
+
+<div class="modal" id="mExport"><div class="box" style="width:min(520px,94vw)">
+  <button class="x" data-close>Close</button>
+  <h3>Export</h3>
+  <p class="mute">Everything renders from your frames at <span id="exFps"></span> fps and <span id="exDims"></span>.</p>
+  <div class="row" style="margin-top:8px">
+    <button id="exGif" class="go">Animated GIF</button>
+    <button id="exWebm" class="go">WebM video</button>
+    <button id="exPng">This frame (PNG)</button>
+    <button id="exSheet">Sprite sheet</button>
+    <button id="exSeq">All frames (PNGs)</button>
+  </div>
+  <label class="k">GIF scale</label>
+  <select id="exScale"><option value="1">Full size</option><option value="0.5">Half size (smaller file)</option></select>
+  <div id="prog"><i></i></div>
+  <small id="exNote"></small>
+  <hr>
+  <h5>Import</h5>
+  <div class="row">
+    <button id="imFrames">Images as frames</button>
+    <button id="imLayer">Image onto this frame</button>
+    <button id="imBg">Image as background layer</button>
+  </div>
+  <input type="file" id="fileImg" accept="image/*" multiple hidden>
+  <input type="file" id="fileProj" accept=".json,application/json" hidden>
+</div></div>
+
+<div class="modal" id="mVersions"><div class="box">
+  <button class="x" data-close>Close</button>
+  <h3>Versions</h3>
+  <p class="mute">A version is a snapshot of the whole project. Make one before you try something risky, then compare. Restoring never deletes the version you are on; it makes one first.</p>
+  <div class="row"><input type="text" id="vName" placeholder="What are you about to try?" class="grow"><button id="vSave" class="go">Save version</button></div>
+  <div class="vgrid" id="vgrid" style="margin-top:12px"></div>
+</div></div>
+
+<div class="modal" id="mCam"><div class="box" style="width:min(760px,94vw)">
+  <button class="x" data-close>Close</button>
+  <h3>Stop motion capture</h3>
+  <div id="camwrap" style="aspect-ratio:4/3"><video id="cam" autoplay playsinline muted></video><canvas id="camOnion"></canvas></div>
+  <div class="row" style="margin-top:10px">
+    <button id="camShot" class="go">Capture frame (Enter)</button>
+    <label><input type="checkbox" id="camMirror"> Mirror</label>
+    <label><input type="checkbox" id="camOnionOn" checked> Show last frame</label>
+    <small>Onion</small><input type="range" id="camOnionA" min="10" max="80" value="45" style="width:90px">
+    <span class="grow"></span><small id="camInfo"></small>
+  </div>
+  <small style="display:block;margin-top:8px">Each capture adds a new frame after the current one, on the current layer. Move your object a little between shots. Twelve captures is one second at 12 fps.</small>
+</div></div>
+
+<div class="modal" id="mResize"><div class="box" style="width:min(420px,94vw)">
+  <h3>Resize canvas</h3>
+  <div class="row"><input type="number" id="rW" min="64" max="4096"><small>x</small><input type="number" id="rH" min="64" max="4096"></div>
+  <label class="k">Content</label>
+  <select id="rMode"><option value="scale">Scale drawings to fit</option><option value="crop">Keep size, anchor top-left</option></select>
+  <div class="row" style="margin-top:14px;justify-content:flex-end"><button data-close>Cancel</button><button id="rGo" class="go">Resize</button></div>
+</div></div>
+
+<script>
+'use strict';
+const BUILD = '2026-09-25.2';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const uid = () => Math.random().toString(36).slice(2, 10);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+function mkCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+function cloneCanvas(c, w, h) { const n = mkCanvas(w || c.width, h || c.height); if (c) n.getContext('2d').drawImage(c, 0, 0); return n; }
+function copyInto(dst, src) { const x = dst.getContext('2d'); x.setTransform(1,0,0,1,0,0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; x.clearRect(0, 0, dst.width, dst.height); if (src) x.drawImage(src, 0, 0); }
+function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); }
+function loadImage(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+let toastT; function toast(m, ms = 1800) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
+
+/* ------------------------------------------------------------------ state */
+let P = null;                         // project
+const S = {                           // session
+  frame: 0, layer: 0, tool: 'pen', ink: '#1f1d1a', fill: '#ff7a59', size: 6, opacity: 1, smooth: 0.45, pressure: true,
+  shape: 'star', shapeMode: 'both', shapeRot: 0, textStr: 'hello', textSize: 48, textFont: 'system-ui, sans-serif',
+  onion: true, onionPrev: 1, onionNext: 1, onionTint: true, onionAlpha: 0.35, fillTol: 40, fillAll: false,
+  zoom: 1, playing: false, loop: true, pingpong: false, recent: [], showPath: true
+};
+const TOOLS = [
+  ['pen', '✒', 'Pen', 'P'], ['brush', '🖌', 'Brush', 'B'], ['pencil', '✏', 'Pencil', 'C'], ['marker', '▮', 'Marker', 'M'], ['spray', '⁂', 'Spray', 'A'],
+  ['eraser', '◻', 'Eraser', 'E'], ['fill', '◈', 'Fill', 'G'], ['line', '╱', 'Line', 'L'], ['shape', '★', 'Shapes', 'U'], ['text', 'T', 'Text', 'T'],
+  ['eyedropper', '⦿', 'Pick', 'I'], ['move', '✥', 'Move', 'V']
+];
+const TOOLDEF = { // hardness, alpha multiplier, size multiplier, pressureSize, spacing
+  pen: { hard: 1, alpha: 1, sz: 1, ps: false, sp: .12 }, brush: { hard: .45, alpha: 1, sz: 1.6, ps: true, sp: .08 }, pencil: { hard: .85, alpha: .8, sz: .55, ps: true, sp: .1 },
+  marker: { hard: 1, alpha: .45, sz: 2.2, ps: false, sp: .1 }, spray: { hard: 0, alpha: 1, sz: 4, ps: true, sp: .3 }, eraser: { hard: 1, alpha: 1, sz: 1.4, ps: false, sp: .12 }
+};
+const PALETTE = ['#1f1d1a', '#ffffff', '#e2534b', '#ff7a59', '#f2c14e', '#8fb996', '#2f855a', '#5b9bc9', '#2b4c7e', '#8e5ea2', '#f4a6c1', '#a0714f', '#7a7a7a', '#c9c2b5'];
+const EASE = {
+  linear: t => t, easeIn: t => t * t, easeOut: t => 1 - (1 - t) * (1 - t), easeInOut: t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2,
+  bounce: t => { const n = 7.5625, d = 2.75; if (t < 1 / d) return n * t * t; if (t < 2 / d) return n * (t -= 1.5 / d) * t + .75; if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + .9375; return n * (t -= 2.625 / d) * t + .984375; },
+  overshoot: t => { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); }, hold: t => 0
+};
+const KEY0 = () => ({ x: 0, y: 0, r: 0, sx: 1, sy: 1, o: 1, ease: 'easeInOut' });
+const SPARKS = [
+  'Make it bounce. Squash on impact, stretch in the air.', 'Redo the last four frames using only shapes.', 'Add a second character who reacts to the first.',
+  'Hold your best frame for six. Does it read?', 'Make something anticipate before it moves. A crouch before a jump.', 'Animate a letter of your name turning into an animal.',
+  'Change the paper color and see what the drawing wants now.', 'Give one object a motion layer with Bounce easing. Then try Overshoot.', 'Make a two-second loop that could play forever.',
+  'Draw the same action at 8 fps and 24 fps. Which one is funnier?', 'Add a shadow that follows the thing.', 'Make it blink. Eyes make everything alive.',
+  'Erase half of a frame and keep going from there.', 'Move only one thing per frame for ten frames.', 'Make the camera shake: a motion layer, tiny random x and y keys.',
+  'Save a version, then break it on purpose.', 'Animate something arriving late.', 'Try the opposite ease of the one you picked.', 'Let a shape fall in, then let it leave.',
+  'Photograph three objects from your desk with the camera and make them argue.'
+];
+
+/* ------------------------------------------------------------------ model */
+function newLayer(name, type = 'draw') { return { id: uid(), name, type, visible: true, opacity: 1, locked: false, cells: {}, keys: {}, source: null }; }
+function newFrame() { return { id: uid(), hold: 1 }; }
+function newProject(w, h, fps) {
+  P = { name: 'Untitled', width: w, height: h, fps, paper: '#ffffff', layers: [newLayer('Layer 1')], frames: [newFrame()], versions: [] };
+  S.frame = 0; S.layer = 0; undoStack.length = 0; redoStack.length = 0; thumbs.clear();
+}
+const curFrame = () => P.frames[S.frame];
+const curLayer = () => P.layers[S.layer];
+function getCell(layer, frame, create) {
+  let c = layer.cells[frame.id];
+  if (!c && create) { c = layer.cells[frame.id] = mkCanvas(P.width, P.height); }
+  return c || null;
+}
+function ensureSource(layer) { if (!layer.source) layer.source = mkCanvas(P.width, P.height); return layer.source; }
+function frameTimes() { const t = []; let a = 0; for (const f of P.frames) { t.push(a); a += f.hold; } return t; }
+function keyedIndices(layer) { const r = []; P.frames.forEach((f, i) => { if (layer.keys[f.id]) r.push(i); }); return r; }
+function tweenAt(layer, fi) {
+  const ks = keyedIndices(layer); if (!ks.length) return KEY0();
+  let prev = -1, next = -1;
+  for (const i of ks) { if (i <= fi) prev = i; else { next = i; break; } }
+  if (prev < 0) return { ...layer.keys[P.frames[next].id] };
+  const a = layer.keys[P.frames[prev].id]; if (next < 0 || prev === fi) return { ...a };
+  const b = layer.keys[P.frames[next].id]; const T = frameTimes();
+  const t = (T[fi] - T[prev]) / (T[next] - T[prev]); const e = (EASE[a.ease] || EASE.linear)(t);
+  return { x: lerp(a.x, b.x, e), y: lerp(a.y, b.y, e), r: lerp(a.r, b.r, e), sx: lerp(a.sx, b.sx, e), sy: lerp(a.sy, b.sy, e), o: lerp(a.o, b.o, e), ease: a.ease };
+}
+function applyTf(ctx, tf) { ctx.translate(P.width / 2 + tf.x, P.height / 2 + tf.y); ctx.rotate(tf.r * Math.PI / 180); ctx.scale(tf.sx, tf.sy); ctx.translate(-P.width / 2, -P.height / 2); }
+function applyInvTf(ctx, tf) { ctx.translate(P.width / 2, P.height / 2); ctx.scale(1 / tf.sx, 1 / tf.sy); ctx.rotate(-tf.r * Math.PI / 180); ctx.translate(-(P.width / 2 + tf.x), -(P.height / 2 + tf.y)); }
+function invPoint(tf, x, y) { // canvas point -> source space
+  const cx = P.width / 2, cy = P.height / 2; let dx = x - cx - tf.x, dy = y - cy - tf.y; const c = Math.cos(-tf.r * Math.PI / 180), s = Math.sin(-tf.r * Math.PI / 180);
+  const rx = dx * c - dy * s, ry = dx * s + dy * c; return { x: rx / tf.sx + cx, y: ry / tf.sy + cy };
+}
+function layerCanvasAt(layer, fi) { return layer.type === 'tween' ? layer.source : layer.cells[P.frames[fi].id]; }
+function drawLayer(ctx, layer, fi, override) {
+  const src = override || layerCanvasAt(layer, fi); if (!src) return;
+  ctx.save();
+  if (layer.type === 'tween') { const tf = tweenAt(layer, fi); ctx.globalAlpha *= tf.o; applyTf(ctx, tf); }
+  ctx.drawImage(src, 0, 0); ctx.restore();
+}
+function renderFrame(ctx, fi, opts = {}) {
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  ctx.clearRect(0, 0, P.width, P.height);
+  if (opts.paper !== false) { ctx.fillStyle = P.paper; ctx.fillRect(0, 0, P.width, P.height); }
+  for (const L of P.layers) {
+    if (!L.visible) continue; if (opts.only && opts.only !== L) continue; if (opts.skip === L) continue;
+    ctx.globalAlpha = L.opacity; drawLayer(ctx, L, fi, opts.override && opts.override.layer === L ? opts.override.canvas : null);
+  }
+  ctx.restore();
+}
+function frameHasContent(layer, f) { return layer.type === 'tween' ? !!layer.keys[f.id] : !!layer.cells[f.id]; }
+
+/* ------------------------------------------------------------------ undo */
+const undoStack = [], redoStack = [];
+function pushUndo(entry) { undoStack.push(entry); if (undoStack.length > 60) undoStack.shift(); redoStack.length = 0; }
+function undo() { const e = undoStack.pop(); if (!e) return toast('Nothing to undo'); e.undo(); redoStack.push(e); afterStructure(); }
+function redo() { const e = redoStack.pop(); if (!e) return toast('Nothing to redo'); e.redo(); undoStack.push(e); afterStructure(); }
+function snapCanvasEdit(target, fn, dirtyAll) { // run fn that mutates target canvas, record before/after
+  const before = cloneCanvas(target); fn(); const after = cloneCanvas(target);
+  pushUndo({ undo() { copyInto(target, before); }, redo() { copyInto(target, after); } });
+  dirtyThumb(dirtyAll ? null : curFrame().id); scheduleSave();
+}
+function snapStructure(fn) { // structural change: frames/layers arrays, keys, meta
+  const before = structSnapshot(); fn(); const after = structSnapshot();
+  pushUndo({ undo() { structRestore(before); }, redo() { structRestore(after); } });
+  afterStructure(); scheduleSave();
+}
+function structSnapshot() {
+  return { frame: S.frame, layer: S.layer, paper: P.paper, fps: P.fps, frames: P.frames.map(f => ({ ...f })), layers: P.layers.map(L => ({ ...L, cells: { ...L.cells }, keys: Object.fromEntries(Object.entries(L.keys).map(([k, v]) => [k, { ...v }])) })) };
+}
+function structRestore(s) { P.frames = s.frames.map(f => ({ ...f })); P.layers = s.layers.map(L => ({ ...L, cells: { ...L.cells }, keys: Object.fromEntries(Object.entries(L.keys).map(([k, v]) => [k, { ...v }])) })); P.paper = s.paper; P.fps = s.fps; S.frame = clamp(s.frame, 0, P.frames.length - 1); S.layer = clamp(s.layer, 0, P.layers.length - 1); thumbs.clear(); }
+function afterStructure() { S.frame = clamp(S.frame, 0, P.frames.length - 1); S.layer = clamp(S.layer, 0, P.layers.length - 1); buildTimeline(); syncPanel(); render(); }
+
+/* ------------------------------------------------------------------ stage */
+const view = $('#view'), overlay = $('#overlay'), vctx = view.getContext('2d'), octx = overlay.getContext('2d');
+let onionBuf = null, tintBuf = null;
+function setupStage() {
+  view.width = overlay.width = P.width; view.height = overlay.height = P.height;
+  $('#stage').style.width = P.width + 'px'; $('#stage').style.height = P.height + 'px';
+  onionBuf = mkCanvas(P.width, P.height); tintBuf = mkCanvas(P.width, P.height);
+  $('#dims').textContent = `${P.width} x ${P.height} at ${P.fps} fps`; $('#paper').value = P.paper; $('#pname').value = P.name;
+  $('#fps').value = P.fps; $('#fpsV').textContent = P.fps; zoomFit();
+}
+function setZoom(z, cx, cy) {
+  const wrap = $('#stagewrap'); const old = S.zoom; z = clamp(z, .1, 8);
+  const rx = cx === undefined ? wrap.clientWidth / 2 : cx, ry = cy === undefined ? wrap.clientHeight / 2 : cy;
+  const sx = (wrap.scrollLeft + rx) / old, sy = (wrap.scrollTop + ry) / old;
+  S.zoom = z; $('#stage').style.transform = `scale(${z})`;
+  // keep stage centered when smaller than the viewport
+  const pad = 40; const w = P.width * z, h = P.height * z;
+  const ml = Math.max(pad, (wrap.clientWidth - w) / 2), mt = Math.max(pad, (wrap.clientHeight - h) / 2);
+  $('#stage').style.left = ml + 'px'; $('#stage').style.top = mt + 'px';
+  $('#gridin').style.minWidth = '100%';
+  const spacer = $('#zoombar'); spacer.style.marginTop = (h + mt + pad) + 'px';
+  wrap.scrollLeft = sx * z - rx; wrap.scrollTop = sy * z - ry;
+}
+function zoomFit() { const wrap = $('#stagewrap'); const z = Math.min((wrap.clientWidth - 80) / P.width, (wrap.clientHeight - 80) / P.height); setZoom(Math.min(z, 2)); }
+function tintCanvas(src, color) { const c = tintBuf.getContext('2d'); c.save(); c.setTransform(1,0,0,1,0,0); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; c.clearRect(0, 0, P.width, P.height); c.drawImage(src, 0, 0); c.globalCompositeOperation = 'source-in'; c.fillStyle = color; c.fillRect(0, 0, P.width, P.height); c.restore(); return tintBuf; }
+function render() {
+  if (!P) return;
+  vctx.save(); vctx.setTransform(1, 0, 0, 1, 0, 0); vctx.globalAlpha = 1; vctx.globalCompositeOperation = 'source-over';
+  vctx.clearRect(0, 0, P.width, P.height); vctx.fillStyle = P.paper; vctx.fillRect(0, 0, P.width, P.height);
+  const L = curLayer();
+  if (S.onion && !S.playing && L.visible) {
+    const oc = onionBuf.getContext('2d');
+    const draw = (fi, color, a) => {
+      if (L.type === 'tween' && !keyedIndices(L).length) return;
+      oc.save(); oc.setTransform(1,0,0,1,0,0); oc.globalAlpha = 1; oc.globalCompositeOperation = 'source-over'; oc.clearRect(0, 0, P.width, P.height); drawLayer(oc, L, fi); oc.restore();
+      vctx.globalAlpha = a; vctx.drawImage(S.onionTint ? tintCanvas(onionBuf, color) : onionBuf, 0, 0); vctx.globalAlpha = 1;
+    };
+    for (let k = S.onionPrev; k >= 1; k--) { const fi = S.frame - k; if (fi >= 0) draw(fi, '#d94a3d', S.onionAlpha / k); }
+    for (let k = 1; k <= S.onionNext; k++) { const fi = S.frame + k; if (fi < P.frames.length) draw(fi, '#3b9a5c', S.onionAlpha / k); }
+  }
+  for (const Ly of P.layers) {
+    if (!Ly.visible) continue; vctx.globalAlpha = Ly.opacity;
+    let override = null;
+    if (Ly === L && stroke && stroke.preview) override = stroke.preview;
+    if (Ly === L && moveDrag && Ly.type === 'draw' && moveDrag.preview) override = moveDrag.preview;
+    drawLayer(vctx, Ly, S.frame, override);
+  }
+  vctx.restore();
+  drawOverlayStatic();
+}
+function drawOverlayStatic() {
+  octx.clearRect(0, 0, P.width, P.height); const L = curLayer();
+  if (L.type === 'tween' && S.showPath && !S.playing) {
+    const ks = keyedIndices(L); if (ks.length > 1) {
+      octx.save(); octx.strokeStyle = 'rgba(91,155,201,.85)'; octx.lineWidth = 1.5; octx.setLineDash([4, 4]); octx.beginPath();
+      for (let i = 0; i < P.frames.length; i++) { const tf = tweenAt(L, i); const x = P.width / 2 + tf.x, y = P.height / 2 + tf.y; i ? octx.lineTo(x, y) : octx.moveTo(x, y); }
+      octx.stroke(); octx.setLineDash([]); octx.fillStyle = '#f2c14e';
+      for (const i of ks) { const tf = tweenAt(L, i); octx.beginPath(); octx.arc(P.width / 2 + tf.x, P.height / 2 + tf.y, 4, 0, 7); octx.fill(); }
+      octx.restore();
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ thumbnails + timeline */
+const thumbs = new Map(); const TW = 84;
+function dirtyThumb(fid) { if (fid === null) thumbs.clear(); else thumbs.delete(fid); scheduleThumbs(); }
+let thumbT; function scheduleThumbs() { clearTimeout(thumbT); thumbT = setTimeout(updateThumbs, 60); }
+function updateThumbs() {
+  const th = P.height / P.width * TW;
+  $$('#fhead .fc').forEach((el, i) => {
+    const f = P.frames[i]; if (!f) return; const c = el.querySelector('canvas'); if (!c) return;
+    if (c.dataset.v && thumbs.get(f.id) === c.dataset.v) return;
+    const off = thumbOff(); renderFrame(off.getContext('2d'), i); const cx = c.getContext('2d'); cx.clearRect(0, 0, c.width, c.height); cx.drawImage(off, 0, 0, TW, th);
+    c.dataset.v = uid(); thumbs.set(f.id, c.dataset.v);
+  });
+}
+let _thumbOff; function thumbOff() { if (!_thumbOff || _thumbOff.width !== P.width) _thumbOff = mkCanvas(P.width, P.height); return _thumbOff; }
+function buildTimeline() {
+  const th = Math.round(P.height / P.width * TW), unit = TW + 8;
+  const head = $('#fhead'); head.innerHTML = '';
+  P.frames.forEach((f, i) => {
+    const el = document.createElement('div'); el.className = 'fc' + (i === S.frame ? ' sel' : ''); el.style.width = unit * f.hold + 'px'; el.dataset.i = i; el.draggable = true;
+    const c = document.createElement('canvas'); c.width = TW; c.height = th; el.appendChild(c);
+    const n = document.createElement('div'); n.className = 'n'; n.textContent = i + 1; el.appendChild(n);
+    if (f.hold > 1) { const h = document.createElement('div'); h.className = 'hold'; h.textContent = 'x' + f.hold; el.appendChild(h); }
+    el.onclick = () => goTo(i);
+    el.ondragstart = e => { e.dataTransfer.setData('text/plain', i); e.dataTransfer.effectAllowed = 'move'; };
+    el.ondragover = e => { e.preventDefault(); el.classList.add('dragover'); }; el.ondragleave = () => el.classList.remove('dragover');
+    el.ondrop = e => { e.preventDefault(); el.classList.remove('dragover'); const from = +e.dataTransfer.getData('text/plain'); if (from !== i) moveFrame(from, i); };
+    head.appendChild(el);
+  });
+  const rows = $('#rows'); rows.innerHTML = '';
+  for (let li = P.layers.length - 1; li >= 0; li--) {
+    const L = P.layers[li]; const r = document.createElement('div'); r.className = 'grow-row';
+    P.frames.forEach((f, i) => {
+      const c = document.createElement('div'); c.className = 'cell' + (i === S.frame ? ' sel' : '') + (i === S.frame && li === S.layer ? ' cur' : ''); c.style.width = unit * f.hold + 'px';
+      if (L.type === 'tween') { if (L.keys[f.id]) c.innerHTML = '<div class="key"></div>'; else if (keyedIndices(L).length) c.innerHTML = '<div class="hl"></div>'; }
+      else if (L.cells[f.id]) c.innerHTML = '<div class="dot"></div>';
+      c.onclick = () => { S.layer = li; goTo(i); };
+      r.appendChild(c);
+    });
+    rows.appendChild(r);
+  }
+  const lay = $('#layers'); lay.innerHTML = '';
+  for (let li = P.layers.length - 1; li >= 0; li--) {
+    const L = P.layers[li]; const r = document.createElement('div'); r.className = 'lrow' + (li === S.layer ? ' sel' : '');
+    r.innerHTML = `<span class="ic eye ${L.visible ? 'on' : ''}" title="Show / hide">${L.visible ? '👁' : '◌'}</span><span class="ic lock ${L.locked ? 'on' : ''}" title="Lock">${L.locked ? '🔒' : '🔓'}</span><span class="nm">${esc(L.name)}</span>${L.type === 'tween' ? '<span class="tw">MOTION</span>' : ''}`;
+    r.onclick = e => { if (e.target.classList.contains('eye')) { L.visible = !L.visible; buildTimeline(); render(); dirtyThumb(null); return; } if (e.target.classList.contains('lock')) { L.locked = !L.locked; buildTimeline(); return; } S.layer = li; buildTimeline(); syncPanel(); render(); };
+    lay.appendChild(r);
+  }
+  positionPlayhead(); updateFi(); scheduleThumbs();
+  $('#bUndo').disabled = !undoStack.length; $('#bRedo').disabled = !redoStack.length;
+}
+function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function positionPlayhead() { const T = frameTimes(); const unit = TW + 8; $('#playhead').style.left = (T[S.frame] * unit) + 'px'; }
+function updateFi() { $('#fi').textContent = `${S.frame + 1} / ${P.frames.length}`; }
+function markSelection() { // cheap update of selection classes without rebuilding
+  $$('#fhead .fc').forEach((el, i) => el.classList.toggle('sel', i === S.frame));
+  const rows = $$('#rows .grow-row'); rows.forEach((r, ri) => { const li = P.layers.length - 1 - ri; [...r.children].forEach((c, i) => { c.classList.toggle('sel', i === S.frame); c.classList.toggle('cur', i === S.frame && li === S.layer); }); });
+  $$('#layers .lrow').forEach((r, ri) => r.classList.toggle('sel', P.layers.length - 1 - ri === S.layer));
+  positionPlayhead(); updateFi();
+  const el = $$('#fhead .fc')[S.frame]; if (el && !S.playing) { const g = $('#grid'); const l = el.offsetLeft, rgt = l + el.offsetWidth; if (l < g.scrollLeft) g.scrollLeft = l - 20; else if (rgt > g.scrollLeft + g.clientWidth) g.scrollLeft = rgt - g.clientWidth + 20; }
+}
+function goTo(i) { if (S.playing) stopPlay(); S.frame = clamp(i, 0, P.frames.length - 1); markSelection(); syncPanel(); render(); }
+
+/* ------------------------------------------------------------------ frame ops */
+function addFrame(after = true, dup = false) {
+  snapStructure(() => {
+    const src = curFrame(); const f = newFrame(); f.hold = dup ? src.hold : 1; const at = after ? S.frame + 1 : S.frame; P.frames.splice(at, 0, f);
+    // motion layers are not copied: the new frame simply falls between keys, which is the point of a motion layer
+    if (dup) for (const L of P.layers) { if (L.type === 'draw' && L.cells[src.id]) L.cells[f.id] = cloneCanvas(L.cells[src.id]); }
+    S.frame = at;
+  });
+}
+function deleteFrame() {
+  if (P.frames.length === 1) { clearFrame(); return; }
+  snapStructure(() => { const f = curFrame(); P.frames.splice(S.frame, 1); for (const L of P.layers) { delete L.cells[f.id]; delete L.keys[f.id]; } S.frame = clamp(S.frame, 0, P.frames.length - 1); });
+}
+function moveFrame(from, to) { snapStructure(() => { const [f] = P.frames.splice(from, 1); P.frames.splice(to, 0, f); S.frame = to; }); }
+function holdFrame(d) { const f = curFrame(); if (f.hold + d < 1 || f.hold + d > 24) return; snapStructure(() => { f.hold += d; }); }
+function clearFrame() { const L = curLayer(); if (L.locked) return toast('Layer is locked'); if (L.type === 'tween') { snapStructure(() => { delete L.keys[curFrame().id]; }); return; } const c = getCell(L, curFrame(), false); if (!c) return; snapStructure(() => { delete L.cells[curFrame().id]; }); }
+function reverseFrames() { snapStructure(() => { P.frames.reverse(); S.frame = P.frames.length - 1 - S.frame; }); }
+function addLayer(type = 'draw') { snapStructure(() => { const L = newLayer((type === 'tween' ? 'Motion ' : 'Layer ') + (P.layers.length + 1), type); P.layers.splice(S.layer + 1, 0, L); S.layer = S.layer + 1; }); }
+function deleteLayer() { if (P.layers.length === 1) return toast('Keep at least one layer'); snapStructure(() => { P.layers.splice(S.layer, 1); S.layer = clamp(S.layer - 1, 0, P.layers.length - 1); }); }
+function moveLayer(d) { const j = S.layer + d; if (j < 0 || j >= P.layers.length) return; snapStructure(() => { const [L] = P.layers.splice(S.layer, 1); P.layers.splice(j, 0, L); S.layer = j; }); }
+function toTween() {
+  const L = curLayer(); if (L.type === 'tween') return;
+  const cell = getCell(L, curFrame(), false); if (!cell) return toast('Draw something on this frame first');
+  snapStructure(() => { L.type = 'tween'; L.source = cloneCanvas(cell); L.keys = { [curFrame().id]: KEY0() }; L.cells = {}; if (/^Layer/.test(L.name)) L.name = L.name.replace('Layer', 'Motion'); });
+  toast('Motion layer. Go to another frame and drag it.');
+}
+function bakeTween() {
+  const L = curLayer(); if (L.type !== 'tween') return;
+  snapStructure(() => { const cells = {}; P.frames.forEach((f, i) => { const c = mkCanvas(P.width, P.height); const x = c.getContext('2d'); x.save(); const tf = tweenAt(L, i); x.globalAlpha = tf.o; applyTf(x, tf); x.drawImage(L.source, 0, 0); x.restore(); cells[f.id] = c; }); L.type = 'draw'; L.cells = cells; L.keys = {}; L.source = null; });
+  toast('Baked. Every frame is a drawing now.');
+}
+function setKey(vals) { const L = curLayer(); if (L.type !== 'tween') return; const f = curFrame(); const k = L.keys[f.id] ? { ...L.keys[f.id] } : { ...tweenAt(L, S.frame) }; Object.assign(k, vals || {}); snapStructure(() => { L.keys[f.id] = k; }); }
+function delKey() { const L = curLayer(); if (!L.keys[curFrame().id]) return; if (keyedIndices(L).length === 1) return toast('A motion layer keeps at least one key'); snapStructure(() => { delete L.keys[curFrame().id]; }); }
+function bakeCellTransform(fn) { const L = curLayer(); if (L.locked) return toast('Layer is locked'); const target = L.type === 'tween' ? ensureSource(L) : getCell(L, curFrame(), false); if (!target) return; snapCanvasEdit(target, () => { const src = cloneCanvas(target); const x = target.getContext('2d'); x.clearRect(0, 0, P.width, P.height); x.save(); fn(x); x.drawImage(src, 0, 0); x.restore(); }, L.type === 'tween'); render(); }
+
+/* ------------------------------------------------------------------ playback */
+let playT = null;
+function togglePlay() { S.playing ? stopPlay() : startPlay(); }
+function startPlay() {
+  S.playing = true; $('#bPlay').textContent = '■ Stop'; $('#bPlay').classList.remove('go'); $('#bPlay').classList.add('warn');
+  let dir = 1, acc = 0, last = performance.now(), held = 0;
+  const step = () => {
+    if (!S.playing) return; const now = performance.now(); acc += now - last; last = now; const dt = 1000 / P.fps; let changed = false;
+    while (acc >= dt) {
+      acc -= dt; held++;
+      if (held >= curFrame().hold) {
+        held = 0; let n = S.frame + dir;
+        if (n >= P.frames.length || n < 0) {
+          if (S.pingpong) { dir = -dir; n = clamp(S.frame + dir, 0, P.frames.length - 1); }
+          else if (S.loop) n = 0; else { S.frame = P.frames.length - 1; stopPlay(); return; }
+        }
+        S.frame = n; changed = true;
+      }
+    }
+    if (changed) { render(); markSelection(); }
+    playT = requestAnimationFrame(step);
+  };
+  render(); playT = requestAnimationFrame(step);
+}
+function stopPlay() { S.playing = false; cancelAnimationFrame(playT); $('#bPlay').textContent = '▶ Play'; $('#bPlay').classList.add('go'); $('#bPlay').classList.remove('warn'); render(); markSelection(); syncPanel(); }
+
+/* ------------------------------------------------------------------ drawing engine */
+let stroke = null, shapeDrag = null, moveDrag = null;
+function pos(e) { const r = view.getBoundingClientRect(); return { x: (e.clientX - r.left) * (P.width / r.width), y: (e.clientY - r.top) * (P.height / r.height), p: (e.pointerType === 'pen' && S.pressure) ? (e.pressure || .5) : 1 }; }
+function hexToRgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+function dab(ctx, x, y, r, hard, color) {
+  if (r < .5) r = .5;
+  if (hard >= 1) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill(); return; }
+  const g = ctx.createRadialGradient(x, y, r * hard, x, y, r); const [R, G, B] = hexToRgb(color);
+  g.addColorStop(0, `rgba(${R},${G},${B},1)`); g.addColorStop(1, `rgba(${R},${G},${B},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+}
+function strokeTargetInfo() {
+  const L = curLayer(); if (L.locked) { toast('Layer is locked'); return null; }
+  const target = L.type === 'tween' ? ensureSource(L) : getCell(L, curFrame(), true); const tf = L.type === 'tween' ? tweenAt(L, S.frame) : null; return { L, target, tf };
+}
+function beginStroke(e) {
+  const info = strokeTargetInfo(); if (!info) return; const p = pos(e); const d = TOOLDEF[S.tool];
+  stroke = { ...info, tool: S.tool, d, buf: mkCanvas(P.width, P.height), preview: mkCanvas(P.width, P.height), last: p, sm: { x: p.x, y: p.y }, dist: 0, color: S.tool === 'eraser' ? '#000000' : S.ink, pts: 0 };
+  strokeTo(p, true); refreshStrokePreview();
+}
+function strokeTo(p, first) {
+  const st = stroke; const d = st.d; const k = first ? 1 : 1 - S.smooth * .92; st.sm.x += (p.x - st.sm.x) * k; st.sm.y += (p.y - st.sm.y) * k;
+  const x = st.sm.x, y = st.sm.y; const r = Math.max(.5, S.size * d.sz * (d.ps ? (0.35 + 0.65 * p.p) : 1) / 2);
+  const c = st.buf.getContext('2d');
+  if (st.tool === 'spray') {
+    const n = Math.ceil(r * .6); c.fillStyle = st.color; for (let i = 0; i < n; i++) { const a = Math.random() * 6.2832, rr = Math.sqrt(Math.random()) * r; c.globalAlpha = .35 + Math.random() * .5; c.beginPath(); c.arc(x + Math.cos(a) * rr, y + Math.sin(a) * rr, .6 + Math.random() * 1.2, 0, 6.2832); c.fill(); } c.globalAlpha = 1; st.last = { x, y }; return;
+  }
+  if (first) { dab(c, x, y, r, d.hard, st.color); st.last = { x, y }; return; }
+  const dx = x - st.last.x, dy = y - st.last.y, len = Math.hypot(dx, dy); const sp = Math.max(.6, r * 2 * d.sp);
+  if (d.hard >= 1 && st.tool !== 'marker') { // crisp: connect with a round line, add end dab
+    c.strokeStyle = st.color; c.lineCap = 'round'; c.lineJoin = 'round'; c.lineWidth = r * 2; c.beginPath(); c.moveTo(st.last.x, st.last.y); c.lineTo(x, y); c.stroke(); st.last = { x, y }; return;
+  }
+  if (len < sp) return;
+  const n = Math.floor(len / sp); for (let i = 1; i <= n; i++) { const t = i / n; dab(c, st.last.x + dx * t, st.last.y + dy * t, r, d.hard, st.color); }
+  st.last = { x: st.last.x + dx * (n * sp / len), y: st.last.y + dy * (n * sp / len) };
+}
+function refreshStrokePreview() {
+  const st = stroke; const pc = st.preview.getContext('2d'); pc.save(); pc.setTransform(1,0,0,1,0,0); pc.globalAlpha = 1; pc.globalCompositeOperation = 'source-over'; pc.clearRect(0, 0, P.width, P.height); pc.drawImage(st.target, 0, 0);
+  compositeStamp(pc, st.buf, st.tool === 'eraser' ? 'destination-out' : 'source-over', S.opacity * st.d.alpha, st.tf); pc.restore();
+}
+function compositeStamp(ctx, stamp, op, alpha, tf) { ctx.save(); ctx.globalCompositeOperation = op; ctx.globalAlpha = alpha; if (tf) applyInvTf(ctx, tf); ctx.drawImage(stamp, 0, 0); ctx.restore(); }
+function endStroke() {
+  const st = stroke; stroke = null; if (!st) return;
+  snapCanvasEdit(st.target, () => { compositeStamp(st.target.getContext('2d'), st.buf, st.tool === 'eraser' ? 'destination-out' : 'source-over', S.opacity * st.d.alpha, st.tf); }, st.L.type === 'tween');
+  if (st.tool !== 'eraser') pushRecent(S.ink); buildTimelineCheap(); render();
+}
+function commitStamp(stampCanvas, op = 'source-over', alpha = 1) { // used by shapes, line, text, imports
+  const info = strokeTargetInfo(); if (!info) return; snapCanvasEdit(info.target, () => { compositeStamp(info.target.getContext('2d'), stampCanvas, op, alpha, info.tf); }, info.L.type === 'tween'); buildTimelineCheap(); render();
+}
+function buildTimelineCheap() { // dots may have changed for the current cell
+  const L = curLayer(); const ri = P.layers.length - 1 - S.layer; const row = $$('#rows .grow-row')[ri]; if (!row) return; const c = row.children[S.frame]; if (!c) return;
+  const has = frameHasContent(L, curFrame()); if (L.type === 'draw') c.innerHTML = has ? '<div class="dot"></div>' : '';
+}
+
+/* fill */
+function floodFill(e) {
+  const info = strokeTargetInfo(); if (!info) return; let p = pos(e); if (info.tf) p = invPoint(info.tf, p.x, p.y);
+  const x0 = Math.floor(p.x), y0 = Math.floor(p.y); if (x0 < 0 || y0 < 0 || x0 >= P.width || y0 >= P.height) return;
+  const W = P.width, H = P.height;
+  // reference image: this layer alone, or the whole composite (without paper) when fillAll
+  let ref;
+  if (S.fillAll) { ref = mkCanvas(W, H); renderFrame(ref.getContext('2d'), S.frame, { paper: false }); } else ref = info.target;
+  const src = ref.getContext('2d').getImageData(0, 0, W, H).data; const i0 = (y0 * W + x0) * 4; const tr = src[i0], tg = src[i0 + 1], tb = src[i0 + 2], ta = src[i0 + 3];
+  const tol = S.fillTol; const mask = new Uint8Array(W * H); const stack = [y0 * W + x0]; mask[y0 * W + x0] = 1;
+  const match = i => { const j = i * 4; const a = src[j + 3]; if (ta < 8 && a < 8) return true; return Math.abs(src[j] - tr) <= tol && Math.abs(src[j + 1] - tg) <= tol && Math.abs(src[j + 2] - tb) <= tol && Math.abs(a - ta) <= tol; };
+  while (stack.length) { const i = stack.pop(); const x = i % W, y = (i - x) / W; const nb = [i - 1, i + 1, i - W, i + W]; if (x === 0) nb[0] = -1; if (x === W - 1) nb[1] = -1; for (const n of nb) { if (n >= 0 && n < W * H && !mask[n] && match(n)) { mask[n] = 1; stack.push(n); } } }
+  // expand by one pixel to hide the antialiased halo
+  const out = mkCanvas(W, H); const od = out.getContext('2d').createImageData(W, H); const [R, G, B] = hexToRgb(S.ink);
+  for (let i = 0; i < W * H; i++) { let m = mask[i]; if (!m) { const x = i % W; m = (x > 0 && mask[i - 1]) || (x < W - 1 && mask[i + 1]) || (i >= W && mask[i - W]) || (i < W * H - W && mask[i + W]); } if (m) { const j = i * 4; od.data[j] = R; od.data[j + 1] = G; od.data[j + 2] = B; od.data[j + 3] = 255; } }
+  out.getContext('2d').putImageData(od, 0, 0);
+  snapCanvasEdit(info.target, () => { const c = info.target.getContext('2d'); c.save(); c.globalAlpha = S.opacity; c.drawImage(out, 0, 0); c.restore(); }, info.L.type === 'tween');
+  pushRecent(S.ink); buildTimelineCheap(); render();
+}
+
+/* shapes + line */
+const SHAPES = {
+  rect: c => { c.rect(-1, -1, 2, 2); }, ellipse: c => { c.ellipse(0, 0, 1, 1, 0, 0, 6.2832); }, triangle: c => { c.moveTo(0, -1); c.lineTo(1, 1); c.lineTo(-1, 1); c.closePath(); },
+  diamond: c => { c.moveTo(0, -1); c.lineTo(1, 0); c.lineTo(0, 1); c.lineTo(-1, 0); c.closePath(); }, pentagon: c => poly(c, 5), hexagon: c => poly(c, 6),
+  star: c => { for (let i = 0; i < 10; i++) { const r = i % 2 ? .45 : 1, a = -Math.PI / 2 + i * Math.PI / 5; i ? c.lineTo(Math.cos(a) * r, Math.sin(a) * r) : c.moveTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); },
+  heart: c => { c.moveTo(0, .95); c.bezierCurveTo(-1.3, .1, -.9, -1.1, 0, -.45); c.bezierCurveTo(.9, -1.1, 1.3, .1, 0, .95); c.closePath(); },
+  arrow: c => { c.moveTo(-1, -.3); c.lineTo(.3, -.3); c.lineTo(.3, -.75); c.lineTo(1, 0); c.lineTo(.3, .75); c.lineTo(.3, .3); c.lineTo(-1, .3); c.closePath(); },
+  bolt: c => { c.moveTo(.1, -1); c.lineTo(-.7, .15); c.lineTo(-.05, .15); c.lineTo(-.25, 1); c.lineTo(.7, -.25); c.lineTo(.05, -.25); c.closePath(); },
+  bubble: c => { c.moveTo(-.85, -.9); c.lineTo(.85, -.9); c.quadraticCurveTo(1, -.9, 1, -.75); c.lineTo(1, .35); c.quadraticCurveTo(1, .5, .85, .5); c.lineTo(-.1, .5); c.lineTo(-.55, .95); c.lineTo(-.45, .5); c.lineTo(-.85, .5); c.quadraticCurveTo(-1, .5, -1, .35); c.lineTo(-1, -.75); c.quadraticCurveTo(-1, -.9, -.85, -.9); c.closePath(); },
+  cloud: c => { c.arc(-.45, .25, .5, 0, 6.2832); c.moveTo(.6, .3); c.arc(.35, .3, .45, 0, 6.2832); c.moveTo(.45, -.15); c.arc(0, -.2, .55, 0, 6.2832); c.moveTo(.9, .25); c.arc(.6, .3, .35, 0, 6.2832); },
+  cross: c => { c.moveTo(-.35, -1); c.lineTo(.35, -1); c.lineTo(.35, -.35); c.lineTo(1, -.35); c.lineTo(1, .35); c.lineTo(.35, .35); c.lineTo(.35, 1); c.lineTo(-.35, 1); c.lineTo(-.35, .35); c.lineTo(-1, .35); c.lineTo(-1, -.35); c.lineTo(-.35, -.35); c.closePath(); },
+  moon: c => { c.arc(0, 0, 1, Math.PI * .3, Math.PI * 1.7); c.arc(.45, 0, .8, Math.PI * 1.45, Math.PI * .55, true); c.closePath(); },
+  ring: c => { c.arc(0, 0, 1, 0, 6.2832); c.moveTo(.55, 0); c.arc(0, 0, .55, 0, 6.2832, true); },
+  eye: c => { c.moveTo(-1, 0); c.quadraticCurveTo(0, -1.1, 1, 0); c.quadraticCurveTo(0, 1.1, -1, 0); c.closePath(); c.moveTo(.35, 0); c.arc(0, 0, .35, 0, 6.2832); },
+  blob: c => { c.moveTo(-.2, -1); c.bezierCurveTo(.7, -1.1, 1.1, -.2, .8, .4); c.bezierCurveTo(.5, 1.1, -.5, 1.1, -.8, .5); c.bezierCurveTo(-1.2, -.2, -.9, -.9, -.2, -1); c.closePath(); }
+};
+function poly(c, n) { for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + i * 2 * Math.PI / n; i ? c.lineTo(Math.cos(a), Math.sin(a)) : c.moveTo(Math.cos(a), Math.sin(a)); } c.closePath(); }
+function drawShape(ctx, name, x0, y0, x1, y1, rot, mode) {
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = Math.abs(x1 - x0) / 2, ry = Math.abs(y1 - y0) / 2; if (rx < 1 || ry < 1) return;
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot * Math.PI / 180); ctx.scale(rx, ry); ctx.beginPath(); SHAPES[name](ctx); ctx.restore();
+  ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  if (mode !== 'outline') { ctx.fillStyle = S.fill; ctx.fill('evenodd'); }
+  if (mode !== 'fill') { ctx.strokeStyle = S.ink; ctx.lineWidth = S.size; ctx.stroke(); }
+  ctx.restore();
+}
+function beginShape(e) { if (!strokeTargetInfo()) return; const p = pos(e); shapeDrag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y, shift: e.shiftKey }; }
+function updateShape(e) { const p = pos(e); shapeDrag.x1 = p.x; shapeDrag.y1 = p.y; shapeDrag.shift = e.shiftKey; drawOverlayStatic(); paintShape(octx); }
+function paintShape(ctx) {
+  let { x0, y0, x1, y1, shift } = shapeDrag;
+  if (S.tool === 'line') { if (shift) { const a = Math.atan2(y1 - y0, x1 - x0), sn = Math.round(a / (Math.PI / 4)) * Math.PI / 4, l = Math.hypot(x1 - x0, y1 - y0); x1 = x0 + Math.cos(sn) * l; y1 = y0 + Math.sin(sn) * l; }
+    ctx.save(); ctx.strokeStyle = S.ink; ctx.lineWidth = S.size; ctx.lineCap = 'round'; ctx.globalAlpha = 1; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); ctx.restore(); return; }
+  if (shift) { const s = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); x1 = x0 + Math.sign(x1 - x0 || 1) * s; y1 = y0 + Math.sign(y1 - y0 || 1) * s; }
+  drawShape(ctx, S.shape, x0, y0, x1, y1, S.shapeRot, S.shapeMode);
+}
+function endShape() { const sd = shapeDrag; shapeDrag = null; if (!sd) return; octx.clearRect(0, 0, P.width, P.height); const st = mkCanvas(P.width, P.height); shapeDrag = sd; paintShape(st.getContext('2d')); shapeDrag = null; commitStamp(st, 'source-over', S.opacity); pushRecent(S.ink); }
+function placeText(e) { const p = pos(e); const st = mkCanvas(P.width, P.height); const c = st.getContext('2d'); c.font = `${S.textSize}px ${S.textFont}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = S.ink; c.fillText(S.textStr, p.x, p.y); commitStamp(st, 'source-over', S.opacity); }
+function pickColor(e) { const p = pos(e); const d = vctx.getImageData(Math.floor(p.x), Math.floor(p.y), 1, 1).data; if (d[3] === 0) return; setInk('#' + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, '0')).join('')); toast('Picked ' + S.ink); }
+
+/* move */
+function beginMove(e) { const L = curLayer(); if (L.locked) return toast('Layer is locked'); const p = pos(e); if (L.type === 'tween') { const k = { ...tweenAt(L, S.frame) }; moveDrag = { L, p0: p, k0: k, tween: true }; } else { const cell = getCell(L, curFrame(), false); if (!cell) return toast('Nothing on this frame to move'); moveDrag = { L, p0: p, cell, preview: cloneCanvas(cell), dx: 0, dy: 0 }; } }
+function updateMove(e) {
+  const p = pos(e); const md = moveDrag; md.dx = p.x - md.p0.x; md.dy = p.y - md.p0.y;
+  if (md.tween) { const k = { ...md.k0, x: md.k0.x + md.dx, y: md.k0.y + md.dy }; md.L.keys[curFrame().id] = k; md.dirty = true; render(); syncTweenSliders(); return; }
+  const c = md.preview.getContext('2d'); c.clearRect(0, 0, P.width, P.height); c.drawImage(md.cell, md.dx, md.dy); render();
+}
+function endMove() {
+  const md = moveDrag; moveDrag = null; if (!md) return;
+  if (md.tween) { const f = curFrame(); const k = md.L.keys[f.id]; delete md.L.keys[f.id]; if (!k || (!md.dx && !md.dy)) { render(); return; } snapStructure(() => { md.L.keys[f.id] = k; }); return; }
+  if (!md.dx && !md.dy) { render(); return; } snapCanvasEdit(md.cell, () => { copyInto(md.cell, md.preview); }); render();
+}
+
+/* pointer routing */
+let pinch = null;
+view.addEventListener('pointerdown', e => {
+  if (S.playing) { stopPlay(); return; } if (e.button === 1 || e.button === 2) return; view.setPointerCapture(e.pointerId);
+  if (e.altKey) return pickColor(e);
+  switch (S.tool) {
+    case 'fill': return floodFill(e); case 'line': case 'shape': return beginShape(e); case 'text': return placeText(e); case 'eyedropper': return pickColor(e); case 'move': return beginMove(e);
+    default: beginStroke(e);
+  }
+});
+view.addEventListener('pointermove', e => {
+  if (stroke) { const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; for (const ev of evs) strokeTo(pos(ev)); refreshStrokePreview(); render(); }
+  else if (shapeDrag) updateShape(e); else if (moveDrag) updateMove(e);
+});
+const up = e => { if (stroke) endStroke(); else if (shapeDrag) endShape(); else if (moveDrag) endMove(); };
+view.addEventListener('pointerup', up); view.addEventListener('pointercancel', up);
+view.addEventListener('contextmenu', e => e.preventDefault());
+$('#stagewrap').addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); const r = $('#stagewrap').getBoundingClientRect(); setZoom(S.zoom * (e.deltaY < 0 ? 1.1 : .9), e.clientX - r.left, e.clientY - r.top); } }, { passive: false });
+
+/* ------------------------------------------------------------------ panel + ui */
+function setTool(t) { S.tool = t; $$('#rail button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); const def = TOOLS.find(x => x[0] === t); $('#toolTitle').textContent = def[2];
+  $('#optStroke').style.display = TOOLDEF[t] || t === 'line' ? '' : 'none'; $('#optFill').style.display = t === 'fill' ? '' : 'none'; $('#optShape').style.display = t === 'shape' ? '' : 'none'; $('#optText').style.display = t === 'text' ? '' : 'none'; $('#optMove').style.display = t === 'move' ? '' : 'none';
+  $('#smooth').disabled = $('#pressure').disabled = (t === 'line');
+  view.style.cursor = t === 'move' ? 'move' : t === 'text' ? 'text' : 'crosshair'; }
+function setInk(c) { S.ink = c; $('#ink').value = c; $$('#palette div').forEach(d => d.classList.toggle('sel', d.dataset.c === c)); }
+function pushRecent(c) { S.recent = [c, ...S.recent.filter(x => x !== c)].slice(0, 10); const r = $('#recent'); r.innerHTML = ''; S.recent.forEach(x => { const d = document.createElement('div'); d.style.background = x; d.onclick = () => setInk(x); r.appendChild(d); }); }
+function syncPanel() {
+  const L = curLayer(); $('#lname').value = L.name; $('#lop').value = Math.round(L.opacity * 100); $('#lopV').textContent = Math.round(L.opacity * 100) + '%';
+  const tw = L.type === 'tween'; $('#tweenProps').style.display = tw ? '' : 'none'; $('#lToTween').style.display = tw ? 'none' : ''; $('#lBake').style.display = tw ? '' : 'none';
+  $('#moveHint').textContent = tw ? 'Drag to place the object at this frame. That sets a keyframe here; the in-between frames are computed.' : 'Drag to move this frame\'s drawing. On a motion layer, dragging sets a keyframe.';
+  if (tw) syncTweenSliders();
+  $('#dims').textContent = `${P.width} x ${P.height} at ${P.fps} fps`;
+}
+function syncTweenSliders() {
+  const L = curLayer(); const k = tweenAt(L, S.frame); const has = !!L.keys[curFrame().id];
+  const set = (id, v, label) => { $('#' + id).value = v; $('#' + id + 'V').textContent = label; };
+  set('kx', Math.round(k.x), Math.round(k.x)); set('ky', Math.round(k.y), Math.round(k.y)); set('kr', Math.round(k.r), Math.round(k.r) + '°'); set('ksx', Math.round(k.sx * 100), Math.round(k.sx * 100) + '%'); set('ksy', Math.round(k.sy * 100), Math.round(k.sy * 100) + '%'); set('ko', Math.round(k.o * 100), Math.round(k.o * 100) + '%');
+  $('#kease').value = k.ease || 'easeInOut'; $('#kSet').classList.toggle('on', has); $('#kDel').disabled = !has;
+}
+function bindSlider(id, fn, fmt) { const el = $('#' + id), v = $('#' + id + 'V'); const upd = () => { fn(+el.value); if (v) v.textContent = fmt ? fmt(+el.value) : el.value; }; el.addEventListener('input', upd); upd(); }
+let sliderSnap = null; // for tween sliders: one undo entry per drag
+function tweenSliderChange(vals) { const L = curLayer(); if (L.type !== 'tween') return; const f = curFrame(); if (!sliderSnap) sliderSnap = structSnapshot(); const k = L.keys[f.id] ? { ...L.keys[f.id] } : { ...tweenAt(L, S.frame) }; Object.assign(k, vals); L.keys[f.id] = k; render(); buildTimelineCheapKey(); }
+function buildTimelineCheapKey() { const ri = P.layers.length - 1 - S.layer; const row = $$('#rows .grow-row')[ri]; if (row && row.children[S.frame]) row.children[S.frame].innerHTML = '<div class="key"></div>'; $('#kSet').classList.add('on'); $('#kDel').disabled = false; }
+function tweenSliderCommit() { if (!sliderSnap) return; const before = sliderSnap, after = structSnapshot(); sliderSnap = null; pushUndo({ undo() { structRestore(before); }, redo() { structRestore(after); } }); dirtyThumb(null); scheduleSave(); buildTimeline(); }
+
+function initUI() {
+  const rail = $('#rail'); TOOLS.forEach(([id, ic, nm, key]) => { const b = document.createElement('button'); b.dataset.t = id; b.title = `${nm} (${key})`; b.innerHTML = `<i>${ic}</i><b>${nm}</b>`; b.onclick = () => setTool(id); rail.appendChild(b); });
+  const pal = $('#palette'); PALETTE.forEach(c => { const d = document.createElement('div'); d.style.background = c; d.dataset.c = c; d.onclick = () => setInk(c); pal.appendChild(d); });
+  const sh = $('#shapes'); Object.keys(SHAPES).forEach(n => { const b = document.createElement('button'); b.title = n; b.dataset.s = n; const c = mkCanvas(1, 1); b.innerHTML = `<svg viewBox="-1.25 -1.25 2.5 2.5"><path d="${shapePath(n)}"/></svg>`; b.onclick = () => { S.shape = n; $$('#shapes button').forEach(x => x.classList.toggle('on', x.dataset.s === n)); }; if (n === S.shape) b.classList.add('on'); sh.appendChild(b); });
+  $$('#shapeMode button').forEach(b => b.onclick = () => { S.shapeMode = b.dataset.v; $$('#shapeMode button').forEach(x => x.classList.toggle('on', x === b)); });
+  bindSlider('size', v => S.size = v); bindSlider('opacity', v => S.opacity = v / 100, v => v + '%'); bindSlider('smooth', v => S.smooth = v / 100, v => v + '%');
+  bindSlider('tol', v => S.fillTol = v); bindSlider('srot', v => S.shapeRot = v, v => v + '°'); bindSlider('tsize', v => S.textSize = v); bindSlider('onionAlpha', v => { S.onionAlpha = v / 100; render(); });
+  $('#pressure').onchange = e => S.pressure = e.target.checked; $('#fillAll').onchange = e => S.fillAll = e.target.checked;
+  $('#textStr').oninput = e => S.textStr = e.target.value; $('#tfont').onchange = e => S.textFont = e.target.value;
+  $('#ink').oninput = e => setInk(e.target.value); $('#fillc').oninput = e => S.fill = e.target.value; $('#swapc').onclick = () => { const a = S.ink; setInk(S.fill); S.fill = a; $('#fillc').value = a; };
+  $('#paper').oninput = e => { P.paper = e.target.value; render(); dirtyThumb(null); scheduleSave(); };
+  $('#onion').onchange = e => { S.onion = e.target.checked; render(); }; $('#onionTint').onchange = e => { S.onionTint = e.target.checked; render(); };
+  $('#onionPrev').onchange = e => { S.onionPrev = +e.target.value; render(); }; $('#onionNext').onchange = e => { S.onionNext = +e.target.value; render(); };
+  $('#lname').onchange = e => { curLayer().name = e.target.value || 'Layer'; buildTimeline(); scheduleSave(); };
+  $('#lop').oninput = e => { curLayer().opacity = +e.target.value / 100; $('#lopV').textContent = e.target.value + '%'; render(); }; $('#lop').onchange = () => { dirtyThumb(null); scheduleSave(); };
+  $('#lToTween').onclick = toTween; $('#lBake').onclick = bakeTween;
+  $('#lFlipH').onclick = () => bakeCellTransform(x => { x.translate(P.width, 0); x.scale(-1, 1); }); $('#lFlipV').onclick = () => bakeCellTransform(x => { x.translate(0, P.height); x.scale(1, -1); });
+  $('#lRot').onclick = () => bakeCellTransform(x => { x.translate(P.width / 2, P.height / 2); x.rotate(Math.PI / 2); x.translate(-P.width / 2, -P.height / 2); }); $('#lClear').onclick = clearFrame;
+  $('#kSet').onclick = () => setKey(); $('#kDel').onclick = delKey;
+  const tw = [['kx', v => ({ x: v })], ['ky', v => ({ y: v })], ['kr', v => ({ r: v })], ['ksx', v => ({ sx: v / 100 })], ['ksy', v => ({ sy: v / 100 })], ['ko', v => ({ o: v / 100 })]];
+  tw.forEach(([id, f]) => { const el = $('#' + id); el.addEventListener('input', () => { tweenSliderChange(f(+el.value)); syncTweenSliders(); }); el.addEventListener('change', tweenSliderCommit); });
+  $('#kease').onchange = e => setKey({ ease: e.target.value }); $('#showPath').onchange = e => { S.showPath = e.target.checked; render(); };
+  $('#fps').oninput = e => { P.fps = +e.target.value; $('#fpsV').textContent = P.fps; $('#dims').textContent = `${P.width} x ${P.height} at ${P.fps} fps`; }; $('#fps').onchange = scheduleSave;
+  $('#bLoop').onclick = () => { S.loop = !S.loop; $('#bLoop').classList.toggle('on', S.loop); }; $('#bPing').onclick = () => { S.pingpong = !S.pingpong; $('#bPing').classList.toggle('on', S.pingpong); };
+  $('#bPlay').onclick = togglePlay; $('#bFirst').onclick = () => goTo(0); $('#bLast').onclick = () => goTo(P.frames.length - 1); $('#bPrev').onclick = () => goTo(S.frame - 1); $('#bNext').onclick = () => goTo(S.frame + 1);
+  $('#bAdd').onclick = () => addFrame(true, false); $('#bDup').onclick = () => addFrame(true, true); $('#bIns').onclick = () => addFrame(false, false); $('#bDel').onclick = deleteFrame;
+  $('#bHoldM').onclick = () => holdFrame(-1); $('#bHoldP').onclick = () => holdFrame(1); $('#bMoveL').onclick = () => S.frame > 0 && moveFrame(S.frame, S.frame - 1); $('#bMoveR').onclick = () => S.frame < P.frames.length - 1 && moveFrame(S.frame, S.frame + 1); $('#bReverse').onclick = reverseFrames;
+  $('#lAdd').onclick = () => addLayer('draw'); $('#lDel').onclick = deleteLayer; $('#lUp').onclick = () => moveLayer(1); $('#lDn').onclick = () => moveLayer(-1);
+  $('#bUndo').onclick = undo; $('#bRedo').onclick = redo;
+  $('#zIn').onclick = () => setZoom(S.zoom * 1.25); $('#zOut').onclick = () => setZoom(S.zoom / 1.25); $('#zFit').onclick = zoomFit; $('#z100').onclick = () => setZoom(1);
+  $('#pname').onchange = e => { P.name = e.target.value || 'Untitled'; scheduleSave(); };
+  $('#bHelp').onclick = () => openModal('mHelp');
+  $('#bTut').onclick = openTut; $('#tutPrev').onclick = () => showTut(tutI - 1); $('#tutNext').onclick = () => tutI === TUT.length - 1 ? closeModals() : showTut(tutI + 1); $('#bSpark').onclick = () => toast('Spark: ' + SPARKS[Math.floor(Math.random() * SPARKS.length)], 6000);
+  $('#bNew').onclick = () => openModal('mNew'); $('#nSize').onchange = e => $('#nCustom').style.display = e.target.value === 'custom' ? '' : 'none'; $('#nGo').onclick = createFromDialog;
+  $('#bSave').onclick = saveFile; $('#bOpen').onclick = () => $('#fileProj').click(); $('#fileProj').onchange = openFile;
+  $('#bExport').onclick = () => { $('#exFps').textContent = P.fps; $('#exDims').textContent = P.width + ' x ' + P.height; $('#exNote').textContent = ''; progress(0); openModal('mExport'); };
+  $('#exGif').onclick = exportGif; $('#exWebm').onclick = exportWebm; $('#exPng').onclick = exportPng; $('#exSheet').onclick = exportSheet; $('#exSeq').onclick = exportSeq;
+  $('#imFrames').onclick = () => pickImages('frames'); $('#imLayer').onclick = () => pickImages('layer'); $('#imBg').onclick = () => pickImages('bg');
+  $('#bVersions').onclick = openVersions; $('#vSave').onclick = () => saveVersion($('#vName').value.trim());
+  $('#bCam').onclick = openCam; $('#camShot').onclick = camShot; $('#camMirror').onchange = e => $('#camwrap').classList.toggle('mirror', e.target.checked); $('#camOnionOn').onchange = drawCamOnion; $('#camOnionA').oninput = drawCamOnion;
+  $('#bResize').onclick = () => { $('#rW').value = P.width; $('#rH').value = P.height; openModal('mResize'); }; $('#rGo').onclick = resizeCanvas;
+  $$('[data-close]').forEach(b => b.onclick = () => { closeModals(); }); $$('.modal').forEach(m => m.addEventListener('pointerdown', e => { if (e.target === m) closeModals(); }));
+  window.addEventListener('resize', () => setZoom(S.zoom));
+  document.addEventListener('keydown', onKey);
+  window.addEventListener('dragover', e => e.preventDefault()); window.addEventListener('drop', e => { e.preventDefault(); const fs = [...e.dataTransfer.files]; if (!fs.length) return; if (fs[0].name.endsWith('.json')) return readProjectFile(fs[0]); importImages(fs, 'frames'); });
+  setTool('pen'); setInk(S.ink);
+}
+function shapePath(n) { // svg path for the palette icon via Path2D-like capture
+  const cmds = []; const c = { moveTo: (x, y) => cmds.push(`M${x} ${y}`), lineTo: (x, y) => cmds.push(`L${x} ${y}`), closePath: () => cmds.push('Z'), rect: (x, y, w, h) => cmds.push(`M${x} ${y}h${w}v${h}h${-w}Z`),
+    bezierCurveTo: (a, b, c2, d, e, f) => cmds.push(`C${a} ${b} ${c2} ${d} ${e} ${f}`), quadraticCurveTo: (a, b, c2, d) => cmds.push(`Q${a} ${b} ${c2} ${d}`),
+    ellipse: (x, y, rx, ry) => cmds.push(`M${x - rx} ${y}a${rx} ${ry} 0 1 0 ${rx * 2} 0a${rx} ${ry} 0 1 0 ${-rx * 2} 0`),
+    arc: (x, y, r, a0, a1, ccw) => { const full = Math.abs(a1 - a0) >= 6.28; if (full) { cmds.push(`M${x + r} ${y}a${r} ${r} 0 1 0 ${-2 * r} 0a${r} ${r} 0 1 0 ${2 * r} 0`); return; } const x0 = x + Math.cos(a0) * r, y0 = y + Math.sin(a0) * r, x1 = x + Math.cos(a1) * r, y1 = y + Math.sin(a1) * r; let d = a1 - a0; if (ccw) d = d > 0 ? d - 6.2832 : d; else d = d < 0 ? d + 6.2832 : d; const large = Math.abs(d) > Math.PI ? 1 : 0, sweep = d > 0 ? 1 : 0; cmds.push(`${cmds.length && !ccw ? 'L' : 'M'}${x0} ${y0}A${r} ${r} 0 ${large} ${sweep} ${x1} ${y1}`); } };
+  SHAPES[n](c); return cmds.join(' ');
+}
+function openModal(id) { closeModals(); $('#' + id).classList.add('open'); }
+function closeModals() { $$('.modal.open').forEach(m => m.classList.remove('open')); stopCam(); }
+function onKey(e) {
+  const tag = (e.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'select' || tag === 'textarea') { if (e.key === 'Enter' && $('#mCam').classList.contains('open')) camShot(); return; }
+  if ($('#mCam').classList.contains('open')) { if (e.key === 'Enter') { e.preventDefault(); camShot(); } if (e.key === 'Escape') closeModals(); return; }
+  if (e.key === 'Escape') return closeModals();
+  if ($('#mTut').classList.contains('open')) { if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showTut(tutI + 1); } if (e.key === 'ArrowLeft') showTut(tutI - 1); return; }
+  const k = e.key; const mod = e.metaKey || e.ctrlKey;
+  if (mod && k.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && k.toLowerCase() === 's') { e.preventDefault(); e.shiftKey ? openVersions() : saveFile(); return; }
+  if (mod) return;
+  const map = { p: 'pen', b: 'brush', c: 'pencil', m: 'marker', a: 'spray', e: 'eraser', g: 'fill', l: 'line', u: 'shape', t: 'text', i: 'eyedropper', v: 'move' };
+  const lk = k.toLowerCase();
+  if (k === ' ') { e.preventDefault(); togglePlay(); return; }
+  if (k === ',' || k === 'ArrowLeft') return goTo(S.frame - 1); if (k === '.' || k === 'ArrowRight') return goTo(S.frame + 1);
+  if (k === 'ArrowUp') { e.preventDefault(); S.layer = clamp(S.layer + 1, 0, P.layers.length - 1); buildTimeline(); syncPanel(); render(); return; }
+  if (k === 'ArrowDown') { e.preventDefault(); S.layer = clamp(S.layer - 1, 0, P.layers.length - 1); buildTimeline(); syncPanel(); render(); return; }
+  if (k === 'Home') return goTo(0); if (k === 'End') return goTo(P.frames.length - 1);
+  if (lk === 'n') return addFrame(true, false); if (lk === 'd') return addFrame(true, true);
+  if (k === 'Backspace' || k === 'Delete') { e.preventDefault(); return deleteFrame(); }
+  if (k === '+' || k === '=') return holdFrame(1); if (k === '-' || k === '_') return holdFrame(-1);
+  if (k === '[') return S.frame > 0 && moveFrame(S.frame, S.frame - 1); if (k === ']') return S.frame < P.frames.length - 1 && moveFrame(S.frame, S.frame + 1);
+  if (lk === 'z') return e.shiftKey ? redo() : undo();
+  if (lk === 'o') { S.onion = !S.onion; $('#onion').checked = S.onion; render(); return; }
+  if (lk === 'k') return setKey(); if (lk === 's') return e.shiftKey ? openVersions() : saveFile(); if (k === '?') return openModal('mHelp');
+  if (map[lk] && !e.shiftKey) return setTool(map[lk]);
+  if (k === '0') return zoomFit();
+}
+
+/* ------------------------------------------------------------------ new / resize / starters */
+function createFromDialog() {
+  let w, h; const v = $('#nSize').value; if (v === 'custom') { w = clamp(+$('#nW').value || 800, 64, 4096); h = clamp(+$('#nH').value || 600, 64, 4096); } else [w, h] = v.split('x').map(Number);
+  newProject(w, h, +$('#nFps').value); const st = $('#nStart').value;
+  if (st === 'ball') starterBall(); if (st === 'flip') { for (let i = 0; i < 7; i++) P.frames.push(newFrame()); }
+  closeModals(); boot();
+}
+function starterBall() {
+  P.name = 'Bouncing ball'; P.fps = 12; P.frames = []; for (let i = 0; i < 12; i++) P.frames.push(newFrame());
+  const bg = P.layers[0]; bg.name = 'Ground'; const g = getCell(bg, P.frames[0], true).getContext('2d'); g.strokeStyle = '#7a7a7a'; g.lineWidth = 4; g.beginPath(); g.moveTo(0, P.height * .82); g.lineTo(P.width, P.height * .82); g.stroke();
+  for (let i = 1; i < 12; i++) bg.cells[P.frames[i].id] = bg.cells[P.frames[0].id];
+  const ball = newLayer('Ball', 'tween'); P.layers.push(ball); const r = Math.min(P.width, P.height) * .09; const c = ensureSource(ball).getContext('2d');
+  c.fillStyle = '#ff7a59'; c.beginPath(); c.arc(P.width / 2, P.height / 2, r, 0, 7); c.fill(); c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.arc(P.width / 2 - r * .35, P.height / 2 - r * .35, r * .3, 0, 7); c.fill();
+  const top = -P.height * .38, floor = P.height * .82 - P.height / 2 - r;
+  ball.keys[P.frames[0].id] = { x: -P.width * .3, y: top, r: 0, sx: 1, sy: 1, o: 1, ease: 'easeIn' };
+  ball.keys[P.frames[5].id] = { x: 0, y: floor, r: 0, sx: 1.3, sy: .7, o: 1, ease: 'easeOut' };
+  ball.keys[P.frames[6].id] = { x: P.width * .05, y: floor - r * .6, r: 0, sx: .95, sy: 1.1, o: 1, ease: 'easeOut' };
+  ball.keys[P.frames[11].id] = { x: P.width * .3, y: top, r: 0, sx: 1, sy: 1, o: 1, ease: 'easeIn' };
+  S.layer = 1;
+}
+function resizeCanvas() {
+  const w = clamp(+$('#rW').value || P.width, 64, 4096), h = clamp(+$('#rH').value || P.height, 64, 4096), mode = $('#rMode').value; closeModals(); if (w === P.width && h === P.height) return;
+  const conv = c => { if (!c) return c; const n = mkCanvas(w, h); const x = n.getContext('2d'); if (mode === 'scale') x.drawImage(c, 0, 0, w, h); else x.drawImage(c, 0, 0); return n; };
+  const sx = w / P.width, sy = h / P.height;
+  for (const L of P.layers) { const seen = new Map(); for (const k in L.cells) { const c = L.cells[k]; if (!seen.has(c)) seen.set(c, conv(c)); L.cells[k] = seen.get(c); } if (L.source) L.source = conv(L.source); if (mode === 'scale') for (const k in L.keys) { L.keys[k].x *= sx; L.keys[k].y *= sy; } }
+  P.width = w; P.height = h; undoStack.length = 0; redoStack.length = 0; thumbs.clear(); boot(); scheduleSave();
+}
+
+/* ------------------------------------------------------------------ persistence */
+function serialize(withVersions = true) {
+  return { app: 'flipbook-lab', v: 1, build: BUILD, name: P.name, width: P.width, height: P.height, fps: P.fps, paper: P.paper, frames: P.frames.map(f => ({ ...f })),
+    layers: P.layers.map(L => { const ids = new Map(); const cells = {}; for (const k in L.cells) { const c = L.cells[k]; if (!ids.has(c)) ids.set(c, c.toDataURL('image/png')); cells[k] = ids.get(c); } return { id: L.id, name: L.name, type: L.type, visible: L.visible, opacity: L.opacity, locked: L.locked, cells, keys: L.keys, source: L.source ? L.source.toDataURL('image/png') : null }; }),
+    versions: withVersions ? P.versions : [] };
+}
+async function deserialize(o) {
+  const proj = { name: o.name || 'Untitled', width: o.width, height: o.height, fps: o.fps || 12, paper: o.paper || '#ffffff', frames: o.frames, layers: [], versions: o.versions || [] };
+  for (const L of o.layers) { const nl = { id: L.id, name: L.name, type: L.type, visible: L.visible !== false, opacity: L.opacity ?? 1, locked: !!L.locked, cells: {}, keys: L.keys || {}, source: null };
+    const cache = new Map(); for (const k in L.cells) { const d = L.cells[k]; if (!cache.has(d)) { const img = await loadImage(d); const c = mkCanvas(o.width, o.height); c.getContext('2d').drawImage(img, 0, 0); cache.set(d, c); } nl.cells[k] = cache.get(d); }
+    if (L.source) { const img = await loadImage(L.source); nl.source = mkCanvas(o.width, o.height); nl.source.getContext('2d').drawImage(img, 0, 0); } proj.layers.push(nl); }
+  return proj;
+}
+function saveFile() { const s = JSON.stringify(serialize()); download(new Blob([s], { type: 'application/json' }), (P.name || 'animation').replace(/[^\w\- ]+/g, '') + '.flipbook.json'); toast('Saved project file'); }
+function openFile(e) { const f = e.target.files[0]; e.target.value = ''; if (f) readProjectFile(f); }
+async function readProjectFile(f) { try { const o = JSON.parse(await f.text()); if (o.app !== 'flipbook-lab') throw 0; P = await deserialize(o); S.frame = 0; S.layer = 0; undoStack.length = 0; redoStack.length = 0; thumbs.clear(); boot(); toast('Opened ' + P.name); scheduleSave(); } catch { toast('That is not a Flipbook Lab file'); } }
+// IndexedDB autosave
+function idb() { return new Promise((res, rej) => { const r = indexedDB.open('flipbook-lab', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function idbSet(k, v) { try { const db = await idb(); await new Promise((res, rej) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = () => rej(t.error); }); } catch (e) { console.warn('autosave failed', e); } }
+async function idbGet(k) { try { const db = await idb(); return await new Promise((res, rej) => { const t = db.transaction('kv', 'readonly'); const r = t.objectStore('kv').get(k); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); } catch { return null; } }
+let saveT; function scheduleSave() { clearTimeout(saveT); saveT = setTimeout(() => idbSet('autosave', serialize()), 1200); }
+// versions
+function snapshotThumb() { const c = mkCanvas(P.width, P.height); renderFrame(c.getContext('2d'), S.frame); const t = mkCanvas(200, Math.round(200 * P.height / P.width)); t.getContext('2d').drawImage(c, 0, 0, t.width, t.height); return t.toDataURL('image/jpeg', .7); }
+function saveVersion(name) { P.versions.push({ id: uid(), name: name || ('Version ' + (P.versions.length + 1)), date: new Date().toISOString(), frames: P.frames.length, thumb: snapshotThumb(), data: JSON.stringify(serialize(false)) }); if (P.versions.length > 30) P.versions.shift(); $('#vName').value = ''; renderVersions(); scheduleSave(); toast('Version saved'); }
+function openVersions() { renderVersions(); openModal('mVersions'); }
+function renderVersions() {
+  const g = $('#vgrid'); g.innerHTML = ''; if (!P.versions.length) { g.innerHTML = '<small>No versions yet. Save one before you try something risky.</small>'; return; }
+  [...P.versions].reverse().forEach(v => { const d = document.createElement('div'); d.className = 'v'; const when = new Date(v.date); d.innerHTML = `<img src="${v.thumb}" alt=""><div class="t">${esc(v.name)}</div><small>${v.frames} frames · ${when.toLocaleDateString()} ${when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small><div class="row" style="margin-top:6px"><button class="go" data-r>Restore</button><button data-d>×</button></div>`;
+    d.querySelector('[data-r]').onclick = async () => { saveVersion('Before restoring ' + v.name); const o = JSON.parse(v.data); const keep = P.versions; P = await deserialize(o); P.versions = keep; S.frame = 0; S.layer = 0; undoStack.length = 0; redoStack.length = 0; thumbs.clear(); boot(); closeModals(); toast('Restored ' + v.name); scheduleSave(); };
+    d.querySelector('[data-d]').onclick = () => { P.versions = P.versions.filter(x => x !== v); renderVersions(); scheduleSave(); };
+    g.appendChild(d); });
+}
+
+/* ------------------------------------------------------------------ import / export */
+function pickImages(mode) { const inp = $('#fileImg'); inp.onchange = e => { importImages([...e.target.files], mode); e.target.value = ''; }; inp.click(); }
+async function importImages(files, mode) {
+  files = files.filter(f => f.type.startsWith('image/')).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })); if (!files.length) return;
+  const fit = (img, cover) => { const st = mkCanvas(P.width, P.height); const c = st.getContext('2d'); const s = cover ? Math.max(P.width / img.width, P.height / img.height) : Math.min(P.width / img.width, P.height / img.height); const w = img.width * s, h = img.height * s; c.drawImage(img, (P.width - w) / 2, (P.height - h) / 2, w, h); return st; };
+  const imgs = []; for (const f of files) imgs.push(await loadImage(URL.createObjectURL(f)));
+  if (mode === 'layer') { commitStamp(fit(imgs[0])); toast('Image placed on this frame'); closeModals(); return; }
+  if (mode === 'bg') { snapStructure(() => { const L = newLayer('Background'); P.layers.unshift(L); S.layer += 1; const c = fit(imgs[0], true); for (const f of P.frames) L.cells[f.id] = c; L.locked = true; }); toast('Background layer added (locked, shared by every frame)'); closeModals(); return; }
+  snapStructure(() => { const L = curLayer(); let at = S.frame; const cur = getCell(L, curFrame(), false); imgs.forEach((img, i) => { let f; if (i === 0 && !cur) f = curFrame(); else { f = newFrame(); at++; P.frames.splice(at, 0, f); } L.cells[f.id] = fit(img); }); S.frame = at; });
+  toast(imgs.length + ' frame' + (imgs.length > 1 ? 's' : '') + ' imported'); closeModals();
+}
+function progress(p) { $('#prog i').style.width = Math.round(p * 100) + '%'; }
+function exportPng() { const c = mkCanvas(P.width, P.height); renderFrame(c.getContext('2d'), S.frame); c.toBlob(b => download(b, `${P.name}-frame-${S.frame + 1}.png`)); }
+function expandedFrames() { const out = []; P.frames.forEach((f, i) => { for (let h = 0; h < f.hold; h++) out.push(i); }); return out; }
+function exportSheet() { const seq = expandedFrames(); const cols = Math.ceil(Math.sqrt(seq.length)), rows = Math.ceil(seq.length / cols); const c = mkCanvas(P.width * cols, P.height * rows); const x = c.getContext('2d'); const off = mkCanvas(P.width, P.height); seq.forEach((fi, i) => { renderFrame(off.getContext('2d'), fi); x.drawImage(off, (i % cols) * P.width, Math.floor(i / cols) * P.height); }); c.toBlob(b => download(b, `${P.name}-sheet-${cols}x${rows}.png`)); $('#exNote').textContent = `Sprite sheet: ${cols} columns, ${rows} rows, ${seq.length} cells of ${P.width} x ${P.height}.`; }
+async function exportSeq() { const seq = expandedFrames(); const off = mkCanvas(P.width, P.height); for (let i = 0; i < seq.length; i++) { renderFrame(off.getContext('2d'), seq[i]); const b = await new Promise(r => off.toBlob(r)); download(b, `${P.name}-${String(i + 1).padStart(3, '0')}.png`); progress((i + 1) / seq.length); await new Promise(r => setTimeout(r, 120)); } $('#exNote').textContent = 'Your browser may ask to allow multiple downloads.'; }
+async function exportWebm() {
+  if (!('MediaRecorder' in window)) return toast('This browser cannot record video. Try Chrome.');
+  const seq = expandedFrames(); const off = mkCanvas(P.width, P.height); const oc = off.getContext('2d'); renderFrame(oc, seq[0]);
+  const stream = off.captureStream(0); const track = stream.getVideoTracks()[0]; const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6e6 }); const chunks = []; rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const done = new Promise(r => rec.onstop = r); rec.start(); $('#exNote').textContent = 'Recording in real time, ' + (seq.length / P.fps).toFixed(1) + ' seconds.';
+  const dt = 1000 / P.fps; const loops = seq.length * P.fps < P.fps * 2 ? 2 : 1; // very short clips play twice so they are not a blink
+  for (let l = 0; l < loops; l++) for (let i = 0; i < seq.length; i++) { renderFrame(oc, seq[i]); if (track.requestFrame) track.requestFrame(); progress((l * seq.length + i + 1) / (seq.length * loops)); await new Promise(r => setTimeout(r, dt)); }
+  await new Promise(r => setTimeout(r, 200)); rec.stop(); await done; download(new Blob(chunks, { type: 'video/webm' }), `${P.name}.webm`); $('#exNote').textContent = 'WebM saved. It plays in Chrome, Firefox, and VLC; drop it into any editor to get an mp4.';
+}
+let gifLib = null;
+async function loadGifLib() {
+  if (gifLib) return gifLib;
+  await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  const txt = await (await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js')).text(); gifLib = { worker: URL.createObjectURL(new Blob([txt], { type: 'text/javascript' })) }; return gifLib;
+}
+async function exportGif() {
+  let lib; try { lib = await loadGifLib(); } catch { return toast('GIF export needs an internet connection the first time (it fetches the encoder).', 4000); }
+  const sc = +$('#exScale').value; const w = Math.round(P.width * sc), h = Math.round(P.height * sc);
+  const gif = new GIF({ workers: 2, quality: 8, width: w, height: h, workerScript: lib.worker }); const off = mkCanvas(P.width, P.height); const small = mkCanvas(w, h);
+  for (const f of P.frames) { renderFrame(off.getContext('2d'), P.frames.indexOf(f)); small.getContext('2d').drawImage(off, 0, 0, w, h); gif.addFrame(small, { copy: true, delay: Math.round(1000 / P.fps * f.hold) }); }
+  gif.on('progress', progress); $('#exNote').textContent = 'Encoding GIF...';
+  gif.on('finished', b => { download(b, `${P.name}.gif`); $('#exNote').textContent = 'GIF saved (' + Math.round(b.size / 1024) + ' KB).'; progress(1); }); gif.render();
+}
+
+/* ------------------------------------------------------------------ camera */
+let camStream = null;
+async function openCam() {
+  if (!navigator.mediaDevices?.getUserMedia) return toast('Camera needs a secure (https) page or localhost.');
+  openModal('mCam'); $('#camInfo').textContent = 'Starting camera...';
+  try { camStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'environment' }, audio: false }); const v = $('#cam'); v.srcObject = camStream; await v.play(); $('#camwrap').style.aspectRatio = P.width + '/' + P.height; $('#camInfo').textContent = `${v.videoWidth} x ${v.videoHeight}`; drawCamOnion(); }
+  catch (e) { $('#camInfo').textContent = 'Camera blocked or unavailable.'; }
+}
+function stopCam() { if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; $('#cam').srcObject = null; } }
+function drawCamOnion() { const c = $('#camOnion'); c.width = P.width; c.height = P.height; const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height); if (!$('#camOnionOn').checked) return; x.globalAlpha = +$('#camOnionA').value / 100; renderFrame(x, S.frame, { paper: false }); }
+function camShot() {
+  const v = $('#cam'); if (!camStream || !v.videoWidth) return; const L = curLayer(); if (L.locked) return toast('Layer is locked');
+  const st = mkCanvas(P.width, P.height); const x = st.getContext('2d'); const s = Math.max(P.width / v.videoWidth, P.height / v.videoHeight); const w = v.videoWidth * s, h = v.videoHeight * s;
+  x.save(); if ($('#camMirror').checked) { x.translate(P.width, 0); x.scale(-1, 1); } x.drawImage(v, (P.width - w) / 2, (P.height - h) / 2, w, h); x.restore();
+  const hasCur = getCell(L, curFrame(), false);
+  snapStructure(() => { let f = curFrame(); if (hasCur || L.type === 'tween') { f = newFrame(); P.frames.splice(S.frame + 1, 0, f); S.frame += 1; } if (L.type === 'tween') { /* captures always go to a drawing layer */ const nl = newLayer('Captures'); P.layers.push(nl); S.layer = P.layers.length - 1; nl.cells[f.id] = st; } else L.cells[f.id] = st; });
+  $('#camInfo').textContent = `Captured frame ${S.frame + 1} of ${P.frames.length}`; drawCamOnion(); const flash = $('#camwrap'); flash.style.outline = '3px solid #f2c14e'; setTimeout(() => flash.style.outline = '', 120);
+}
+
+/* ------------------------------------------------------------------ tutorial */
+const SV = (inner, vb = '0 0 260 200') => `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+const paper = '<rect x="10" y="10" width="240" height="150" rx="4" fill="#fff"/>';
+const TUT = [
+  { t: 'What animation actually is', h: `
+<p>An animation is a stack of still pictures shown fast enough that your brain fills in the movement. That is the whole trick. Twelve pictures a second is plenty; most hand-drawn animation you have loved was drawn at twelve.</p>
+<p>So the job is not "make it move." The job is "draw the next picture a little different from the last one." Small differences read as slow motion. Big differences read as fast motion. Everything else in this app is a shortcut for making the next picture.</p>
+<ul><li>The strip along the bottom is your stack of pictures, called frames.</li><li>The big white area is the frame you are on.</li><li>Play flips through the stack at the fps you set.</li></ul>
+<div class="tut-try">Try it: press Play right now on whatever is loaded, then Space to stop.</div>`,
+    f: SV(`${paper}<g fill="none" stroke="#1f1d1a" stroke-width="3" stroke-linecap="round"><circle cx="50" cy="70" r="14"/><circle cx="105" cy="78" r="14"/><circle cx="160" cy="95" r="14"/><circle cx="212" cy="120" r="14"/></g><path d="M50 84 Q130 40 212 106" fill="none" stroke="#5b9bc9" stroke-dasharray="4 4"/><g font-family="system-ui" font-size="11" fill="#a99f90"><text x="44" y="185">1</text><text x="100" y="185">2</text><text x="155" y="185">3</text><text x="207" y="185">4</text></g>`) },
+  { t: 'The onion skin is your best friend', h: `
+<p>When you go to a new frame the paper is blank, which would be useless. So the app shows you a faint ghost of the frame before in red and the frame after in green. That ghost is called the onion skin, after the thin paper animators used to trace through.</p>
+<p>Draw over the ghost, a little different. That is the entire craft of frame by frame animation. Red is where it was. Green is where it is going. Your drawing lands in between.</p>
+<ul><li>Onion skin is on by default. O toggles it.</li><li>The Before and After menus in the panel show up to three ghosts in each direction, each fainter than the last.</li><li>It only ghosts the layer you are on, so a background never clutters it.</li></ul>
+<div class="tut-try">Try it: draw a circle, press N for a new frame, and draw it a bit to the right of the red ghost. Press N again. Repeat five times. Play.</div>`,
+    f: SV(`${paper}<circle cx="80" cy="85" r="26" fill="none" stroke="#d94a3d" stroke-width="3" opacity=".35"/><circle cx="180" cy="85" r="26" fill="none" stroke="#3b9a5c" stroke-width="3" opacity=".35"/><circle cx="130" cy="85" r="26" fill="none" stroke="#1f1d1a" stroke-width="3"/><g font-family="system-ui" font-size="11"><text x="62" y="130" fill="#d94a3d">before</text><text x="112" y="130" fill="#1f1d1a">now</text><text x="168" y="130" fill="#3b9a5c">after</text></g>`) },
+  { t: 'The drawing tools, and which one to reach for', h: `
+<p>The rail on the left holds the tools. They all put marks on the frame you are on, on the layer you are on. Size, opacity, and the stabilizer in the right panel apply to all of the stroke tools.</p>
+<ul><li>Pen is crisp and even. Use it for outlines that need to read from across a room.</li><li>Brush is soft and responds to pressure on a stylus. Good for shading and for looking like a hand did it.</li><li>Pencil is thin and a little rough. Marker is wide and see-through, so it never gets darker where it overlaps itself.</li><li>Spray is texture. Eraser erases; on a motion layer it erases the object itself.</li><li>Fill pours the ink color into a closed shape. If it leaks out, there is a gap in your line. Raise Tolerance if a soft edge stops it.</li><li>Pick, or Alt-click with anything, grabs a color off the canvas.</li></ul>
+<p>The stabilizer smooths a shaky hand. Turn it up for long clean curves, down for fast scribbles. Every tool has a letter key, listed under Help.</p>
+<div class="tut-try">Try it: draw a closed shape with the pen, switch to Fill (G), pick a color, and click inside it.</div>`,
+    f: SV(`${paper}<path d="M30 120 C60 40 90 40 120 120" fill="none" stroke="#1f1d1a" stroke-width="4" stroke-linecap="round"/><path d="M140 120 C170 40 200 40 230 120" fill="none" stroke="#1f1d1a" stroke-width="12" stroke-linecap="round" opacity=".35"/><path d="M40 145 L120 145" stroke="#ff7a59" stroke-width="10" opacity=".5" stroke-linecap="round"/><path d="M150 145 L230 145" stroke="#5b9bc9" stroke-width="10" opacity=".5" stroke-linecap="round"/><path d="M180 145 L200 145" stroke="#5b9bc9" stroke-width="10" opacity=".5" stroke-linecap="round"/>`) },
+  { t: 'Shapes and text, for when drawing is not the point', h: `
+<p>Sometimes the drawing is not what you are studying. You want to test a timing idea, or a character made of three ovals, or a title card. The Shapes tool (U) gives you sixteen shapes you drag onto the canvas: squares, circles, stars, hearts, arrows, speech bubbles, a moon, an eye.</p>
+<ul><li>Outline uses the ink color and the size slider. Fill uses the fill color. Both does both.</li><li>Hold Shift while dragging to keep a shape square.</li><li>The Rotate slider tilts the shape before you place it.</li><li>Text (T) stamps a word where you click, in the size and font you pick.</li></ul>
+<p>Shapes are just paint once they land. You can erase half of one, fill it a new color, or move it with the Move tool. Nothing is precious.</p>
+<div class="tut-try">Try it: make a face out of one ellipse, two circles, and a moon. Then duplicate the frame (D) and move one eyebrow.</div>`,
+    f: SV(`${paper}<ellipse cx="130" cy="88" rx="55" ry="48" fill="#f2c14e" stroke="#1f1d1a" stroke-width="3"/><circle cx="110" cy="78" r="7" fill="#1f1d1a"/><circle cx="150" cy="78" r="7" fill="#1f1d1a"/><path d="M105 108 Q130 128 155 108" fill="none" stroke="#1f1d1a" stroke-width="3" stroke-linecap="round"/><path d="M200 40 l4 10 10 1 -8 7 3 10 -9 -6 -9 6 3 -10 -8 -7 10 -1z" fill="#ff7a59"/>`) },
+  { t: 'Frames: add, hold, duplicate, reorder', h: `
+<p>The bottom strip is your stack. Every button in the transport bar does one thing to that stack, and every one has a key.</p>
+<ul><li>+ Frame (N) adds a blank frame after this one. Insert before puts it in front.</li><li>Duplicate (D) copies this frame and moves you onto the copy. This is the one you will use most: copy, nudge, copy, nudge.</li><li>Hold + and Hold - (plus and minus) make a frame last longer. A frame held for two shows twice as long. The badge says x2.</li><li>The triangle buttons or [ and ] slide a frame left or right. You can also drag a thumbnail.</li><li>Reverse flips the whole order. Delete removes the frame you are on.</li></ul>
+<p>Holds are the secret. Animating "on twos" means every drawing is held for two frames, so twelve drawings fill a second at 24 fps. It looks smoother than you expect, and it is half the drawing.</p>
+<div class="tut-try">Try it: draw two frames, press + on each so both are held for two, and compare Play at 12 fps with Play at 24.</div>`,
+    f: SV(`<g font-family="system-ui" font-size="10"><rect x="8" y="60" width="50" height="40" fill="#fff" rx="3"/><rect x="66" y="60" width="108" height="40" fill="#fff" rx="3" stroke="#ff7a59" stroke-width="2"/><rect x="182" y="60" width="50" height="40" fill="#fff" rx="3"/><text x="30" y="118" fill="#a99f90">1</text><text x="117" y="118" fill="#ff7a59">2</text><text x="204" y="118" fill="#a99f90">3</text><text x="150" y="72" fill="#f2c14e">x2</text><circle cx="33" cy="80" r="8" fill="#1f1d1a"/><circle cx="120" cy="80" r="8" fill="#1f1d1a"/><circle cx="207" cy="80" r="8" fill="#1f1d1a"/></g>`, '0 0 240 130') },
+  { t: 'Layers: what goes in front of what', h: `
+<p>A frame can have several layers stacked on top of each other, like sheets of clear plastic. The list at the bottom left shows them, top of the list in front. You draw on the highlighted one.</p>
+<ul><li>+ adds a layer above the current one. The arrows move it up or down the stack.</li><li>The eye hides a layer. The lock stops you drawing on it by accident. Both are per layer, not per frame.</li><li>Layer opacity in the panel fades the whole layer.</li><li>Import an image as background and you get a locked layer that shows behind every frame, which is how you animate on top of a photo.</li></ul>
+<p>The usual split is background on the bottom, character in the middle, effects on top. A background drawn once and shared by every frame saves you drawing it twelve times. The Duplicate button copies every drawing layer of the frame, so a background you drew on frame one rides along.</p>
+<div class="tut-try">Try it: add a layer named Sky, draw a sun, move the layer to the bottom with the down arrow, then lock it.</div>`,
+    f: SV(`<g transform="skewX(-20)"><rect x="70" y="20" width="140" height="70" rx="4" fill="#5b9bc9" opacity=".9"/><rect x="70" y="60" width="140" height="70" rx="4" fill="#8fb996" opacity=".9"/><rect x="70" y="100" width="140" height="70" rx="4" fill="#fff" opacity=".95"/><circle cx="150" cy="135" r="14" fill="#ff7a59"/></g><g font-family="system-ui" font-size="11" fill="#a99f90"><text x="12" y="60">back</text><text x="12" y="100">middle</text><text x="12" y="140">front</text></g>`) },
+  { t: 'Keyframes: draw once, move it forever', h: `
+<p>Here is the shortcut the big studios use. Draw an object on a layer. Press "Make motion layer" in the panel. Now the drawing is one object, and the layer only remembers where the object is at certain frames. Those frames are keyframes, drawn as gold diamonds on the timeline.</p>
+<p>Go to a later frame, pick the Move tool (V), and drag the object. A new diamond appears. Play. The object slides from the first diamond to the second, and every frame between was computed for you. Add a third diamond somewhere else and it goes there next.</p>
+<ul><li>The sliders in the panel set X, Y, rotation, scale, and opacity at the frame you are on. Touch one and it becomes a key.</li><li>The dotted blue line on the canvas is the path the object will take.</li><li>Remove key deletes the diamond under the playhead. K sets one.</li><li>You can still draw on a motion layer. The stroke edits the object itself, everywhere.</li></ul>
+<div class="tut-try">Try it: New, then the bouncing ball starter. Click a diamond on the Ball row and drag the Y slider.</div>`,
+    f: SV(`<line x1="20" y1="100" x2="240" y2="100" stroke="#453f38" stroke-width="2"/><g fill="#f2c14e"><rect x="34" y="94" width="12" height="12" transform="rotate(45 40 100)"/><rect x="124" y="94" width="12" height="12" transform="rotate(45 130 100)"/><rect x="214" y="94" width="12" height="12" transform="rotate(45 220 100)"/></g><circle cx="40" cy="40" r="12" fill="#ff7a59"/><circle cx="130" cy="62" r="12" fill="#ff7a59" opacity=".55"/><circle cx="220" cy="40" r="12" fill="#ff7a59"/><path d="M40 40 Q130 90 220 40" fill="none" stroke="#5b9bc9" stroke-dasharray="4 4"/><g font-family="system-ui" font-size="10" fill="#a99f90"><text x="18" y="130">key</text><text x="80" y="130">computed frames</text><text x="196" y="130">key</text></g>`, '0 0 260 140') },
+  { t: 'Easing: the difference between a robot and a thing', h: `
+<p>A ball does not move at one speed. It leaves your hand fast, slows at the top, and falls faster and faster. Easing is the name for how motion speeds up and slows down between two keyframes, and it is most of what makes animation feel alive.</p>
+<ul><li>Linear: same speed the whole way. Mechanical. Fine for a conveyor belt or a clock.</li><li>Ease in: starts slow, speeds up. A drop, a throw, a fall.</li><li>Ease out: starts fast, slows to a stop. A landing, a slide, a settle.</li><li>Ease in and out: slow, fast, slow. The default, because most things in the world do this.</li><li>Bounce and Overshoot go past the end and come back. Cartoon energy.</li><li>Hold: no movement at all until the next key, then a jump.</li></ul>
+<p>The ease belongs to the key you are leaving, and it describes the trip to the next key. Scale X and Scale Y are separate on purpose: squash wide and short at the moment of impact, stretch tall and thin in the air, and a circle turns into a character.</p>
+<div class="tut-try">Try it: on the bouncing ball, change the first key's ease from Ease in to Linear and play. Then try Bounce on the floor key.</div>`,
+    f: SV(`<g fill="none" stroke-width="2.5"><path d="M20 160 L240 20" stroke="#a99f90"/><path d="M20 160 C120 160 160 20 240 20" stroke="#ff7a59"/><path d="M20 160 C60 20 140 20 240 20" stroke="#5b9bc9"/><path d="M20 160 C130 160 130 20 240 20" stroke="#8fb996"/></g><g font-family="system-ui" font-size="10"><text x="150" y="182" fill="#a99f90">linear</text><text x="198" y="182" fill="#ff7a59">in</text><text x="20" y="182" fill="#5b9bc9">out</text><text x="70" y="182" fill="#8fb996">in and out</text></g><text x="8" y="14" font-family="system-ui" font-size="10" fill="#a99f90">position over time</text>`) },
+  { t: 'Stop motion with the camera', h: `
+<p>Every frame does not have to be drawn. Press Camera and the app opens your webcam, with the last frame you captured ghosted over the live picture at whatever opacity you set. Put something on the desk, press Enter, move it a little, press Enter.</p>
+<ul><li>Each capture becomes a new frame after the one you are on, on the layer you are on.</li><li>Mirror flips the picture if your camera faces you and left feels like right.</li><li>The ghost is what keeps your object from jumping. Line up the new position against it.</li><li>Captures are ordinary frames. Draw on them, erase parts, add a layer of drawn effects on top.</li></ul>
+<p>Twelve captures is one second. Keep the camera still (tape helps), keep the light steady, and move the object less than you think. Clay, paper cutouts, Lego, your own hands: all fair game. Mixing a captured background with a drawn character is a whole style on its own.</p>
+<div class="tut-try">Try it: capture your hand in six positions closing into a fist, then play at 8 fps.</div>`,
+    f: SV(`<rect x="20" y="20" width="220" height="140" rx="6" fill="#111"/><rect x="60" y="80" width="40" height="40" fill="#8fb996" opacity=".4"/><rect x="95" y="80" width="40" height="40" fill="#8fb996"/><circle cx="220" cy="38" r="5" fill="#e2534b"/><text x="30" y="150" font-family="system-ui" font-size="10" fill="#a99f90">ghost of last shot, then the new position</text>`) },
+  { t: 'Versions, exporting, and the habit that matters', h: `
+<p>Everything you do autosaves in this browser, so closing the tab is safe. Save downloads a project file you can open on another computer or hand to someone. Export makes the finished thing: a GIF for anywhere, a WebM video for a bigger screen, a PNG of one frame, or every frame as an image if you want to finish it somewhere else.</p>
+<p>Versions is the button I care about most. It takes a snapshot of the whole project with a name and a thumbnail. Save a version, then try the risky idea. If it works, keep going. If it does not, restore. Either way you learned something, and it cost nothing.</p>
+<ul><li>Undo covers the last sixty steps. Versions cover the last thirty big ideas.</li><li>Spark hands you a constraint when you are stuck. Constraints are where the interesting work comes from.</li><li>Watch your loop twenty times. The note you need shows up around loop twelve.</li></ul>
+<div class="tut-try">Try it: save a version called "before I break it", then change the paper color, reverse the frames, and set the fps to 4. Then decide.</div>`,
+    f: SV(`<g font-family="system-ui" font-size="11"><rect x="20" y="30" width="60" height="45" rx="4" fill="#fff"/><rect x="100" y="30" width="60" height="45" rx="4" fill="#fff"/><rect x="180" y="30" width="60" height="45" rx="4" fill="#fff"/><text x="20" y="95" fill="#f3ead8">v1 first idea</text><text x="100" y="95" fill="#f3ead8">v2 risky</text><text x="180" y="95" fill="#f3ead8">v3 riskier</text><circle cx="50" cy="52" r="9" fill="#ff7a59"/><circle cx="130" cy="52" r="9" fill="#5b9bc9"/><path d="M200 44 l8 16 -16 0z" fill="#8fb996"/><path d="M130 130 l0 30" stroke="#8fb996" stroke-width="3"/><text x="60" y="180" fill="#8fb996">try it, compare, then decide</text></g>`) }
+];
+let tutI = 0;
+function showTut(i) {
+  tutI = clamp(i, 0, TUT.length - 1); const s = TUT[tutI];
+  $('#tutN').textContent = `${tutI + 1} of ${TUT.length}`; $('#tutText').innerHTML = `<h3>${s.t}</h3>${s.h}`; $('#tutFig').innerHTML = s.f;
+  $('#tutPrev').disabled = tutI === 0; $('#tutNext').textContent = tutI === TUT.length - 1 ? 'Done' : 'Next ▶';
+  const d = $('#tutDots'); d.innerHTML = ''; TUT.forEach((_, k) => { const el = document.createElement('i'); if (k === tutI) el.className = 'on'; el.onclick = () => showTut(k); d.appendChild(el); });
+  try { localStorage.setItem('flipbook-tut', String(tutI)); } catch {}
+  $('#mTut .box').scrollTop = 0;
+}
+function openTut() { let i = 0; try { i = +localStorage.getItem('flipbook-tut') || 0; } catch {} openModal('mTut'); showTut(i); }
+
+/* ------------------------------------------------------------------ boot */
+function boot() { setupStage(); buildTimeline(); syncPanel(); render(); document.title = `${P.name} · Flipbook Lab`; document.documentElement.dataset.ready = '1'; }
+(async function start() {
+  initUI();
+  const saved = await idbGet('autosave');
+  if (saved && saved.app === 'flipbook-lab') { try { P = await deserialize(saved); } catch { P = null; } }
+  if (!P) newProject(960, 540, 12);
+  boot(); if (saved) toast('Picked up where you left off'); else { toast('Welcome. Tutorial is top right, ? is shortcuts.', 4000); openTut(); }
+})();
+</script>
+</body>
+</html>
