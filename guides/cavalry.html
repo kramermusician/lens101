@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cavalry Playlist · LENS 101 Guides</title>
+<meta name="description" content="A LENS 101 playlist of Cavalry tutorials for beginners, all doable in the free version: making things move, duplicators, type, and sound." />
+<link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="../index.html"><span class="badge">LENS 101</span>ENGAGING WITH THE ARTISTIC SPACE</a>
+    <div class="nav-links">
+      <a href="../gallery/belafonte.html">Gallery</a>
+      <a href="exploring-digital-art-making.html">Guides</a>
+    </div>
+  </div>
+</nav>
+
+<article class="piece">
+  <div class="crumb"><a href="../index.html">LENS 101</a> &nbsp;/&nbsp; Guides &nbsp;/&nbsp; Cavalry</div>
+  <h1>Cavalry, a beginner playlist.</h1>
+  <div class="meta">Guide · Playlist · Mac and Windows · Free version</div>
+
+  <p>
+    Cavalry is a free 2D motion design app. You build an animation out of shapes, duplicators, and behaviours, and the motion comes from the rules you set more than from drawing every frame. Start with video one. The player moves on to the next video by itself, or tap any video below to jump to it.
+  </p>
+
+  <div class="video-wrap" style="margin-top:24px;">
+    <iframe id="player" src="https://www.youtube-nocookie.com/embed/YvjHeB5SAQU?rel=0&playlist=YvjHeB5SAQU,RhQn31L3X_4,-tTfA5xMZdg,R_nTgCd7aHA,Z-Ghf12SdWk" title="Cavalry playlist" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+  </div>
+
+  <ol class="playlist">
+    <li><button type="button" data-id="YvjHeB5SAQU" aria-current="true">
+      <span class="pl-meta">Pepko Motion · 9:39</span>
+      <span class="pl-title">Cavalry App | Making Things Move</span>
+      <span class="pl-note">Start here. Three small setups, three different ways to get something moving, from simple to lazy to clever.</span>
+    </button></li>
+    <li><button type="button" data-id="RhQn31L3X_4" aria-current="false">
+      <span class="pl-meta">First Keyframe · 5:03</span>
+      <span class="pl-title">Staggered Duplicates</span>
+      <span class="pl-note">One short, satisfying build: copies of a shape that start one after another. Make it along with the video.</span>
+    </button></li>
+    <li><button type="button" data-id="-tTfA5xMZdg" aria-current="false">
+      <span class="pl-meta">Heyalisa Motion · 5:23</span>
+      <span class="pl-title">Creating Animation with Voxelize Duplicator in Cavalry App</span>
+      <span class="pl-note">Breaks a shape or a word into blocks and animates them. Beginner level, free version.</span>
+    </button></li>
+    <li><button type="button" data-id="R_nTgCd7aHA" aria-current="false">
+      <span class="pl-meta">Pepko Motion · 7:39</span>
+      <span class="pl-title">Cycle Through Type in Cavalry App</span>
+      <span class="pl-note">The effect where letters flip through words or characters. Two ways to build it, free version.</span>
+    </button></li>
+    <li><button type="button" data-id="Z-Ghf12SdWk" aria-current="false">
+      <span class="pl-meta">Pepko Motion · 7:18</span>
+      <span class="pl-title">Sound Behaviour in Cavalry App (Free Version)</span>
+      <span class="pl-note">Drive the animation with audio. Bring a track of your own. One small step uses a Pro feature, and the rest is free.</span>
+    </button></li>
+  </ol>
+
+  <div class="notes">
+    <h2>Getting started</h2>
+    <ul class="plain">
+      <li>Download Cavalry from <a href="https://cavalry.studio/" target="_blank" rel="noopener">cavalry.studio</a>. The free version covers everything on this list.</li>
+      <li>Pause the video and copy each step as you go. The fastest way to learn is to make it yourself.</li>
+    </ul>
+  </div>
+</article>
+
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>LENS 101 · Engaging with the Artistic Space</div>
+    <div>Prof. Kramer Gibson · Berklee College of Music</div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var frame = document.getElementById('player');
+  var items = Array.prototype.slice.call(document.querySelectorAll('.playlist button'));
+  var ids = items.map(function (b) { return b.dataset.id; });
+  items.forEach(function (b, i) {
+    b.addEventListener('click', function () {
+      // YouTube starts at the first id in playlist=, so the chosen video leads the list
+      var order = ids.slice(i).concat(ids.slice(0, i));
+      frame.src = 'https://www.youtube-nocookie.com/embed/' + ids[i] + '?autoplay=1&rel=0&playlist=' + order.join(',');
+      items.forEach(function (x) { x.setAttribute('aria-current', x === b ? 'true' : 'false'); });
+      frame.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  });
+})();
+</script>
+</body>
+</html>

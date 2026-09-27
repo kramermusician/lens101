@@ -316,3 +316,45 @@ ul.plain li:last-child { border-bottom: none; }
   .nav-inner { padding: 14px 18px; }
   .nav-links { gap: 14px; }
 }
+
+/* ---- playlist pages (guides/blender, cavalry, procreate) ---- */
+
+.playlist {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  counter-reset: pl;
+}
+.playlist li { margin: 0 0 10px; }
+.playlist button {
+  counter-increment: pl;
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 4px 12px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.playlist button::before {
+  content: counter(pl);
+  grid-row: span 3;
+  font-size: 22px;
+  color: var(--blue-deep);
+}
+.playlist button:hover { border-color: var(--blue); box-shadow: var(--shadow); }
+.playlist button[aria-current="true"] { border: 2px solid var(--red); padding: 13px 15px; }
+.playlist .pl-title { font-size: 18px; }
+.playlist .pl-meta {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+.playlist .pl-note { font-size: 15px; color: var(--ink-soft); }

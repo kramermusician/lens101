@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Blender Playlist · LENS 101 Guides</title>
+<meta name="description" content="A LENS 101 playlist of Blender tutorials for absolute beginners." />
+<link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="../index.html"><span class="badge">LENS 101</span>ENGAGING WITH THE ARTISTIC SPACE</a>
+    <div class="nav-links">
+      <a href="../gallery/belafonte.html">Gallery</a>
+      <a href="exploring-digital-art-making.html">Guides</a>
+    </div>
+  </div>
+</nav>
+
+<article class="piece">
+  <div class="crumb"><a href="../index.html">LENS 101</a> &nbsp;/&nbsp; Guides &nbsp;/&nbsp; Blender</div>
+  <h1>Blender, a beginner playlist.</h1>
+  <div class="meta">Guide · Playlist · Mac and Windows · Free</div>
+
+  <p>
+    Blender is free 3D software for modeling, animation, and rendering. It looks like a lot the first time you open it. The first video only covers moving around and the basic controls. That is enough to start.
+  </p>
+
+  <div class="video-wrap" style="margin-top:24px;">
+    <iframe id="player" src="https://www.youtube-nocookie.com/embed/peSv5IT5Ve4?rel=0" title="Blender playlist" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+  </div>
+
+  <ol class="playlist">
+    <li><button type="button" data-id="peSv5IT5Ve4" aria-current="true">
+      <span class="pl-meta">RoBuilder · 8:27</span>
+      <span class="pl-title">ABSOLUTE Beginner Basics.. Blender For Noobs 2025</span>
+      <span class="pl-note">Start here. The interface, moving the camera around, and the first few controls you will use every time.</span>
+    </button></li>
+  </ol>
+
+  <div class="notes">
+    <h2>Getting started</h2>
+    <ul class="plain">
+      <li>Download Blender from <a href="https://www.blender.org/download/" target="_blank" rel="noopener">blender.org</a>. It is free.</li>
+      <li>A mouse with a scroll wheel makes Blender much easier than a trackpad.</li>
+      <li>More videos will be added here as the semester goes on.</li>
+    </ul>
+  </div>
+</article>
+
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>LENS 101 · Engaging with the Artistic Space</div>
+    <div>Prof. Kramer Gibson · Berklee College of Music</div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var frame = document.getElementById('player');
+  var items = Array.prototype.slice.call(document.querySelectorAll('.playlist button'));
+  var ids = items.map(function (b) { return b.dataset.id; });
+  items.forEach(function (b, i) {
+    b.addEventListener('click', function () {
+      // YouTube starts at the first id in playlist=, so the chosen video leads the list
+      var order = ids.slice(i).concat(ids.slice(0, i));
+      frame.src = 'https://www.youtube-nocookie.com/embed/' + ids[i] + '?autoplay=1&rel=0&playlist=' + order.join(',');
+      items.forEach(function (x) { x.setAttribute('aria-current', x === b ? 'true' : 'false'); });
+      frame.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  });
+})();
+</script>
+</body>
+</html>
