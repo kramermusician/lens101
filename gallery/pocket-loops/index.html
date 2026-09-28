@@ -54,13 +54,19 @@ body.lefty #steps{left:auto;right:8px}
 #dock{flex:0 0 auto;padding:6px 10px 10px;display:flex;flex-direction:column;gap:8px}
 #wheel{height:30px;border-radius:15px;background:var(--ui2);touch-action:none;position:relative;overflow:hidden}
 #wheel canvas{width:100%;height:100%;display:block}
-#coins{display:flex;gap:10px;align-items:center;justify-content:flex-start;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:none}
+#coins{display:flex;gap:12px;align-items:center;justify-content:flex-start;overflow-x:auto;padding:7px 7px 5px;scrollbar-width:none}
 #coins::-webkit-scrollbar{display:none}
 .coin{width:58px;height:58px;flex:0 0 auto;border-radius:50%;position:relative;transition:transform .12s}
 .coin canvas{width:58px;height:58px;display:block;border-radius:50%}
 .coin.sel{transform:scale(1.1)}
 .coin.sel::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--fg);pointer-events:none}
 .coin.hidden canvas{opacity:.35}
+.coinwrap{position:relative;flex:0 0 auto}
+.cpause{position:absolute;right:-6px;top:-6px;width:26px;height:26px;border-radius:50%;background:var(--ui3);box-shadow:0 0 0 2px var(--ui);display:flex;align-items:center;justify-content:center;z-index:2}
+.cpause::before{content:"";position:absolute;inset:-9px}
+.cpause svg{width:13px;height:13px;fill:var(--fg);stroke:none}
+.cpause.on{background:var(--acc)}
+.cpause.on svg{fill:#1b1a22}
 #addcoin{width:50px;height:50px;border-radius:50%;border:2px dashed var(--dim);color:var(--dim);font-size:26px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
 #toast{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:rgba(244,241,234,.95);color:#1b1a22;padding:9px 16px;border-radius:20px;font-size:14px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9;max-width:88%;text-align:center}
 #toast.show{opacity:1}
@@ -227,7 +233,7 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
   <div class="grab"></div>
   <button class="mrow" id="mExport"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 17v3h16v-3"/></svg><span class="t">Export GIF<small>One full cycle of every loop, shared or downloaded</small></span></button>
   <button class="mrow" id="mRecord"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span class="t">Record video<small>Plays the loop from the top and records one pass, ten seconds at most</small></span></button>
-  <button class="mrow" id="mPaper"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span class="t">Paper and photo<small>Paper color, trace over a photo</small></span></button>
+  <button class="mrow" id="mPaper"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span class="t">Paper, grid and photo<small>Paper color, a grid to draw against, trace over a photo</small></span></button>
   <button class="mrow" id="mSpark"><svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.8H21l-5.6 4.1 2.2 6.8L12 15.6l-5.6 4.1 2.2-6.8L3 8.8h6.8z"/></svg><span class="t">Spark<small>A constraint to get you unstuck</small></span></button>
   <button class="mrow" id="mHow"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5M12 17h.01"/></svg><span class="t">How it works<small>Six short cards</small></span></button>
   <button class="mrow" id="mSave"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg><span class="t">Save project file<small>A small .loops.json you can open again anywhere</small></span></button>
@@ -239,9 +245,12 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
 
 <div class="sheet" id="shPaper">
   <div class="grab"></div>
-  <h2>Paper and photo</h2>
+  <h2>Paper, grid and photo</h2>
   <h3>Paper</h3>
   <div class="swatches" id="papers"></div>
+  <h3>Grid</h3>
+  <div class="seg" id="pGrid"><button data-v="0">Off</button><button data-v="40">Small</button><button data-v="80">Large</button></div>
+  <div style="color:var(--dim);font-size:13px;margin-top:8px">The grid is only there while you draw. GIFs and videos leave it out.</div>
   <h3>Photo underneath</h3>
   <div class="row">
     <button class="pill" id="pSnap">Snap a photo to trace</button>
@@ -314,9 +323,9 @@ const ICON = {
 };
 
 // ---------- state ----------
-const S = { bpm: 120, playing: true, paper: '#f5f2e9', photo: null, photoAlpha: 0.5, photoExport: false, threads: [], sel: 0, lefty: false, seenHow: false };
+const S = { bpm: 120, playing: true, paper: '#f5f2e9', grid: 0, photo: null, photoAlpha: 0.5, photoExport: false, threads: [], sel: 0, lefty: false, seenHow: false };
 const R = { beat: 0, now: 0, lastT: 0, onion: true, straight: false,
-            tool: 'crayon', size: 'm', eraser: false, live: null, hold: null, scrub: false, photoImg: null, pointers: new Map(), twoTap: 0, down: null, recording: null, tapTimes: [] };
+            tool: 'crayon', size: 'm', eraser: false, live: null, gesture: 0, scrub: false, photoImg: null, pointers: new Map(), twoTap: 0, down: null, recording: null, tapTimes: [] };
 
 // ---------- utils ----------
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -331,7 +340,7 @@ function haptic(ms = 6) { try { if (navigator.vibrate) navigator.vibrate(ms); } 
 // ---------- threads and frames ----------
 function newFrame() { return { strokes: [], cache: null, photo: null, img: null }; }
 function newThread(color, n) {
-  return { id: uid(), color, n, kind: 'draw', drive: 'clock', speed: 1, pingpong: false, visible: true, pauseIdx: null, stillIdx: 0, shootIdx: 0,
+  return { id: uid(), color, n, kind: 'draw', drive: 'clock', speed: 1, pingpong: false, visible: true, paused: false, pauseIdx: null, stillIdx: 0, shootIdx: 0,
            frames: Array.from({ length: n }, newFrame), undo: [], redo: [] };
 }
 function selTh() { return S.threads[S.sel]; }
@@ -342,13 +351,15 @@ function clockIdx(th, beat) {
   if (th.pingpong) { const p = 2 * n - 2; let i = mod(b, p); if (i >= n) i = p - i; return i; }
   return mod(b, n);
 }
+// a thread is frozen when its own pause is on, or when everything is paused (and not being scrubbed)
+function frozen(th) { return th.paused || (!S.playing && !R.scrub); }
 function frameOf(th) {
-  if (R.hold && R.hold.th === th) return R.hold.idx;
   if (th.n <= 1) return 0;
   if (th.drive === 'still') return clamp(th.stillIdx || 0, 0, th.n - 1);
-  if (!S.playing && !R.scrub && th.pauseIdx != null) return th.pauseIdx;
+  if (frozen(th) && th.pauseIdx != null) return clamp(th.pauseIdx, 0, th.n - 1);
   return clockIdx(th, R.beat);
 }
+function moving(th) { return effDrive(th) === 'clock' && th.n > 1 && !th.paused; }
 
 // ---------- brushes ----------
 const stampCache = new Map();
@@ -414,7 +425,22 @@ function drawStroke(ctx, st, color, seed) {
   for (let i = 0; i < p.length; i += 3) walk(wk, p[i], p[i + 1], p[i + 2], (sx, sy, sw) => putStamp(ctx, st.t, color, st.s, sx, sy, sw, rnd));
   ctx.restore();
 }
-function coverInto(g, img, w, h) { const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height; const s = Math.max(w / iw, h / ih); g.drawImage(img, (w - iw * s) / 2, (h - ih * s) / 2, iw * s, ih * s); }
+function coverInto(g, img, w, h) {
+  // a <video> reports its size as videoWidth (its .width is the empty attribute, 0), an <img> as naturalWidth
+  const iw = img.videoWidth || img.naturalWidth || img.width, ih = img.videoHeight || img.naturalHeight || img.height;
+  if (!iw || !ih) return false;
+  const s = Math.max(w / iw, h / ih); g.drawImage(img, (w - iw * s) / 2, (h - ih * s) / 2, iw * s, ih * s); return true;
+}
+// draw a picture into a fresh canvas-size JPEG; null when nothing actually landed (a blank canvas turns into a black JPEG)
+function photoData(src) {
+  const c = mkCanvas(W, H); const g = c.getContext('2d');
+  if (!coverInto(g, src, W, H)) return null;
+  const d = g.getImageData(0, 0, W, H).data; let seen = false;
+  for (let i = 3; i < d.length; i += 4 * 97) if (d[i]) { seen = true; break; }
+  if (!seen) return null;
+  g.globalCompositeOperation = 'destination-over'; g.fillStyle = S.paper; g.fillRect(0, 0, W, H); // transparent PNGs sit on the paper, not on black
+  return c.toDataURL('image/jpeg', 0.72);
+}
 function renderFrameCanvas(th, fi) {
   const c = mkCanvas(W, H); const g = c.getContext('2d');
   const f = th.frames[fi];
@@ -455,19 +481,33 @@ function tinted(img, color) {
   g.drawImage(img, 0, 0, W, H); g.globalCompositeOperation = 'source-in'; g.fillStyle = color; g.fillRect(0, 0, W, H);
   return tintC;
 }
+function paperIsDark() { const h = S.paper.replace('#', ''); const v = parseInt(h.length === 3 ? h.replace(/./g, '$&$&') : h, 16); return ((v >> 16 & 255) * 0.299 + (v >> 8 & 255) * 0.587 + (v & 255) * 0.114) < 110; }
+function drawGrid(ctx) {
+  const sp = S.grid; if (!sp || R.recording) return;
+  const ink = paperIsDark() ? '255,255,255' : '40,60,110';
+  ctx.save(); ctx.lineWidth = 1.4;
+  for (let pass = 0; pass < 2; pass++) { // thin lines first, then every fourth line a little stronger (the middle is always one)
+    ctx.strokeStyle = 'rgba(' + ink + ',' + (pass ? 0.3 : 0.14) + ')'; ctx.beginPath();
+    for (let x = sp, i = 1; x < W; x += sp, i++) if ((i % 4 === 0) === !!pass) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+    for (let y = sp, i = 1; y < H; y += sp, i++) if ((i % 4 === 0) === !!pass) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 function render() {
   const ctx = vctx;
   ctx.setTransform(k, 0, 0, k, 0, 0);
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = S.paper; ctx.fillRect(0, 0, W, H);
   if (R.photoImg) { ctx.globalAlpha = S.photoAlpha; ctx.drawImage(R.photoImg, 0, 0, W, H); ctx.globalAlpha = 1; }
+  drawGrid(ctx);
   const sel = selTh();
   S.threads.forEach(th => {
     if (!th.visible) return;
     const fi = frameOf(th);
     ctx.drawImage(ensureCache(th, fi), 0, 0, W, H);
-    // onion skin: the frame before in red, the frame after in green, selected thread, while paused
-    if (R.onion && th === sel && !S.playing && !R.scrub && th.n > 1 && th.drive !== 'still') {
+    // onion skin: the frame before in red, the frame after in green, selected thread, while it is paused
+    if (R.onion && th === sel && frozen(th) && th.n > 1 && th.drive !== 'still') {
       const prev = mod(fi - 1, th.n), next = mod(fi + 1, th.n);
       if (th.kind === 'photo') { ctx.globalAlpha = 0.3; ctx.drawImage(ensureCache(th, prev), 0, 0, W, H); }
       else {
@@ -485,10 +525,19 @@ const coinsEl = $('#coins');
 function buildCoins() {
   coinsEl.innerHTML = '';
   S.threads.forEach((th, i) => {
+    const wrap = document.createElement('div'); wrap.className = 'coinwrap';
     const d = document.createElement('button'); d.className = 'coin' + (i === S.sel ? ' sel' : '') + (th.visible ? '' : ' hidden');
     const c = mkCanvas(116, 116); d.appendChild(c); th._coin = c;
     d.addEventListener('click', () => { if (S.sel === i) openThreadSheet(); else { S.sel = i; buildCoins(); updateRail(); } });
-    coinsEl.appendChild(d);
+    wrap.appendChild(d);
+    // its own pause: this thread holds its frame while the others keep running (a Still or one-frame thread never moves, so it has none)
+    if (effDrive(th) === 'clock' && th.n > 1) {
+      const pb = document.createElement('button'); pb.className = 'cpause' + (th.paused ? ' on' : '');
+      pb.setAttribute('aria-label', (th.paused ? 'Play' : 'Pause') + ' thread ' + (i + 1)); pb.innerHTML = th.paused ? ICON.play : ICON.pause;
+      pb.addEventListener('click', e => { e.stopPropagation(); setThreadPaused(th, !th.paused); });
+      wrap.appendChild(pb);
+    }
+    coinsEl.appendChild(wrap);
   });
   if (S.threads.length < MAXTHREADS) {
     const a = document.createElement('button'); a.id = 'addcoin'; a.textContent = '+';
@@ -515,7 +564,6 @@ function drawCoins() {
       g.beginPath(); g.arc(58, 59.5, 4, 0, 6.2832); g.stroke(); g.fillRect(53, 48, 6, 4);
       if (d === 'still') { g.fillRect(50, 72, 4, 9); g.fillRect(62, 72, 4, 9); } else { g.font = 'bold 11px -apple-system, Helvetica, Arial'; g.fillText(String(n), 58, 76); }
     } else if (d === 'still') { g.fillRect(50, 51, 5, 16); g.fillRect(61, 51, 5, 16); } else g.fillText(String(n), 58, 59);
-    if (R.hold && R.hold.th === th) { g.fillStyle = '#f4f1ea'; g.fillRect(50, 88, 5, 14); g.fillRect(61, 88, 5, 14); }
   });
 }
 const wheelC = $('#wheelc'); const wctx = wheelC.getContext('2d');
@@ -539,7 +587,7 @@ function tick(t) {
   const dt = Math.min(0.1, (t - R.lastT) / 1000 || 0); R.lastT = t; R.now = t / 1000;
   if (S.playing && !R.scrub) R.beat += dt * S.bpm / 60;
   // a live stroke follows the frame under it: split when the frame changes
-  if (R.live) {
+  if (R.live && !R.live.straight) {
     const th = R.live.th; const cur = frameOf(th);
     if (cur !== R.live.fi) { const last = R.live.lastPt, w0 = R.live.w, lt = R.live.lastT; commitLive(); startLive(th, cur, last); R.live.w = w0; R.live.lastT = lt; }
   }
@@ -561,7 +609,7 @@ function startLive(th, fi, seedPt) {
   const st = { t: tool, s: SIZES[R.size], p: [] };
   // a straight line previews on the live canvas whatever the tool; a freehand eraser works on the frame directly
   const ctx = (tool === 'eraser' && !R.straight) ? th.frames[fi].cache.getContext('2d') : lctx;
-  R.live = { th, fi, st, wk: makeWalker(st.s), rnd: mulberry32((Date.now() & 0xffff) + fi), ctx, lastPt: null, lastT: 0, w: 0.6, straight: R.straight, p0: null };
+  R.live = { th, fi, st, gid: R.gesture, wk: makeWalker(st.s), rnd: mulberry32((Date.now() & 0xffff) + fi), ctx, lastPt: null, lastT: 0, w: 0.6, straight: R.straight, p0: null };
   ctx.save(); beginStrokeCtx(ctx, tool, R.straight && tool === 'eraser' ? S.paper : th.color);
   if (R.straight && tool === 'eraser') ctx.globalCompositeOperation = 'source-over';
   if (seedPt) addPoint(seedPt[0], seedPt[1], seedPt[2]);
@@ -592,13 +640,12 @@ function commitLive() {
   const f = L.th.frames[L.fi];
   if (L.straight && L.st.p.length >= 3) {
     // render the finished line onto the frame itself, eraser included
-    f.strokes.push(L.st); L.th.undo.push({ fi: L.fi, st: L.st }); if (L.th.undo.length > 80) L.th.undo.shift(); L.th.redo.length = 0;
+    f.strokes.push(L.st); pushUndo(L.th, L.fi, L.st, L.gid);
     drawStroke(f.cache.getContext('2d'), L.st, L.th.color, L.fi * 131 + f.strokes.length * 17 + 1);
     lctx.setTransform(1, 0, 0, 1, 0, 0); lctx.clearRect(0, 0, W, H); scheduleSave(); return;
   }
   if (L.st.p.length >= 3) {
-    f.strokes.push(L.st);
-    L.th.undo.push({ fi: L.fi, st: L.st }); if (L.th.undo.length > 80) L.th.undo.shift(); L.th.redo.length = 0;
+    f.strokes.push(L.st); pushUndo(L.th, L.fi, L.st, L.gid);
     if (L.st.t !== 'eraser') { const g = f.cache.getContext('2d'); g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.drawImage(liveC, 0, 0); g.restore(); }
     scheduleSave();
   } else if (L.st.t === 'eraser') { f.cache = null; }
@@ -620,13 +667,12 @@ function widthFor(e, x, y) {
 view.addEventListener('pointerdown', e => {
   e.preventDefault();
   R.pointers.set(e.pointerId, e.timeStamp);
-  if (R.pointers.size >= 2) { discardLive(); R.hold = null; R.twoTap = e.timeStamp; return; }
+  if (R.pointers.size >= 2) { discardLive(); R.twoTap = e.timeStamp; return; }
   const th = selTh(); if (!th) return;
   if (!th.visible) { th.visible = true; buildCoins(); }
   view.setPointerCapture(e.pointerId);
-  const fi = frameOf(th);
-  if (S.playing && effDrive(th) === 'clock') R.hold = { th, idx: fi };
-  R.down = { x: e.clientX, y: e.clientY, t: e.timeStamp };
+  const fi = frameOf(th); R.gesture++;
+  R.down = { x: e.clientX, y: e.clientY, t: e.timeStamp, frozen: frozen(th) || !moving(th) };
   const [x, y] = toLocal(e);
   startLive(th, fi, null);
   R.live.lastT = e.timeStamp; addPoint(x, y, widthFor(e, x, y)); R.live.lastT = e.timeStamp;
@@ -641,11 +687,10 @@ function endPointer(e) {
   R.pointers.delete(e.pointerId);
   if (R.pointers.size === 0) {
     const d = R.down; R.down = null;
-    const flick = d && R.live && !R.straight && e.timeStamp - d.t < 220 && Math.abs(e.clientX - d.x) > 70 && Math.abs(e.clientX - d.x) > 2.2 * Math.abs(e.clientY - d.y);
+    const flick = d && d.frozen && R.live && !R.straight && e.timeStamp - d.t < 220 && Math.abs(e.clientX - d.x) > 70 && Math.abs(e.clientX - d.x) > 2.2 * Math.abs(e.clientY - d.y);
     if (R.twoTap && e.timeStamp - R.twoTap < 350) { undo(); R.twoTap = 0; }
-    else if (flick) { discardLive(); R.hold = null; stepFrame(e.clientX < d.x ? 1 : -1); }
+    else if (flick) { discardLive(); stepFrame(e.clientX < d.x ? 1 : -1); }
     else { commitLive(); }
-    R.hold = null;
   }
 }
 view.addEventListener('pointerup', endPointer);
@@ -654,20 +699,27 @@ view.addEventListener('lostpointercapture', endPointer);
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('touchmove', e => { if (e.target === view) e.preventDefault(); }, { passive: false });
 
+function pushUndo(th, fi, st, gid) {
+  const last = th.undo[th.undo.length - 1];
+  if (gid && last && last.gid === gid) last.parts.push({ fi, st });
+  else { th.undo.push({ gid, parts: [{ fi, st }] }); if (th.undo.length > 80) th.undo.shift(); }
+  th.redo.length = 0;
+}
 function undo() {
   const th = selTh(); const u = th.undo.pop(); if (!u) { toast('Nothing to undo'); return; }
-  const f = th.frames[u.fi]; const i = f.strokes.lastIndexOf(u.st); if (i >= 0) f.strokes.splice(i, 1);
-  th.redo.push(u); f.cache = null; scheduleSave(); haptic(4);
+  for (const p of u.parts) { const f = th.frames[p.fi]; const i = f.strokes.lastIndexOf(p.st); if (i >= 0) f.strokes.splice(i, 1); f.cache = null; }
+  th.redo.push(u); scheduleSave(); haptic(4);
 }
 function redo() {
   const th = selTh(); const u = th.redo.pop(); if (!u) return;
-  th.frames[u.fi].strokes.push(u.st); th.undo.push(u); th.frames[u.fi].cache = null; scheduleSave();
+  for (const p of u.parts) { th.frames[p.fi].strokes.push(p.st); th.frames[p.fi].cache = null; }
+  th.undo.push(u); scheduleSave();
 }
 
 // ---------- wheel scrub ----------
 (() => {
   const el = $('#wheel'); let lastX = null;
-  el.addEventListener('pointerdown', e => { el.setPointerCapture(e.pointerId); lastX = e.clientX; R.scrub = true; for (const th of S.threads) th.pauseIdx = null; });
+  el.addEventListener('pointerdown', e => { el.setPointerCapture(e.pointerId); lastX = e.clientX; R.scrub = true; for (const th of S.threads) if (!th.paused) th.pauseIdx = null; });
   el.addEventListener('pointermove', e => { if (lastX == null) return; const dx = e.clientX - lastX; lastX = e.clientX; R.beat -= dx / 36; });
   const end = () => { lastX = null; R.scrub = false; };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
@@ -676,12 +728,19 @@ function redo() {
 // ---------- top bar ----------
 function setPlaying(p) {
   S.playing = p;
-  if (p) { for (const th of S.threads) th.pauseIdx = null; }
-  else { for (const th of S.threads) th.pauseIdx = frameOf(th); }
+  // threads with their own pause on keep it through a global play or pause
+  if (p) { for (const th of S.threads) if (!th.paused) th.pauseIdx = null; }
+  else { for (const th of S.threads) if (!th.paused) th.pauseIdx = frameOf(th); }
   $('#bPlay').innerHTML = p ? ICON.pause : ICON.play;
 }
 $('#bPlay').innerHTML = ICON.pause;
 $('#bPlay').addEventListener('click', () => setPlaying(!S.playing));
+function setThreadPaused(th, p) {
+  if (!!th.paused === p) return;
+  if (p) { th.pauseIdx = frameOf(th); th.paused = true; }
+  else { th.paused = false; if (S.playing) th.pauseIdx = null; } // it rejoins the beat, in step with the others
+  haptic(5); buildCoins(); scheduleSave();
+}
 $('#bHelp').innerHTML = ICON.help; $('#bHelp').addEventListener('click', () => openSheet('#shHow'));
 $('#bCam').innerHTML = ICON.cam; $('#bCam').addEventListener('click', () => openCamera(selTh() && selTh().kind === 'photo' ? 'frame' : 'color'));
 $('#bMenu').innerHTML = ICON.menu; $('#bMenu').addEventListener('click', () => openSheet('#shMenu'));
@@ -704,11 +763,11 @@ $('#bSize').addEventListener('click', () => { const ks = ['s', 'm', 'l']; R.size
 $('#bEraser').addEventListener('click', () => { R.eraser = !R.eraser; updateRail(); });
 $('#bLine').addEventListener('click', () => { R.straight = !R.straight; updateRail(); toast(R.straight ? 'Straight lines: touch, drag, let go. Works with every brush and the eraser.' : 'Freehand', 1800); });
 $('#bUndo').addEventListener('click', undo);
-$('#bOnion').addEventListener('click', () => { R.onion = !R.onion; $('#bOnion').classList.toggle('on', R.onion); toast(R.onion ? 'Onion skin on: red is the frame before, green the frame after. Shows while paused.' : 'Onion skin off', 2200); });
+$('#bOnion').addEventListener('click', () => { R.onion = !R.onion; $('#bOnion').classList.toggle('on', R.onion); toast(R.onion ? 'Onion skin on: red is the frame before, green the frame after. Shows while your thread is paused.' : 'Onion skin off', 2200); });
 function stepFrame(d) {
   const th = selTh(); if (!th) return;
   if (th.drive === 'still') { th.stillIdx = mod(frameOf(th) + d, th.n); haptic(4); scheduleSave(); return; }
-  if (S.playing) setPlaying(false);
+  if (moving(th) && !frozen(th)) setThreadPaused(th, true); // stepping pauses just this thread; the others keep running
   th.pauseIdx = mod((th.pauseIdx == null ? frameOf(th) : th.pauseIdx) + d, th.n); haptic(4);
 }
 $('#bPrev').addEventListener('click', () => stepFrame(-1));
@@ -766,15 +825,23 @@ $('#thPick').addEventListener('click', () => { closeSheet(); $('#imgIn').click()
 $('#thPhotoRemove').addEventListener('click', () => { const th = selTh(); setFramePhoto(th, frameOf(th), null); syncThreadSheet(); toast('Photo removed from this frame'); });
 $('#imgIn').addEventListener('change', e => {
   const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+  const th = selTh(); const fi = frameOf(th); // the frame showing when the photo was picked, even if the loop moves on while it decodes
   const url = URL.createObjectURL(file); const im = new Image();
-  im.onload = () => { const c = mkCanvas(W, H); coverInto(c.getContext('2d'), im, W, H); URL.revokeObjectURL(url);
-    const th = selTh(); if (th.kind !== 'photo') { th.kind = 'photo'; invalidateThread(th); }
-    setFramePhoto(th, frameOf(th), c.toDataURL('image/jpeg', 0.72)); buildCoins(); toast('Photo on frame ' + (frameOf(th) + 1)); };
-  im.onerror = () => toast('Could not read that image.'); im.src = url;
+  const place = data => {
+    if (th.kind !== 'photo') { th.kind = 'photo'; invalidateThread(th); }
+    setFramePhoto(th, fi, data); buildCoins(); toast('Photo on frame ' + (fi + 1));
+  };
+  // a very large phone photo can decode to nothing on a canvas; createImageBitmap is the second try
+  const retry = async () => {
+    try { const bm = await createImageBitmap(file); const data = photoData(bm); if (bm.close) bm.close(); if (data) { place(data); return; } } catch (err) {}
+    toast('Could not read that image.');
+  };
+  im.onload = () => { URL.revokeObjectURL(url); const data = photoData(im); if (data) place(data); else retry(); };
+  im.onerror = () => { URL.revokeObjectURL(url); retry(); }; im.src = url;
 });
 $('#thDrive').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; const th = selTh(); th.drive = b.dataset.v === 'still' ? 'still' : 'clock';
-  if (th.drive === 'still') th.stillIdx = frameOf(th);
+  if (th.drive === 'still') { th.stillIdx = frameOf(th); th.paused = false; }
   syncThreadSheet(); buildCoins(); scheduleSave();
 });
 $('#thSpeed').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const th = selTh(); th.speed = Math.sign(th.speed || 1) * parseFloat(b.dataset.v); syncThreadSheet(); scheduleSave(); });
@@ -843,8 +910,10 @@ function syncPaperSheet() {
   PAPERS.forEach(([name, c]) => { const b = document.createElement('button'); b.className = 'sw' + (c === S.paper ? ' on' : ''); b.style.background = c; b.title = name; b.addEventListener('click', () => { S.paper = c; document.documentElement.style.setProperty('--paper', c); syncPaperSheet(); scheduleSave(); }); p.appendChild(b); });
   $('#pAlpha').value = Math.round(S.photoAlpha * 100); $('#pExport').classList.toggle('on', S.photoExport);
   $('#pRemove').style.display = S.photo ? '' : 'none';
+  $('#pGrid').querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.v === S.grid));
 }
 $('#pSnap').addEventListener('click', () => { closeSheet(); openCamera('snap'); });
+$('#pGrid').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.grid = +b.dataset.v; syncPaperSheet(); scheduleSave(); });
 $('#pRemove').addEventListener('click', () => { S.photo = null; R.photoImg = null; syncPaperSheet(); scheduleSave(); });
 $('#pAlpha').addEventListener('input', e => { S.photoAlpha = +e.target.value / 100; scheduleSave(); });
 $('#pExport').addEventListener('click', () => { S.photoExport = !S.photoExport; syncPaperSheet(); scheduleSave(); });
@@ -856,9 +925,9 @@ function setPhoto(dataUrl) {
 // how-to
 const HOW = [
   [ICON.loops, 'Threads are loops', 'Every coin at the bottom is a thread: its own short loop, in its own color, with its own number of frames. All of them spin together at one tempo. A 2-frame thread next to a 3-frame thread makes a pattern neither has alone. Tap a coin to pick it, tap it again to change it.'],
-  [ICON.hand, 'Draw with your thumb', 'The loop keeps playing while you work. Touching the canvas freezes your thread on the frame you see; let go and it runs again. Two-finger tap is undo.'],
-  [ICON.flick, 'Flick for the next frame', 'Press pause to work frame by frame. Flick left across the canvas to go to the next frame, flick right to go back, or use the arrows in the corner. The strip under the canvas scrubs the whole piece.'],
-  [ICON.onion, 'Onion skin', 'While paused you see the frame before in red and the frame after in green, so each drawing lands where it should. The overlapping-squares button turns it off.'],
+  [ICON.hand, 'Draw while it plays', 'The loop keeps playing while you draw, so every mark lands on the frame showing right then. Keep drawing as the frames turn over and the drawing moves with the beat. Two-finger tap undoes the whole touch.'],
+  [ICON.flick, 'Pause one thread, or all of them', 'The small button on a coin pauses just that thread while the others keep running. The big button at the top pauses everything. On a paused thread, flick left across the canvas for the next frame and right to go back, or use the arrows in the corner. The strip under the canvas scrubs the whole piece.'],
+  [ICON.onion, 'Onion skin and grid', 'While your thread is paused you see the frame before in red and the frame after in green, so each drawing lands where it should. The overlapping-squares button turns it off. Menu, Paper, lays a grid on the paper to draw against.'],
   [ICON.still, 'Still threads, photo threads', 'Tap a coin twice. Still means it never moves: a background, a room, a body that stays put while another thread does the moving. Photo makes it hold photos instead of drawings: one that stays put, or one per frame shot in a row from the camera with the last shot ghosted over the live view. That is stop motion, up to twenty frames. You can draw on the photos.'],
   [ICON.line, 'Straight lines and colors', 'The line button makes every touch a straight line, with any brush or the eraser: touch where it starts, drag to where it ends, let go. The camera button steals a color: drag the ring over it and snap. It can also snap a photo to trace over. Nothing you make leaves this phone. This help is the ? at the top.'],
 ];
@@ -928,8 +997,8 @@ async function openCamera(mode) {
 }
 function closeCamera() { clearInterval(camTimer); if (camStream) camStream.getTracks().forEach(t => t.stop()); camStream = null; camVid.srcObject = null; $('#camsheet').classList.remove('show'); $('#camsheet').classList.remove('frame'); }
 function grabFrame() {
-  if (!camVid.videoWidth) return null;
-  const c = mkCanvas(W, H); coverInto(c.getContext('2d'), camVid, W, H); return c.toDataURL('image/jpeg', 0.72);
+  if (!camVid.videoWidth || camVid.readyState < 2) return null;
+  return photoData(camVid);
 }
 $('#camShot').addEventListener('click', () => {
   const th = selTh(); const data = grabFrame(); if (!data) { toast('The camera is not ready yet.'); return; }
@@ -964,7 +1033,7 @@ function sampleAt(fx, fy) {
 })();
 $('#camUse').addEventListener('click', () => { sampleAt(camPos[0], camPos[1]); if (!camPick) return; setThreadColor(selTh(), camPick); closeCamera(); toast('Color snapped'); });
 $('#camSnap').addEventListener('click', () => {
-  const data = grabFrame(); if (!data) return;
+  const data = grabFrame(); if (!data) { toast('The camera is not ready yet.'); return; }
   setPhoto(data); closeCamera(); scheduleSave(); toast('Photo under the paper. Menu, Paper and photo, to fade or remove it.');
 });
 $('#camFlip').addEventListener('click', () => { camFacing = camFacing === 'environment' ? 'user' : 'environment'; closeCamera(); openCamera(camMode); });
@@ -988,7 +1057,7 @@ async function loadGif() {
 }
 function loopTicks() {
   const step = 0.25; const ths = S.threads.filter(t => t.visible);
-  const key = b => ths.map(th => effDrive(th) === 'clock' ? clockIdx(th, b) : frameOf(th)).join(',');
+  const key = b => ths.map(th => moving(th) ? clockIdx(th, b) : frameOf(th)).join(',');
   const k0 = key(0); let ticks = 192;
   for (let t = 1; t <= 192; t++) if (key(t * step) === k0) { ticks = t; break; }
   return { ticks, step, key, ths };
@@ -1003,7 +1072,7 @@ async function exportGif() {
   const gif = new GIF({ workers: 2, quality: 8, workerScript: lib.worker, width: c.width, height: c.height });
   const msPerTick = 60000 / S.bpm * step;
   const savedBeat = R.beat;
-  const frameTuple = b => ths.map(th => effDrive(th) === 'clock' ? clockIdx(th, b) : frameOf(th));
+  const frameTuple = b => ths.map(th => moving(th) ? clockIdx(th, b) : frameOf(th));
   let t = 0;
   while (t < ticks) {
     const tup = frameTuple(t * step); let run = 1;
@@ -1037,7 +1106,7 @@ function toggleRecord() {
     deliver(blob, 'pocket-loops.' + ((blob.type.includes('mp4')) ? 'mp4' : 'webm'));
   };
   // start playback from the top of the loop and record one full pass (at least three seconds, ten at most)
-  closeSheet(); R.scrub = false; R.hold = null; R.beat = 0; setPlaying(true);
+  closeSheet(); R.scrub = false; R.beat = 0; setPlaying(true);
   const { ticks, step } = loopTicks(); const cycle = ticks * step * 60 / S.bpm;
   const dur = Math.min(10, Math.max(1, Math.ceil(3 / cycle)) * cycle);
   rec.start(250); R.recording = rec; R.recEnd = performance.now() + dur * 1000; $('#recdot').classList.add('show');
@@ -1049,17 +1118,18 @@ function stopRecord() { if (R.recording && R.recording.state !== 'inactive') R.r
 
 // ---------- save / load ----------
 function serialize() {
-  return { app: 'pocket-loops', v: 1, bpm: S.bpm, paper: S.paper, photo: S.photo, photoAlpha: S.photoAlpha, photoExport: S.photoExport, lefty: S.lefty, seenHow: S.seenHow, sel: S.sel,
-    threads: S.threads.map(th => ({ color: th.color, n: th.n, kind: th.kind, drive: th.drive, stillIdx: th.stillIdx, speed: th.speed, pingpong: th.pingpong, visible: th.visible,
+  return { app: 'pocket-loops', v: 1, bpm: S.bpm, paper: S.paper, photo: S.photo, photoAlpha: S.photoAlpha, photoExport: S.photoExport, grid: S.grid, lefty: S.lefty, seenHow: S.seenHow, sel: S.sel,
+    threads: S.threads.map(th => ({ color: th.color, n: th.n, kind: th.kind, drive: th.drive, stillIdx: th.stillIdx, speed: th.speed, pingpong: th.pingpong, visible: th.visible, paused: !!th.paused, pauseIdx: th.paused ? th.pauseIdx : null,
       frames: th.frames.map(f => { const strokes = f.strokes.map(s => ({ t: s.t, s: s.s, p: s.p })); return f.photo ? { s: strokes, photo: f.photo } : strokes; }) })) };
 }
 function hydrate(d) {
   if (!d || d.app !== 'pocket-loops' || !Array.isArray(d.threads) || !d.threads.length) throw new Error('not a Pocket Loops file');
-  S.bpm = clamp(+d.bpm || 120, 40, 240); S.paper = d.paper || PAPERS[0][1]; S.photoAlpha = d.photoAlpha ?? 0.5; S.photoExport = !!d.photoExport;
+  S.bpm = clamp(+d.bpm || 120, 40, 240); S.paper = d.paper || PAPERS[0][1]; S.photoAlpha = d.photoAlpha ?? 0.5; S.photoExport = !!d.photoExport; S.grid = [40, 80].includes(+d.grid) ? +d.grid : 0;
   S.lefty = !!d.lefty; S.seenHow = !!d.seenHow;
   S.threads = d.threads.slice(0, MAXTHREADS).map(t => {
     const th = newThread(t.color || PALETTE[0], clamp(+t.n || 1, 1, MAXFRAMES));
     th.kind = t.kind === 'photo' ? 'photo' : 'draw'; th.drive = t.drive === 'still' ? 'still' : 'clock'; th.stillIdx = clamp(+t.stillIdx || 0, 0, MAXFRAMES - 1); th.speed = +t.speed || 1; th.pingpong = !!t.pingpong; th.visible = t.visible !== false;
+    if (t.paused && th.drive === 'clock') { th.paused = true; th.pauseIdx = clamp(+t.pauseIdx || 0, 0, th.n - 1); }
     const frames = (t.frames || []).map(fr => { const strokes = Array.isArray(fr) ? fr : (fr && fr.s) || []; const f = newFrame(); if (fr && !Array.isArray(fr) && typeof fr.photo === 'string') f.photo = fr.photo; f.strokes = (strokes || []).filter(s => s && Array.isArray(s.p)).map(s => ({ t: ['crayon', 'ink', 'spray', 'eraser'].includes(s.t) ? s.t : 'crayon', s: +s.s || 13, p: s.p })); return f; });
     while (frames.length < th.n) frames.push(newFrame());
     th.frames = frames; return th;
@@ -1118,6 +1188,8 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'z' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); e.shiftKey ? redo() : undo(); }
   else if (e.key === '[') stepFrame(-1); else if (e.key === ']') stepFrame(1);
   else if (e.key === 'e') { R.eraser = !R.eraser; updateRail(); } else if (e.key === 'b') $('#bTool').click();
+  else if (e.key === 'p' && selTh()) setThreadPaused(selTh(), !selTh().paused);
+  else if (e.key === 'g') { S.grid = S.grid === 0 ? 40 : S.grid === 40 ? 80 : 0; scheduleSave(); }
   else if (e.key === 'Escape') { closeSheet(); closeCamera(); }
   else if (/^[1-6]$/.test(e.key) && S.threads[+e.key - 1]) { S.sel = +e.key - 1; buildCoins(); updateRail(); }
 });
