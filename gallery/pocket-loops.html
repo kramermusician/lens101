@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Pocket Loops · LENS 101 Gallery</title>
-<meta name="description" content="A loop animator for your phone. Draw with a thumb, crank the loop by tilting, let a thread follow your voice, shake for wobble, steal colors with the camera. Nothing is uploaded. By Kramer Gibson." />
+<meta name="description" content="A loop animator for your phone. Draw with a thumb, flick through frames, let a thread follow your voice, steal colors with the camera. Nothing is uploaded. By Kramer Gibson." />
 <link rel="stylesheet" href="../assets/css/site.css" />
 </head>
 <body>
@@ -22,7 +22,7 @@
 <article class="piece">
   <div class="crumb"><a href="../index.html">LENS 101</a> &nbsp;/&nbsp; Gallery &nbsp;/&nbsp; Pocket Loops</div>
   <h1>Pocket Loops, an animation tool that lives in your hand.</h1>
-  <div class="meta">Canvas + phone sensors · Browser · 2026 · Kramer Gibson</div>
+  <div class="meta">Canvas + camera + microphone · Browser · 2026 · Kramer Gibson</div>
 
   <p style="margin:18px 0 10px;">
     <a class="card" href="pocket-loops/index.html" target="_blank" rel="noopener" style="display:inline-block;padding:18px 26px;">
@@ -36,17 +36,19 @@
     <p>
       Flipbook Lab is a studio. This is a toy. Every coin at the bottom is a thread: its own short loop, in its own
       color, with its own number of frames, and all of them spin together at one tempo. You draw with your thumb
-      while the loop plays. Then the phone itself joins in: tilt it to crank the loop by hand, talk to it and a thread
-      follows your voice, shake it and every line starts to shiver, point the camera at something and steal its color.
+      while the loop plays, or pause and flick through the frames one at a time with the last frame ghosted in red and
+      the next in green. Then the phone joins in: talk to it and a thread follows your voice, point the camera at
+      something and steal its color, tap the wave and every line starts to shiver.
     </p>
 
     <h2>Start here</h2>
     <ul class="plain">
-      <li>Press play and watch the starter: a ball on six frames, a ground line on two, a sun that follows the tilt of the phone.</li>
+      <li>Press play and watch the starter: a ball on six frames, a ground line on two, a sun that drifts on three.</li>
       <li>Tap the red coin, then draw. Your thread freezes while your finger is down and runs again when you lift it. Two fingers tap to undo.</li>
-      <li>Turn on the crank (the wheel button) and roll the phone left or right. Now draw one long line while you roll. Play it.</li>
+      <li>Press pause. Flick left across the canvas to reach the next frame; the frame you just left shows in red. Draw the next step.</li>
       <li>Add a thread with three frames. Draw a mouth closed, half open, open. Tap the coin again, set it to Voice, and say your name.</li>
-      <li>Shake the phone. Tap the wave to calm it down.</li>
+      <li>Tap the wave for wobble. Tap the camera, drag the ring over a color, snap it.</li>
+      <li>The ? at the top brings the help cards back any time.</li>
     </ul>
 
     <h2>Habits, not features</h2>
@@ -66,7 +68,7 @@
     <h2>Tools used</h2>
     <ul class="plain">
       <li>HTML canvas and pointer events for drawing, with pressure on a stylus and speed-sensitive width on a finger</li>
-      <li>DeviceOrientation and DeviceMotion for tilt, crank and shake; Web Audio for the voice thread; getUserMedia for the camera; MediaRecorder for video; the Web Share API for handing files to Photos</li>
+      <li>Web Audio for the voice thread; getUserMedia for the camera; MediaRecorder for video; the Web Share API for handing files to Photos</li>
       <li>One small library (gif.js) fetched only when you export a GIF</li>
       <li>One file, no build step</li>
     </ul>

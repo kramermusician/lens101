@@ -106,6 +106,8 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
 #camwrap{flex:1;position:relative;overflow:hidden;touch-action:none}
 #camvid{width:100%;height:100%;object-fit:cover;display:block}
 #camdot{position:absolute;width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.4);transform:translate(-50%,-50%);left:50%;top:50%;pointer-events:none}
+#camhint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(27,26,34,.75);color:#f4f1ea;padding:8px 14px;border-radius:16px;font-size:13px;white-space:nowrap;pointer-events:none}
+#camdot{width:44px;height:44px}
 #cambar{display:flex;gap:8px;padding:12px 12px calc(14px + env(safe-area-inset-bottom));background:var(--ui);align-items:center;flex-wrap:wrap}
 #cambar .pill{flex:1;text-align:center;padding:14px 8px}
 #camswatch{width:52px;height:52px;border-radius:50%;border:3px solid var(--fg);background:#888;flex:0 0 auto}
@@ -128,10 +130,10 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
   <header id="top">
     <button class="btn big" id="bPlay" aria-label="Play or pause"></button>
     <button id="tempo" aria-label="Tempo"><b id="bpmv">120</b><small>BPM</small></button>
-    <button class="btn" id="bCrank" aria-label="Crank by tilting"></button>
     <button class="btn" id="bMic" aria-label="Microphone"><span class="meter"><i id="micmeter"></i></span></button>
     <button class="btn" id="bWob" aria-label="Wobble"></button>
     <span class="spacer"></span>
+    <button class="btn" id="bHelp" aria-label="How it works"></button>
     <button class="btn" id="bMenu" aria-label="Menu"></button>
   </header>
   <main id="stage">
@@ -144,6 +146,7 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
       <button class="btn labeled" id="bTool" aria-label="Brush"><span class="lbl" id="toollbl">CRAYON</span></button>
       <button class="btn labeled" id="bSize" aria-label="Brush size"><span class="lbl" id="sizelbl">M</span></button>
       <button class="btn" id="bEraser" aria-label="Eraser"></button>
+      <button class="btn on" id="bOnion" aria-label="Onion skin"></button>
       <button class="btn" id="bUndo" aria-label="Undo"></button>
     </div>
     <div id="steps">
@@ -174,7 +177,7 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
   </div>
   <h3>What moves it</h3>
   <div class="seg" id="thDrive">
-    <button data-v="clock">Loop</button><button data-v="tilt">Tilt</button><button data-v="voice">Voice</button>
+    <button data-v="clock">Loop</button><button data-v="voice">Voice</button>
   </div>
   <div id="thDriveNote" style="color:var(--dim);font-size:13px;margin-top:8px"></div>
   <div id="thClockOpts">
@@ -209,7 +212,7 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
 <div class="sheet" id="shMenu">
   <div class="grab"></div>
   <button class="mrow" id="mExport"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 17v3h16v-3"/></svg><span class="t">Export GIF<small>One full cycle of every loop, shared or downloaded</small></span></button>
-  <button class="mrow" id="mRecord"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span class="t">Record video, up to 10 seconds<small>Everything live: crank, voice, wobble. Mic sound is included when it is on.</small></span></button>
+  <button class="mrow" id="mRecord"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span class="t">Record video, up to 10 seconds<small>Everything live: voice, wobble. Mic sound is included when it is on.</small></span></button>
   <button class="mrow" id="mPaper"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span class="t">Paper and photo<small>Paper color, trace over a photo</small></span></button>
   <button class="mrow" id="mSpark"><svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.8H21l-5.6 4.1 2.2 6.8L12 15.6l-5.6 4.1 2.2-6.8L3 8.8h6.8z"/></svg><span class="t">Spark<small>A constraint to get you unstuck</small></span></button>
   <button class="mrow" id="mHow"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5M12 17h.01"/></svg><span class="t">How it works<small>Six short cards</small></span></button>
@@ -250,11 +253,11 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
 </div>
 
 <div id="camsheet">
-  <div id="camwrap"><video id="camvid" playsinline autoplay muted></video><div id="camdot"></div></div>
+  <div id="camwrap"><video id="camvid" playsinline autoplay muted></video><div id="camdot"></div><div id="camhint">Drag the ring over a color, then snap</div></div>
   <div id="cambar">
     <div id="camswatch"></div>
-    <button class="pill" id="camUse">Use this color</button>
-    <button class="pill" id="camSnap">Snap for tracing</button>
+    <button class="pill" id="camUse">Snap this color</button>
+    <button class="pill" id="camSnap">Snap photo to trace</button>
     <button class="pill" id="camFlip">Flip</button>
     <button class="pill" id="camClose">Close</button>
   </div>
@@ -276,7 +279,6 @@ const SIZES = { s: 6, m: 13, l: 26 };
 const ICON = {
   play: '<svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg>',
   pause: '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="5" height="16" rx="1"/><rect x="14" y="4" width="5" height="16" rx="1"/></svg>',
-  crank: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3.5v6M12 14.5v6M3.5 12h6M14.5 12h6"/></svg>',
   mic: '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3M9 20h6"/></svg>',
   wob: '<svg viewBox="0 0 24 24"><path d="M3 12c2-5 4-5 6 0s4 5 6 0 4-5 6 0"/></svg>',
   cam: '<svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
@@ -289,14 +291,16 @@ const ICON = {
   next: '<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>',
   hand: '<svg viewBox="0 0 24 24"><path d="M8 13V5a1.5 1.5 0 0 1 3 0v6M11 10V4a1.5 1.5 0 0 1 3 0v7M14 10.5V6a1.5 1.5 0 0 1 3 0v8c0 4-2.5 6-6 6s-5-2-6-4l-2-4a1.4 1.4 0 0 1 2.4-1.4L8 13"/></svg>',
   loops: '<svg viewBox="0 0 24 24"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/></svg>',
-  tilt: '<svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2" transform="rotate(-15 12 12)"/><path d="M3 20c3 1 6 1 9 0"/></svg>',
+  onion: '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="2"/><rect x="9" y="3" width="12" height="12" rx="2"/></svg>',
+  help: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5M12 17h.01"/></svg>',
+  flick: '<svg viewBox="0 0 24 24"><path d="M20 12H5M10 6l-6 6 6 6"/><path d="M14 4h6v16h-6"/></svg>',
   share: '<svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M5 13v7h14v-7"/></svg>',
 };
 
 // ---------- state ----------
 const S = { bpm: 120, playing: true, wobble: 0, paper: '#f5f2e9', photo: null, photoAlpha: 0.5, photoExport: false, threads: [], sel: 0, lefty: false, seenHow: false };
-const R = { beat: 0, now: 0, lastT: 0, crank: false, crankRate: 0, tilt: 0, hasTilt: false, motionOK: false, mic: false, voice: 0, voicePeak: 0.05,
-            tool: 'crayon', size: 'm', eraser: false, live: null, hold: null, scrub: false, photoImg: null, pointers: new Map(), twoTap: 0, recording: null, lastShake: 0, tapTimes: [] };
+const R = { beat: 0, now: 0, lastT: 0, mic: false, voice: 0, voicePeak: 0.05, onion: true,
+            tool: 'crayon', size: 'm', eraser: false, live: null, hold: null, scrub: false, photoImg: null, pointers: new Map(), twoTap: 0, down: null, recording: null, tapTimes: [] };
 
 // ---------- utils ----------
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -316,7 +320,6 @@ function newThread(color, n) {
 }
 function selTh() { return S.threads[S.sel]; }
 function effDrive(th) {
-  if (th.drive === 'tilt' && R.hasTilt) return 'tilt';
   if (th.drive === 'voice' && R.mic) return 'voice';
   return 'clock';
 }
@@ -330,8 +333,7 @@ function frameOf(th) {
   if (R.hold && R.hold.th === th) return R.hold.idx;
   if (th.n <= 1) return 0;
   const d = effDrive(th);
-  if (!S.playing && !R.crank && !R.scrub && th.pauseIdx != null) return th.pauseIdx;
-  if (d === 'tilt') return clamp(Math.floor((R.tilt + 30) / 60 * th.n), 0, th.n - 1);
+  if (!S.playing && !R.scrub && th.pauseIdx != null) return th.pauseIdx;
   if (d === 'voice') return clamp(Math.floor(R.voice * th.n), 0, th.n - 1);
   return clockIdx(th, R.beat);
 }
@@ -456,6 +458,12 @@ function fit() {
 window.addEventListener('resize', fit);
 window.addEventListener('orientationchange', () => setTimeout(fit, 250));
 
+const tintC = mkCanvas(W, H);
+function tinted(img, color) {
+  const g = tintC.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, W, H);
+  g.drawImage(img, 0, 0, W, H); g.globalCompositeOperation = 'source-in'; g.fillStyle = color; g.fillRect(0, 0, W, H);
+  return tintC;
+}
 function render() {
   const ctx = vctx;
   ctx.setTransform(k, 0, 0, k, 0, 0);
@@ -475,10 +483,12 @@ function render() {
       const r = mulberry32(wobTick * 97 + ti * 13 + 5); dx = (r() - .5) * S.wobble * 6; dy = (r() - .5) * S.wobble * 6;
     }
     ctx.drawImage(img, dx, dy, W, H);
-    // onion skin: previous frame of the selected thread while paused
-    if (th === sel && !S.playing && !R.crank && !R.scrub && th.n > 1) {
-      const prev = mod(fi - 1, th.n);
-      ctx.globalAlpha = 0.2; ctx.drawImage(ensureCache(th, prev), 0, 0, W, H); ctx.globalAlpha = 1;
+    // onion skin: the frame before in red, the frame after in green, selected thread, while paused
+    if (R.onion && th === sel && !S.playing && !R.scrub && th.n > 1) {
+      const prev = mod(fi - 1, th.n), next = mod(fi + 1, th.n);
+      ctx.globalAlpha = 0.28; ctx.drawImage(tinted(ensureCache(th, prev), '#e23b22'), 0, 0, W, H);
+      if (next !== prev) { ctx.globalAlpha = 0.22; ctx.drawImage(tinted(ensureCache(th, next), '#1f9d55'), 0, 0, W, H); }
+      ctx.globalAlpha = 1;
     }
   });
   if (R.live) ctx.drawImage(liveC, 0, 0);
@@ -514,7 +524,7 @@ function drawCoins() {
     g.fillStyle = th.color; g.beginPath(); g.arc(58, 58, 20, 0, 6.2832); g.fill();
     const d = effDrive(th);
     g.fillStyle = '#1b1a22'; g.font = 'bold 15px -apple-system, Helvetica, Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(d === 'tilt' ? '↔' : d === 'voice' ? '♪' : String(n), 58, 59);
+    g.fillText(d === 'voice' ? '♪' : String(n), 58, 59);
     if (R.hold && R.hold.th === th) { g.fillStyle = '#f4f1ea'; g.fillRect(50, 88, 5, 14); g.fillRect(61, 88, 5, 14); }
   });
 }
@@ -528,29 +538,16 @@ function drawWheel() {
   for (let i = -1; i < n; i++) {
     const bi = base + i - Math.floor(n / 2); const x = w / 2 + (i - Math.floor(n / 2)) * sp - off;
     const major = mod(bi, 4) === 0;
-    g.fillStyle = R.crank ? '#ffb547' : (major ? '#f4f1ea' : '#6d6a7a');
+    g.fillStyle = major ? '#f4f1ea' : '#6d6a7a';
     g.fillRect(x - 1, major ? 6 : 11, 2, major ? 18 : 8);
   }
-  g.fillStyle = R.crank ? '#ffb547' : '#ff6b6b'; g.fillRect(w / 2 - 1.5, 0, 3, h);
-  if (R.crank) {
-    g.fillStyle = 'rgba(255,181,71,.18)'; const rr = clamp(R.crankRate / 12, -1, 1);
-    g.fillRect(w / 2, 0, rr * w / 2, h);
-  }
+  g.fillStyle = '#ff6b6b'; g.fillRect(w / 2 - 1.5, 0, 3, h);
 }
 
 // ---------- clock ----------
 function tick(t) {
   const dt = Math.min(0.1, (t - R.lastT) / 1000 || 0); R.lastT = t; R.now = t / 1000;
-  const before = R.beat;
-  if (R.crank) {
-    if (R.hasTilt) {
-      const g = R.tilt; const dz = 5;
-      let rate = 0; if (Math.abs(g) > dz) { const m = clamp((Math.abs(g) - dz) / 28, 0, 1); rate = Math.sign(g) * Math.pow(m, 1.4) * 12; }
-      R.crankRate += (rate - R.crankRate) * 0.25;
-      R.beat += R.crankRate * dt;
-    }
-  } else if (S.playing && !R.scrub) R.beat += dt * S.bpm / 60;
-  if (R.crank && Math.floor(before) !== Math.floor(R.beat)) haptic(5);
+  if (S.playing && !R.scrub) R.beat += dt * S.bpm / 60;
   updateVoice();
   // a live stroke follows the frame under it: split when the frame changes
   if (R.live) {
@@ -618,7 +615,8 @@ view.addEventListener('pointerdown', e => {
   if (!th.visible) { th.visible = true; buildCoins(); }
   view.setPointerCapture(e.pointerId);
   const fi = frameOf(th);
-  if (S.playing && !R.crank && effDrive(th) === 'clock') R.hold = { th, idx: fi };
+  if (S.playing && effDrive(th) === 'clock') R.hold = { th, idx: fi };
+  R.down = { x: e.clientX, y: e.clientY, t: e.timeStamp };
   const [x, y] = toLocal(e);
   startLive(th, fi, null);
   R.live.lastT = e.timeStamp; addPoint(x, y, widthFor(e, x, y)); R.live.lastT = e.timeStamp;
@@ -632,7 +630,10 @@ function endPointer(e) {
   if (!R.pointers.has(e.pointerId)) return;
   R.pointers.delete(e.pointerId);
   if (R.pointers.size === 0) {
+    const d = R.down; R.down = null;
+    const flick = d && R.live && e.timeStamp - d.t < 220 && Math.abs(e.clientX - d.x) > 70 && Math.abs(e.clientX - d.x) > 2.2 * Math.abs(e.clientY - d.y);
     if (R.twoTap && e.timeStamp - R.twoTap < 350) { undo(); R.twoTap = 0; }
+    else if (flick) { discardLive(); R.hold = null; stepFrame(e.clientX < d.x ? 1 : -1); }
     else { commitLive(); }
     R.hold = null;
   }
@@ -662,38 +663,7 @@ function redo() {
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
 })();
 
-// ---------- sensors ----------
-function onOrient(e) {
-  if (e.gamma == null) return;
-  R.hasTilt = true;
-  const ang = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
-  let t = e.gamma;
-  if (ang === 90) t = e.beta; else if (ang === -90 || ang === 270) t = -e.beta;
-  R.tilt += (clamp(t, -60, 60) - R.tilt) * 0.35;
-}
-function onMotion(e) {
-  const a = e.acceleration; if (!a || a.x == null) return;
-  const m = Math.hypot(a.x, a.y, a.z);
-  if (m > 22 && R.now - R.lastShake > 0.35) {
-    R.lastShake = R.now;
-    setWobble(Math.min(1, S.wobble + 0.2)); haptic(12);
-    toast('Wobble ' + Math.round(S.wobble * 100) + '%. Tap the wave to calm it.');
-  }
-}
-async function enableMotion() {
-  if (R.motionOK) return true;
-  try {
-    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-      const r = await DeviceOrientationEvent.requestPermission(); if (r !== 'granted') throw new Error('denied');
-    }
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-      try { await DeviceMotionEvent.requestPermission(); } catch (e) {}
-    }
-    window.addEventListener('deviceorientation', onOrient);
-    window.addEventListener('devicemotion', onMotion);
-    R.motionOK = true; return true;
-  } catch (e) { toast('No motion sensors here. The strip under the canvas scrubs by hand.'); return false; }
-}
+// ---------- microphone ----------
 let micAn = null, micBuf = null, micStream = null, audioCtx = null;
 async function enableMic() {
   if (R.mic) return true;
@@ -727,28 +697,20 @@ function setPlaying(p) {
   $('#bPlay').innerHTML = p ? ICON.pause : ICON.play;
 }
 $('#bPlay').innerHTML = ICON.pause;
-$('#bPlay').addEventListener('click', () => { if (R.crank) setCrank(false); setPlaying(!S.playing); });
-$('#bCrank').innerHTML = ICON.crank;
-async function setCrank(on) {
-  if (on) {
-    const ok = await enableMotion();
-    R.crank = true; $('#bCrank').classList.add('on'); for (const th of S.threads) th.pauseIdx = null;
-    toast(ok && R.hasTilt ? 'Tilt left or right to crank' : ok ? 'Tilt the phone to crank. No tilt yet? Drag the strip below.' : 'Drag the strip below to crank');
-  } else { R.crank = false; R.crankRate = 0; $('#bCrank').classList.remove('on'); if (!S.playing) for (const th of S.threads) th.pauseIdx = frameOf(th); }
-}
-$('#bCrank').addEventListener('click', () => setCrank(!R.crank));
+$('#bPlay').addEventListener('click', () => setPlaying(!S.playing));
 $('#bMic').innerHTML = ICON.mic + $('#bMic').innerHTML;
 $('#bMic').addEventListener('click', async () => {
   if (R.mic) { disableMic(); $('#bMic').classList.remove('on'); return; }
-  if (await enableMic()) { $('#bMic').classList.add('on'); toast(S.threads.some(t => t.drive === 'voice') ? 'Talk. The voice thread follows you.' : 'Mic on. Set a thread to Voice so it can follow you.'); }
+  if (await enableMic()) { $('#bMic').classList.add('on'); toast(S.threads.some(t => t.drive === 'voice') ? 'Talk. The voice thread follows you.' : 'Mic on. Tap a coin twice and set it to Voice so it can follow you.'); }
 });
 $('#bWob').innerHTML = ICON.wob;
 function setWobble(v) { S.wobble = clamp(v, 0, 1); $('#bWob').classList.toggle('on', S.wobble > 0); invalidateAll(true); scheduleSave(); }
-$('#bWob').addEventListener('click', async () => {
-  if (S.wobble > 0) { setWobble(0); toast('Calm.'); return; }
-  const ok = await enableMotion();
-  setWobble(0.35); toast(ok ? 'A little wobble. Shake the phone for more, tap again to calm it.' : 'Wobble on. Tap again to calm it.');
+$('#bWob').addEventListener('click', () => {
+  if (S.wobble <= 0) { setWobble(0.35); toast('A little wobble. Tap again for more.'); }
+  else if (S.wobble < 0.6) { setWobble(0.8); toast('A lot of wobble. Tap again to calm it.'); }
+  else { setWobble(0); toast('Calm.'); }
 });
+$('#bHelp').innerHTML = ICON.help; $('#bHelp').addEventListener('click', () => openSheet('#shHow'));
 $('#bCam').innerHTML = ICON.cam; $('#bCam').addEventListener('click', () => openCamera('color'));
 $('#bMenu').innerHTML = ICON.menu; $('#bMenu').addEventListener('click', () => openSheet('#shMenu'));
 $('#tempo').addEventListener('click', () => { syncTempoSheet(); openSheet('#shTempo'); });
@@ -756,7 +718,7 @@ $('#tempo').addEventListener('click', () => { syncTempoSheet(); openSheet('#shTe
 // ---------- rail ----------
 $('#bTool').innerHTML = ICON.brush + $('#bTool').innerHTML;
 $('#bSize').innerHTML = ICON.size + $('#bSize').innerHTML;
-$('#bEraser').innerHTML = ICON.eraser; $('#bUndo').innerHTML = ICON.undo;
+$('#bEraser').innerHTML = ICON.eraser; $('#bUndo').innerHTML = ICON.undo; $('#bOnion').innerHTML = ICON.onion;
 $('#bPrev').innerHTML = ICON.prev; $('#bNext').innerHTML = ICON.next;
 const TOOLS = ['crayon', 'ink', 'spray'];
 function updateRail() {
@@ -769,9 +731,9 @@ $('#bTool').addEventListener('click', () => { R.eraser = false; R.tool = TOOLS[(
 $('#bSize').addEventListener('click', () => { const ks = ['s', 'm', 'l']; R.size = ks[(ks.indexOf(R.size) + 1) % 3]; updateRail(); });
 $('#bEraser').addEventListener('click', () => { R.eraser = !R.eraser; updateRail(); });
 $('#bUndo').addEventListener('click', undo);
+$('#bOnion').addEventListener('click', () => { R.onion = !R.onion; $('#bOnion').classList.toggle('on', R.onion); toast(R.onion ? 'Onion skin on: red is the frame before, green the frame after. Shows while paused.' : 'Onion skin off', 2200); });
 function stepFrame(d) {
   const th = selTh(); if (!th) return;
-  if (R.crank) setCrank(false);
   if (S.playing) setPlaying(false);
   th.pauseIdx = mod((th.pauseIdx == null ? frameOf(th) : th.pauseIdx) + d, th.n); haptic(4);
 }
@@ -794,8 +756,7 @@ function syncThreadSheet() {
   const cb = document.createElement('button'); cb.className = 'sw cam'; cb.innerHTML = ICON.cam; cb.title = 'Steal a color with the camera'; cb.addEventListener('click', () => { closeSheet(); openCamera('color'); }); sw.appendChild(cb);
   $('#thN').textContent = th.n;
   $('#thDrive').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === th.drive));
-  $('#thDriveNote').textContent = th.drive === 'tilt' ? 'Roll the phone left and right to choose the frame. Draw a ball on the left, in the middle, on the right.' :
-    th.drive === 'voice' ? 'Quiet shows the first frame, loud shows the last. Draw a mouth closed, half open, open, then talk.' :
+  $('#thDriveNote').textContent = th.drive === 'voice' ? 'Quiet shows the first frame, loud shows the last. Draw a mouth closed, half open, open, then talk.' :
     'Runs with the tempo. Different frame counts on different threads make patterns against each other.';
   $('#thClockOpts').style.display = th.drive === 'clock' ? '' : 'none';
   $('#thSpeed').querySelectorAll('button').forEach(b => b.classList.toggle('on', Math.abs(th.speed) === parseFloat(b.dataset.v)));
@@ -815,7 +776,6 @@ function setFrames(th, n) {
 }
 $('#thDrive').addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return; const th = selTh(); th.drive = b.dataset.v;
-  if (th.drive === 'tilt') { const ok = await enableMotion(); if (ok && !R.hasTilt) toast('Waiting for the phone to move. On a laptop this runs with the clock.'); }
   if (th.drive === 'voice') { if (await enableMic()) { $('#bMic').classList.add('on'); toast('Talk and watch the thread.'); } }
   syncThreadSheet(); scheduleSave();
 });
@@ -897,12 +857,12 @@ function setPhoto(dataUrl) {
 
 // how-to
 const HOW = [
-  [ICON.loops, 'Threads are loops', 'Every coin at the bottom is a thread: its own short loop, in its own color, with its own number of frames. All of them spin together at one tempo. A 2-frame thread next to a 3-frame thread makes a pattern neither has alone.'],
-  [ICON.hand, 'Draw with your thumb', 'The loop keeps playing while you work. Touching the canvas freezes your thread on the frame you see; let go and it runs again. Two-finger tap is undo. Tap a coin to pick it, tap it again to change it.'],
-  [ICON.crank, 'Crank by tilting', 'Turn on the crank and roll the phone left or right to wind the loop forward or backward by hand. Draw while cranking and the line spreads itself across the frames.'],
-  [ICON.mic, 'A thread can listen', 'Set a thread to Voice and it follows your microphone: quiet shows the first frame, loud shows the last. Three frames of a mouth and it talks when you do. Set a thread to Tilt and it follows the roll of the phone instead.'],
-  [ICON.wob, 'Shake for wobble', 'Shake the phone and every line starts to shiver, the way hand-drawn cartoons breathe. Shake more for more. Tap the wave to calm it down.'],
-  [ICON.cam, 'Steal colors, trace photos', 'The camera can grab a color from anything you point it at, or snap a photo to trace over. Export a GIF, or record a ten-second video with sound. Nothing you make leaves this phone.'],
+  [ICON.loops, 'Threads are loops', 'Every coin at the bottom is a thread: its own short loop, in its own color, with its own number of frames. All of them spin together at one tempo. A 2-frame thread next to a 3-frame thread makes a pattern neither has alone. Tap a coin to pick it, tap it again to change it.'],
+  [ICON.hand, 'Draw with your thumb', 'The loop keeps playing while you work. Touching the canvas freezes your thread on the frame you see; let go and it runs again. Two-finger tap is undo.'],
+  [ICON.flick, 'Flick for the next frame', 'Press pause to work frame by frame. Flick left across the canvas to go to the next frame, flick right to go back, or use the arrows in the corner. The strip under the canvas scrubs the whole piece.'],
+  [ICON.onion, 'Onion skin', 'While paused you see the frame before in red and the frame after in green, so each drawing lands where it should. The overlapping-squares button turns it off.'],
+  [ICON.mic, 'A thread can listen', 'Set a thread to Voice and it follows your microphone: quiet shows the first frame, loud shows the last. Three frames of a mouth and it talks when you do.'],
+  [ICON.wob, 'Wobble and colors', 'Tap the wave and every line shivers the way hand-drawn cartoons breathe; tap again for more, again for calm. The camera button steals a color: drag the ring over it and snap. It can also snap a photo to trace over. Nothing you make leaves this phone. This help is the ? at the top.'],
 ];
 $('#howcards').innerHTML = HOW.map(([ic, t, p]) => `<div class="card"><div class="ic">${ic}</div><div><b>${t}</b><p>${p}</p></div></div>`).join('');
 $('#howOk').addEventListener('click', () => { S.seenHow = true; closeSheet(); scheduleSave(); });
@@ -910,10 +870,9 @@ $('#howOk').addEventListener('click', () => { S.seenHow = true; closeSheet(); sc
 // spark
 const SPARKS = [
   'Three frames, one mouth: closed, half open, open. Set the thread to Voice and say your name slowly.',
-  'Draw a ball on the left, in the middle, on the right. Set the thread to Tilt. Now roll it across the room.',
   'A 2-frame thread and a 3-frame thread on the same canvas. Watch where they line up. It happens every six beats.',
-  'Crank on. Draw one long line while you tilt. Then play it and watch the line draw itself.',
-  'Shake the phone until everything shivers. Now draw the calmest thing you can think of.',
+  'Pause. Draw one dot. Flick. Draw it a little to the right. Flick. Keep going until the loop closes.',
+  'Turn wobble all the way up. Now draw the calmest thing you can think of.',
   'Point the camera at the most colorful thing in the room and steal that color for a new thread.',
   'Snap a photo of your own hand. Trace it in four frames, each a little different. Then remove the photo.',
   'Tap the tempo to a song that is playing right now. Draw something that agrees with it.',
@@ -923,12 +882,13 @@ const SPARKS = [
   'Draw a face in one frame only. Give it a second thread with eight frames of weather.',
   'Ping-pong on. Four frames of something growing. It will shrink on its own.',
   'Use only the spray tool. Make rain that a second thread is walking through.',
+  'Draw while it plays, without pausing, for one minute. Then pause and fix only one frame.',
 ];
 function spark() { $('#sparkText').textContent = SPARKS[Math.floor(Math.random() * SPARKS.length)]; }
 $('#sparkAgain').addEventListener('click', spark); $('#sparkGo').addEventListener('click', closeSheet);
 
 // ---------- camera ----------
-let camStream = null, camMode = 'color', camFacing = 'environment', camPick = null;
+let camStream = null, camMode = 'color', camFacing = 'environment', camPick = null, camPos = [0.5, 0.5], camTimer = 0;
 const camVid = $('#camvid'); const camSamp = mkCanvas(64, 64);
 async function openCamera(mode) {
   camMode = mode;
@@ -936,12 +896,13 @@ async function openCamera(mode) {
     camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacing, width: { ideal: 1280 } }, audio: false });
     camVid.srcObject = camStream; $('#camsheet').classList.add('show');
     $('#camUse').style.display = mode === 'color' ? '' : 'none';
-    camPick = null; $('#camswatch').style.background = '#888';
+    camPick = null; $('#camswatch').style.background = '#888'; camPos = [0.5, 0.5];
     $('#camdot').style.left = '50%'; $('#camdot').style.top = '50%';
-    setTimeout(() => sampleAt(0.5, 0.5), 600);
+    $('#camhint').textContent = mode === 'color' ? 'Drag the ring over a color, then snap' : 'Frame it, then snap';
+    clearInterval(camTimer); camTimer = setInterval(() => sampleAt(camPos[0], camPos[1]), 120);
   } catch (e) { toast('Camera not available here.'); }
 }
-function closeCamera() { if (camStream) camStream.getTracks().forEach(t => t.stop()); camStream = null; camVid.srcObject = null; $('#camsheet').classList.remove('show'); }
+function closeCamera() { clearInterval(camTimer); if (camStream) camStream.getTracks().forEach(t => t.stop()); camStream = null; camVid.srcObject = null; $('#camsheet').classList.remove('show'); }
 function sampleAt(fx, fy) {
   if (!camVid.videoWidth) return;
   // map the tap through object-fit: cover
@@ -955,11 +916,16 @@ function sampleAt(fx, fy) {
   camPick = '#' + [r, gg, b].map(v => v.toString(16).padStart(2, '0')).join('');
   $('#camswatch').style.background = camPick;
 }
-$('#camwrap').addEventListener('pointerdown', e => {
-  const r = $('#camwrap').getBoundingClientRect(); const fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
-  $('#camdot').style.left = (fx * 100) + '%'; $('#camdot').style.top = (fy * 100) + '%'; sampleAt(fx, fy);
-});
-$('#camUse').addEventListener('click', () => { if (!camPick) return; setThreadColor(selTh(), camPick); closeCamera(); toast('Color stolen'); });
+(() => {
+  const wrap = $('#camwrap'); let dragging = false;
+  const moveTo = e => { const r = wrap.getBoundingClientRect(); camPos = [clamp((e.clientX - r.left) / r.width, 0, 1), clamp((e.clientY - r.top) / r.height, 0, 1)];
+    $('#camdot').style.left = (camPos[0] * 100) + '%'; $('#camdot').style.top = (camPos[1] * 100) + '%'; sampleAt(camPos[0], camPos[1]); };
+  wrap.addEventListener('pointerdown', e => { dragging = true; wrap.setPointerCapture(e.pointerId); moveTo(e); });
+  wrap.addEventListener('pointermove', e => { if (dragging) moveTo(e); });
+  const end = () => { dragging = false; };
+  wrap.addEventListener('pointerup', end); wrap.addEventListener('pointercancel', end);
+})();
+$('#camUse').addEventListener('click', () => { sampleAt(camPos[0], camPos[1]); if (!camPick) return; setThreadColor(selTh(), camPick); closeCamera(); toast('Color snapped'); });
 $('#camSnap').addEventListener('click', () => {
   if (!camVid.videoWidth) return;
   const c = mkCanvas(W, H); const g = c.getContext('2d');
@@ -1058,7 +1024,7 @@ function hydrate(d) {
   S.wobble = clamp(+d.wobble || 0, 0, 1); S.lefty = !!d.lefty; S.seenHow = !!d.seenHow;
   S.threads = d.threads.slice(0, MAXTHREADS).map(t => {
     const th = newThread(t.color || PALETTE[0], clamp(+t.n || 1, 1, MAXFRAMES));
-    th.drive = ['clock', 'tilt', 'voice'].includes(t.drive) ? t.drive : 'clock'; th.speed = +t.speed || 1; th.pingpong = !!t.pingpong; th.visible = t.visible !== false;
+    th.drive = t.drive === 'voice' ? 'voice' : 'clock'; th.speed = +t.speed || 1; th.pingpong = !!t.pingpong; th.visible = t.visible !== false;
     const frames = (t.frames || []).map(strokes => { const f = newFrame(); f.strokes = (strokes || []).filter(s => s && Array.isArray(s.p)).map(s => ({ t: ['crayon', 'ink', 'spray', 'eraser'].includes(s.t) ? s.t : 'crayon', s: +s.s || 13, p: s.p })); return f; });
     while (frames.length < th.n) frames.push(newFrame());
     th.frames = frames; return th;
@@ -1094,7 +1060,7 @@ function starter() {
   ys.forEach((y, i) => ball.frames[i].strokes.push({ t: 'crayon', s: 14, p: ellipsePts(320, y - sq[i][1], sq[i][0], sq[i][1]) }));
   const ground = newThread('#2ec4b6', 2); ground.speed = 0.5;
   ground.frames[0].strokes.push({ t: 'crayon', s: 12, p: wavePts(758, 0) }); ground.frames[1].strokes.push({ t: 'crayon', s: 12, p: wavePts(758, 1.6) });
-  const sun = newThread('#ffd93d', 3); sun.drive = 'tilt'; sun.speed = 0.25;
+  const sun = newThread('#ffd93d', 3); sun.speed = 0.25;
   [190, 320, 450].forEach((x, i) => { sun.frames[i].strokes.push({ t: 'ink', s: 26, p: ellipsePts(x, 170, 34, 34, 0.9, 30) }); for (let r = 0; r < 8; r++) { const a = r / 8 * 6.2832; sun.frames[i].strokes.push({ t: 'ink', s: 9, p: [x + Math.cos(a) * 50, 170 + Math.sin(a) * 50, 0.7, x + Math.cos(a) * 68, 170 + Math.sin(a) * 68, 0.5] }); } });
   S.threads = [ball, ground, sun]; S.sel = 0;
 }
