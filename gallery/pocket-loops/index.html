@@ -119,8 +119,9 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
 .card b{display:block;font-size:15px;margin-bottom:3px}
 .card p{margin:0;font-size:14px;color:var(--dim);line-height:1.4}
 .spark{font-size:19px;line-height:1.45;padding:10px 4px 6px;min-height:90px}
-#recdot{position:absolute;left:12px;top:12px;width:14px;height:14px;border-radius:50%;background:var(--acc2);display:none;z-index:4;box-shadow:0 0 0 4px rgba(255,107,107,.3);animation:blink 1s infinite}
-#recdot.show{display:block}
+#recdot{position:absolute;left:12px;top:12px;display:none;align-items:center;gap:8px;padding:7px 12px 7px 10px;border-radius:16px;background:rgba(27,26,34,.88);color:#f4f1ea;font-size:12px;font-weight:700;letter-spacing:.06em;z-index:4}
+#recdot i{width:11px;height:11px;border-radius:50%;background:var(--acc2);animation:blink 1s infinite}
+#recdot.show{display:flex}
 @keyframes blink{50%{opacity:.35}}
 @media (min-width:700px){ #top{padding:10px 18px 6px} #dock{padding:6px 18px 12px} }
 </style>
@@ -137,7 +138,7 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
   <main id="stage">
     <div id="cwrap">
     <canvas id="view"></canvas>
-    <div id="recdot"></div>
+    <button id="recdot" aria-label="Stop recording"><i></i><span id="reclbl">REC</span></button>
     <div id="rail">
       <button class="btn color" id="bColor" aria-label="Thread color"></button>
       <button class="btn" id="bCam" aria-label="Camera"></button>
@@ -211,7 +212,7 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
 <div class="sheet" id="shMenu">
   <div class="grab"></div>
   <button class="mrow" id="mExport"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 17v3h16v-3"/></svg><span class="t">Export GIF<small>One full cycle of every loop, shared or downloaded</small></span></button>
-  <button class="mrow" id="mRecord"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span class="t">Record video, up to 10 seconds<small>Exactly what plays on screen, scrubbing included</small></span></button>
+  <button class="mrow" id="mRecord"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span class="t">Record video<small>Plays the loop from the top and records one pass, ten seconds at most</small></span></button>
   <button class="mrow" id="mPaper"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span class="t">Paper and photo<small>Paper color, trace over a photo</small></span></button>
   <button class="mrow" id="mSpark"><svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.8H21l-5.6 4.1 2.2 6.8L12 15.6l-5.6 4.1 2.2-6.8L3 8.8h6.8z"/></svg><span class="t">Spark<small>A constraint to get you unstuck</small></span></button>
   <button class="mrow" id="mHow"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5M12 17h.01"/></svg><span class="t">How it works<small>Six short cards</small></span></button>
@@ -514,6 +515,7 @@ function tick(t) {
     if (cur !== R.live.fi) { const last = R.live.lastPt, w0 = R.live.w, lt = R.live.lastT; commitLive(); startLive(th, cur, last); R.live.w = w0; R.live.lastT = lt; }
   }
   render(); drawCoins(); drawWheel(); updateFrameLabel();
+  if (R.recording) { const left = Math.max(0, Math.ceil((R.recEnd - performance.now()) / 1000)); const l = $('#reclbl'); const txt = 'REC ' + left + 's'; if (l.textContent !== txt) l.textContent = txt; }
   requestAnimationFrame(tick);
 }
 function updateFrameLabel() {
@@ -767,7 +769,7 @@ $('#bTap').addEventListener('click', () => {
 
 // menu
 $('#mExport').addEventListener('click', () => { closeSheet(); exportGif(); });
-$('#mRecord').addEventListener('click', () => { closeSheet(); toggleRecord(); });
+$('#mRecord').addEventListener('click', toggleRecord);
 $('#mPaper').addEventListener('click', () => { syncPaperSheet(); openSheet('#shPaper'); });
 $('#mSpark').addEventListener('click', () => { spark(); openSheet('#shSpark'); });
 $('#mHow').addEventListener('click', () => openSheet('#shHow'));
@@ -945,10 +947,15 @@ function toggleRecord() {
     const blob = new Blob(chunks, { type: rec.mimeType || mime || 'video/webm' });
     deliver(blob, 'pocket-loops.' + ((blob.type.includes('mp4')) ? 'mp4' : 'webm'));
   };
-  rec.start(250); R.recording = rec; $('#recdot').classList.add('show');
-  toast('Recording 10 seconds. Scrub the strip, step frames, whatever you like. Menu again to stop early.', 3000);
-  setTimeout(() => { if (R.recording === rec) stopRecord(); }, 10000);
+  // start playback from the top of the loop and record one full pass (at least three seconds, ten at most)
+  closeSheet(); R.scrub = false; R.hold = null; R.beat = 0; setPlaying(true);
+  const { ticks, step } = loopTicks(); const cycle = ticks * step * 60 / S.bpm;
+  const dur = Math.min(10, Math.max(1, Math.ceil(3 / cycle)) * cycle);
+  rec.start(250); R.recording = rec; R.recEnd = performance.now() + dur * 1000; $('#recdot').classList.add('show');
+  toast('Recording ' + Math.round(dur) + ' seconds from the top of the loop. Tap the red dot to stop early.', 2600);
+  setTimeout(() => { if (R.recording === rec) stopRecord(); }, dur * 1000);
 }
+$('#recdot').addEventListener('click', stopRecord);
 function stopRecord() { if (R.recording && R.recording.state !== 'inactive') R.recording.stop(); }
 
 // ---------- save / load ----------
