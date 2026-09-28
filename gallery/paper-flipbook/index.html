@@ -67,6 +67,11 @@ button,select,input{font:inherit;color:inherit}
 .status.ok{color:var(--blue)} .status.warn{color:var(--red)}
 
 .templ{display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap}
+#printImg{display:none}
+@media print{
+  body > *:not(#printImg){display:none !important}
+  #printImg{display:block;width:100%;height:auto;margin:0}
+}
 .templ img{width:120px;border:1px solid var(--line);background:#fff;border-radius:3px}
 
 .seg{display:inline-flex;border:2px solid var(--ink);border-radius:999px;overflow:hidden}
@@ -129,6 +134,7 @@ footer{color:var(--muted);font-size:.9rem;text-align:center;margin-top:2rem}
         <label for="layout1"><strong>Grid</strong></label>
         <select id="layout1" class="layoutSel">
           <option value="3x3">3 × 3 (9 frames)</option>
+          <option value="3x3half">3 × 3, two per page (9 frames, cut in half)</option>
           <option value="4x3">4 × 3 (12 frames)</option>
           <option value="5x5">5 × 5 (25 frames)</option>
           <option value="10x10">10 × 10 (100 frames)</option>
@@ -137,9 +143,10 @@ footer{color:var(--muted);font-size:.9rem;text-align:center;margin-top:2rem}
       <div class="templ">
         <img id="tplThumb" alt="Template: a three-by-three grid of squares with a black square mark outside each corner">
         <div style="flex:1;min-width:220px">
-          <p>Every sheet fits US Letter (8.5 × 11 in). The four black corner marks let the app find the grid even when the photo is tilted or taken at an angle. Print at 100% or fit to page; either works.</p>
+          <p><span id="tplFit">Every sheet fits US Letter (8.5 × 11 in).</span> The four black corner marks let the app find the grid even when the photo is tilted or taken at an angle. Print at 100% or fit to page; either works.</p>
           <div class="row">
             <button class="btn primary" id="tplSave">Save template</button>
+            <button class="btn" id="tplPrint">Print</button>
           </div>
           <p class="muted hidden" id="tplHint">Long-press the template image to save it, then print it.</p>
         </div>
@@ -175,6 +182,7 @@ footer{color:var(--muted);font-size:.9rem;text-align:center;margin-top:2rem}
         </div>
         <select id="layout3" class="layoutSel" aria-label="Grid size">
           <option value="3x3">3 × 3</option>
+          <option value="3x3half">3 × 3, half sheet</option>
           <option value="4x3">4 × 3</option>
           <option value="5x5">5 × 5</option>
           <option value="10x10">10 × 10</option>
@@ -257,6 +265,8 @@ footer{color:var(--muted);font-size:.9rem;text-align:center;margin-top:2rem}
   </section>
   <footer>Photos stay on your device; nothing is uploaded.</footer>
 </main>
+<img id="printImg" alt="">
+<style id="printPage"></style>
 <script>
 /* ---------- Geometry ---------- */
 function solveLinear(A, b) {
@@ -523,6 +533,7 @@ function encodeGIF(images, seq, delayCs) {
 /* ---------- Sheet layouts (millimetres, sized for US Letter) ---------- */
 const LAYOUTS = {
   '3x3':   { cols: 3,  rows: 3,  cell: 54, gut: 6,   size: 360, name: '3 \u00d7 3' },
+  '3x3half': { cols: 3, rows: 3, cell: 29, gut: 4,  size: 360, name: '3 \u00d7 3', twoUp: true },
   '4x3':   { cols: 4,  rows: 3,  cell: 40, gut: 5,   size: 360, name: '4 \u00d7 3' },
   '5x5':   { cols: 5,  rows: 5,  cell: 32, gut: 4,   size: 240, name: '5 \u00d7 5' },
   '10x10': { cols: 10, rows: 10, cell: 15, gut: 2.5, size: 160, name: '10 \u00d7 10' }
@@ -581,13 +592,26 @@ async function offerSave(filename, blob, hintEl) {
 /* ---------- Template image ---------- */
 function drawTemplate() {
   const L = curL(), g = geo('template');
-  const dpm = 300 / 25.4, pw = 215.9, ph = 279.4;
+  const dpm = 300 / 25.4, pw = L.twoUp ? 279.4 : 215.9, ph = L.twoUp ? 215.9 : 279.4;
   const c = document.createElement('canvas');
   c.width = Math.round(pw * dpm); c.height = Math.round(ph * dpm);
   const x = c.getContext('2d');
-  const ox = pw / 2 - g.W / 2, oy = 24;
   const P = v => v * dpm;
   x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  // twoUp: landscape Letter, two tall half-sheets, each a complete sheet with its own corner marks
+  const halves = L.twoUp ? [0, pw / 2] : [0];
+  const hw = L.twoUp ? pw / 2 : pw;
+  for (const hx of halves) drawSheet(x, P, L, g, hx + hw / 2 - g.W / 2, L.twoUp ? 22 : 24, !!L.twoUp);
+  if (L.twoUp) {
+    x.strokeStyle = '#8a8a8a'; x.lineWidth = P(0.3); x.setLineDash([P(3), P(2.5)]);
+    x.beginPath(); x.moveTo(P(pw / 2), 0); x.lineTo(P(pw / 2), c.height); x.stroke(); x.setLineDash([]);
+    x.save(); x.translate(P(pw / 2 - 1.2), P(ph - 8)); x.rotate(-Math.PI / 2);
+    x.fillStyle = '#8a8a8a'; x.font = `${P(2.6)}px Arial, sans-serif`; x.textBaseline = 'bottom';
+    x.fillText('cut here', 0, 0); x.restore();
+  }
+  return c;
+}
+function drawSheet(x, P, L, g, ox, oy, compact) {
   x.fillStyle = '#000';
   for (const [cx, cy] of refRect('template')) x.fillRect(P(ox + cx - MARK.size / 2), P(oy + cy - MARK.size / 2), P(MARK.size), P(MARK.size));
   const fsz = Math.min(3.2, Math.max(1.6, g.gut * 0.65)), cross = Math.min(2, g.cell / 12);
@@ -604,21 +628,31 @@ function drawTemplate() {
   }
   const n = L.cols * L.rows, ty = oy + g.H + MARK.off + 17;
   x.fillStyle = '#222'; x.textBaseline = 'alphabetic';
-  x.font = `700 ${P(6)}px Arial, sans-serif`;
+  x.font = `700 ${P(compact ? 5 : 6)}px Arial, sans-serif`;
   x.fillText(`Flipbook sheet, ${L.name} (${n} frames)`, P(ox - 4), P(ty));
   x.font = `${P(3.6)}px Arial, sans-serif`;
-  const lines = ['Draw one frame per square, left to right, top to bottom.',
-    'Keep the four black corner marks visible and uncovered in your photo.',
-    'Name: ______________________________      Date: ______________'];
-  lines.forEach((l, i) => x.fillText(l, P(ox - 4), P(ty + 10 + i * 8)));
-  return c;
+  const lines = compact
+    ? ['Draw one frame per square,', 'left to right, top to bottom.', 'Keep the four black corner marks', 'visible and uncovered in your photo.', '', 'Name: ____________________', '', 'Date: ____________________']
+    : ['Draw one frame per square, left to right, top to bottom.',
+      'Keep the four black corner marks visible and uncovered in your photo.',
+      'Name: ______________________________      Date: ______________'];
+  lines.forEach((l, i) => x.fillText(l, P(ox - 4), P(ty + 10 + i * (compact ? 6 : 8))));
 }
 let tplCanvas = null;
 function refreshTemplate() {
   tplCanvas = drawTemplate();
   $('tplThumb').src = tplCanvas.toDataURL('image/png');
-  $('tplThumb').alt = `Template: a ${curL().name} grid of squares with a black square mark outside each corner`;
+  const tw = !!curL().twoUp;
+  $('tplThumb').alt = tw
+    ? `Template: two ${curL().name} half-sheets side by side on a landscape page, split by a dashed cut line`
+    : `Template: a ${curL().name} grid of squares with a black square mark outside each corner`;
+  $('tplFit').textContent = tw
+    ? 'Two sheets on one US Letter page. Print it landscape, then cut down the dashed line; each half is its own sheet.'
+    : 'Every sheet fits US Letter (8.5 \u00d7 11 in).';
+  $('printImg').src = $('tplThumb').src;
+  $('printPage').textContent = `@page{size:letter ${tw ? 'landscape' : 'portrait'};margin:0}`;
 }
+$('tplPrint').onclick = () => window.print();
 $('tplSave').onclick = () => tplCanvas.toBlob(b => offerSave(`flipbook-template-${S.layout}.png`, b, $('tplHint')), 'image/png');
 
 /* ---------- Layout choice ---------- */
