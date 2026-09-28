@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b1a22">
 <title>Pocket Loops</title>
-<meta name="description" content="A phone-first loop animator. Draw with a thumb, crank the loop by tilting the phone, let a thread follow your voice, shake for wobble, steal colors with the camera. Nothing is uploaded.">
+<meta name="description" content="A phone-first loop animator. Short loops in one color that spin together at one tempo. Draw with a thumb, flick through frames, steal colors with the camera. Nothing is uploaded.">
 <style>
 :root{
   --ui:#1b1a22; --ui2:#26252f; --ui3:#33323e; --fg:#f4f1ea; --dim:#9a97a6; --acc:#ffb547; --acc2:#ff6b6b;
@@ -39,9 +39,9 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;to
 #stage{flex:1 1 auto;position:relative;min-height:0;display:flex;align-items:center;justify-content:center}
 #cwrap{position:relative;line-height:0}
 #view{background:var(--paper);border-radius:12px;touch-action:none;box-shadow:0 12px 34px rgba(0,0,0,.45);display:block}
-#rail{position:absolute;right:8px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:3}
+#rail{position:absolute;right:8px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:7px;z-index:3}
 body.lefty #rail{right:auto;left:8px}
-#rail .btn{width:48px;height:48px;background:rgba(27,26,34,.78);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 3px 12px rgba(0,0,0,.3)}
+#rail .btn{width:44px;height:44px;background:rgba(27,26,34,.78);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 3px 12px rgba(0,0,0,.3)}
 #rail .btn.on{background:var(--acc)}
 #rail .btn .lbl{position:absolute;bottom:3px;left:0;right:0;text-align:center;font-size:7px;font-weight:700;color:var(--dim);letter-spacing:.05em}
 #rail .btn.labeled svg{margin-top:-10px}
@@ -130,8 +130,6 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
   <header id="top">
     <button class="btn big" id="bPlay" aria-label="Play or pause"></button>
     <button id="tempo" aria-label="Tempo"><b id="bpmv">120</b><small>BPM</small></button>
-    <button class="btn" id="bMic" aria-label="Microphone"><span class="meter"><i id="micmeter"></i></span></button>
-    <button class="btn" id="bWob" aria-label="Wobble"></button>
     <span class="spacer"></span>
     <button class="btn" id="bHelp" aria-label="How it works"></button>
     <button class="btn" id="bMenu" aria-label="Menu"></button>
@@ -146,6 +144,7 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
       <button class="btn labeled" id="bTool" aria-label="Brush"><span class="lbl" id="toollbl">CRAYON</span></button>
       <button class="btn labeled" id="bSize" aria-label="Brush size"><span class="lbl" id="sizelbl">M</span></button>
       <button class="btn" id="bEraser" aria-label="Eraser"></button>
+      <button class="btn" id="bLine" aria-label="Straight line"></button>
       <button class="btn on" id="bOnion" aria-label="Onion skin"></button>
       <button class="btn" id="bUndo" aria-label="Undo"></button>
     </div>
@@ -177,7 +176,7 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
   </div>
   <h3>What moves it</h3>
   <div class="seg" id="thDrive">
-    <button data-v="clock">Loop</button><button data-v="voice">Voice</button>
+    <button data-v="clock">Loop</button><button data-v="still">Still</button>
   </div>
   <div id="thDriveNote" style="color:var(--dim);font-size:13px;margin-top:8px"></div>
   <div id="thClockOpts">
@@ -212,7 +211,7 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
 <div class="sheet" id="shMenu">
   <div class="grab"></div>
   <button class="mrow" id="mExport"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 17v3h16v-3"/></svg><span class="t">Export GIF<small>One full cycle of every loop, shared or downloaded</small></span></button>
-  <button class="mrow" id="mRecord"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span class="t">Record video, up to 10 seconds<small>Everything live: voice, wobble. Mic sound is included when it is on.</small></span></button>
+  <button class="mrow" id="mRecord"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span class="t">Record video, up to 10 seconds<small>Exactly what plays on screen, scrubbing included</small></span></button>
   <button class="mrow" id="mPaper"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span class="t">Paper and photo<small>Paper color, trace over a photo</small></span></button>
   <button class="mrow" id="mSpark"><svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.8H21l-5.6 4.1 2.2 6.8L12 15.6l-5.6 4.1 2.2-6.8L3 8.8h6.8z"/></svg><span class="t">Spark<small>A constraint to get you unstuck</small></span></button>
   <button class="mrow" id="mHow"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5M12 17h.01"/></svg><span class="t">How it works<small>Six short cards</small></span></button>
@@ -279,8 +278,8 @@ const SIZES = { s: 6, m: 13, l: 26 };
 const ICON = {
   play: '<svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg>',
   pause: '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="5" height="16" rx="1"/><rect x="14" y="4" width="5" height="16" rx="1"/></svg>',
-  mic: '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3M9 20h6"/></svg>',
-  wob: '<svg viewBox="0 0 24 24"><path d="M3 12c2-5 4-5 6 0s4 5 6 0 4-5 6 0"/></svg>',
+  line: '<svg viewBox="0 0 24 24"><path d="M4 20L20 4"/><circle cx="4" cy="20" r="1.8"/><circle cx="20" cy="4" r="1.8"/></svg>',
+  still: '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="5" height="16" rx="1"/><rect x="14" y="4" width="5" height="16" rx="1"/></svg>',
   cam: '<svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
   menu: '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
   undo: '<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h9a6 6 0 0 1 0 12h-3"/></svg>',
@@ -298,8 +297,8 @@ const ICON = {
 };
 
 // ---------- state ----------
-const S = { bpm: 120, playing: true, wobble: 0, paper: '#f5f2e9', photo: null, photoAlpha: 0.5, photoExport: false, threads: [], sel: 0, lefty: false, seenHow: false };
-const R = { beat: 0, now: 0, lastT: 0, mic: false, voice: 0, voicePeak: 0.05, onion: true,
+const S = { bpm: 120, playing: true, paper: '#f5f2e9', photo: null, photoAlpha: 0.5, photoExport: false, threads: [], sel: 0, lefty: false, seenHow: false };
+const R = { beat: 0, now: 0, lastT: 0, onion: true, straight: false,
             tool: 'crayon', size: 'm', eraser: false, live: null, hold: null, scrub: false, photoImg: null, pointers: new Map(), twoTap: 0, down: null, recording: null, tapTimes: [] };
 
 // ---------- utils ----------
@@ -313,16 +312,13 @@ function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.c
 function haptic(ms = 6) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
 
 // ---------- threads and frames ----------
-function newFrame() { return { strokes: [], cache: null, boil: null, boilDirty: true }; }
+function newFrame() { return { strokes: [], cache: null }; }
 function newThread(color, n) {
-  return { id: uid(), color, n, drive: 'clock', speed: 1, pingpong: false, visible: true, pauseIdx: null,
+  return { id: uid(), color, n, drive: 'clock', speed: 1, pingpong: false, visible: true, pauseIdx: null, stillIdx: 0,
            frames: Array.from({ length: n }, newFrame), undo: [], redo: [] };
 }
 function selTh() { return S.threads[S.sel]; }
-function effDrive(th) {
-  if (th.drive === 'voice' && R.mic) return 'voice';
-  return 'clock';
-}
+function effDrive(th) { return th.drive === 'still' ? 'still' : 'clock'; }
 function clockIdx(th, beat) {
   const n = th.n; if (n <= 1) return 0;
   const b = Math.floor(beat * th.speed);
@@ -332,9 +328,8 @@ function clockIdx(th, beat) {
 function frameOf(th) {
   if (R.hold && R.hold.th === th) return R.hold.idx;
   if (th.n <= 1) return 0;
-  const d = effDrive(th);
+  if (th.drive === 'still') return clamp(th.stillIdx || 0, 0, th.n - 1);
   if (!S.playing && !R.scrub && th.pauseIdx != null) return th.pauseIdx;
-  if (d === 'voice') return clamp(Math.floor(R.voice * th.n), 0, th.n - 1);
   return clockIdx(th, R.beat);
 }
 
@@ -394,53 +389,26 @@ function beginStrokeCtx(ctx, tool, color) {
   ctx.fillStyle = color;
   ctx._base = ctx.getTransform();
 }
-// committed stroke, with optional boil jitter
-function drawStroke(ctx, st, color, jit, seed) {
+// committed stroke
+function drawStroke(ctx, st, color, seed) {
   const rnd = mulberry32(seed);
   ctx.save(); beginStrokeCtx(ctx, st.t, color);
-  let ox = 0, oy = 0, amp = 0, ph = 0, fr = 0;
-  if (jit > 0) { ox = (rnd() - .5) * jit * 9; oy = (rnd() - .5) * jit * 9; amp = jit * 4; ph = rnd() * 6.28; fr = 0.015 + rnd() * 0.035; }
-  const wk = makeWalker(st.s); const p = st.p; let acc = 0, px = p[0], py = p[1];
-  for (let i = 0; i < p.length; i += 3) {
-    let x = p[i], y = p[i + 1]; const w = p[i + 2];
-    acc += Math.hypot(x - px, y - py); px = x; py = y;
-    if (jit > 0) { x += ox + Math.sin(acc * fr + ph) * amp; y += oy + Math.cos(acc * fr * 1.3 + ph) * amp; }
-    walk(wk, x, y, w, (sx, sy, sw) => putStamp(ctx, st.t, color, st.s, sx, sy, sw, rnd));
-  }
+  const wk = makeWalker(st.s); const p = st.p;
+  for (let i = 0; i < p.length; i += 3) walk(wk, p[i], p[i + 1], p[i + 2], (sx, sy, sw) => putStamp(ctx, st.t, color, st.s, sx, sy, sw, rnd));
   ctx.restore();
 }
-function renderFrameCanvas(th, fi, jit, variant) {
-  const sc = variant ? 0.5 : 1;
-  const c = mkCanvas(W * sc, H * sc); const g = c.getContext('2d'); g.scale(sc, sc);
+function renderFrameCanvas(th, fi) {
+  const c = mkCanvas(W, H); const g = c.getContext('2d');
   const f = th.frames[fi];
-  for (let i = 0; i < f.strokes.length; i++) drawStroke(g, f.strokes[i], th.color, jit, fi * 131 + i * 17 + variant * 7919 + 1);
+  for (let i = 0; i < f.strokes.length; i++) drawStroke(g, f.strokes[i], th.color, fi * 131 + i * 17 + 1);
   return c;
 }
 function ensureCache(th, fi) {
   const f = th.frames[fi];
-  if (!f.cache) f.cache = renderFrameCanvas(th, fi, 0, 0);
+  if (!f.cache) f.cache = renderFrameCanvas(th, fi);
   return f.cache;
 }
-function invalidateThread(th, boilOnly) {
-  for (const f of th.frames) { if (!boilOnly) f.cache = null; f.boil = null; f.boilDirty = true; }
-}
-function invalidateAll(boilOnly) { for (const th of S.threads) invalidateThread(th, boilOnly); }
-// build up to `budget` boil variants per tick, visible frames first
-function boilWork(budget) {
-  if (S.wobble <= 0) return;
-  for (const th of S.threads) {
-    if (!th.visible) continue;
-    const order = [frameOf(th)]; for (let i = 0; i < th.n; i++) if (i !== order[0]) order.push(i);
-    for (const fi of order) {
-      const f = th.frames[fi];
-      if (!f.boilDirty) continue;
-      f.boil = [renderFrameCanvas(th, fi, S.wobble, 1), renderFrameCanvas(th, fi, S.wobble, 2)];
-      f.boilDirty = false;
-      if (--budget <= 0) return;
-    }
-  }
-}
-
+function invalidateThread(th) { for (const f of th.frames) f.cache = null; }
 // ---------- view canvas ----------
 const view = $('#view'); const vctx = view.getContext('2d');
 let dpr = 1, cssW = 0, cssH = 0, k = 1;
@@ -470,21 +438,13 @@ function render() {
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = S.paper; ctx.fillRect(0, 0, W, H);
   if (R.photoImg) { ctx.globalAlpha = S.photoAlpha; ctx.drawImage(R.photoImg, 0, 0, W, H); ctx.globalAlpha = 1; }
-  const wobTick = Math.floor(R.now * 7);
   const sel = selTh();
-  S.threads.forEach((th, ti) => {
+  S.threads.forEach(th => {
     if (!th.visible) return;
-    const fi = frameOf(th); const f = th.frames[fi];
-    let img = ensureCache(th, fi);
-    let dx = 0, dy = 0;
-    if (S.wobble > 0) {
-      const v = (wobTick + ti) % 3;
-      if (v > 0 && f.boil) img = f.boil[v - 1];
-      const r = mulberry32(wobTick * 97 + ti * 13 + 5); dx = (r() - .5) * S.wobble * 6; dy = (r() - .5) * S.wobble * 6;
-    }
-    ctx.drawImage(img, dx, dy, W, H);
+    const fi = frameOf(th);
+    ctx.drawImage(ensureCache(th, fi), 0, 0, W, H);
     // onion skin: the frame before in red, the frame after in green, selected thread, while paused
-    if (R.onion && th === sel && !S.playing && !R.scrub && th.n > 1) {
+    if (R.onion && th === sel && !S.playing && !R.scrub && th.n > 1 && th.drive !== 'still') {
       const prev = mod(fi - 1, th.n), next = mod(fi + 1, th.n);
       ctx.globalAlpha = 0.28; ctx.drawImage(tinted(ensureCache(th, prev), '#e23b22'), 0, 0, W, H);
       if (next !== prev) { ctx.globalAlpha = 0.22; ctx.drawImage(tinted(ensureCache(th, next), '#1f9d55'), 0, 0, W, H); }
@@ -524,7 +484,7 @@ function drawCoins() {
     g.fillStyle = th.color; g.beginPath(); g.arc(58, 58, 20, 0, 6.2832); g.fill();
     const d = effDrive(th);
     g.fillStyle = '#1b1a22'; g.font = 'bold 15px -apple-system, Helvetica, Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(d === 'voice' ? '♪' : String(n), 58, 59);
+    if (d === 'still') { g.fillRect(50, 51, 5, 16); g.fillRect(61, 51, 5, 16); } else g.fillText(String(n), 58, 59);
     if (R.hold && R.hold.th === th) { g.fillStyle = '#f4f1ea'; g.fillRect(50, 88, 5, 14); g.fillRect(61, 88, 5, 14); }
   });
 }
@@ -548,13 +508,11 @@ function drawWheel() {
 function tick(t) {
   const dt = Math.min(0.1, (t - R.lastT) / 1000 || 0); R.lastT = t; R.now = t / 1000;
   if (S.playing && !R.scrub) R.beat += dt * S.bpm / 60;
-  updateVoice();
   // a live stroke follows the frame under it: split when the frame changes
   if (R.live) {
     const th = R.live.th; const cur = frameOf(th);
     if (cur !== R.live.fi) { const last = R.live.lastPt, w0 = R.live.w, lt = R.live.lastT; commitLive(); startLive(th, cur, last); R.live.w = w0; R.live.lastT = lt; }
   }
-  boilWork(2);
   render(); drawCoins(); drawWheel(); updateFrameLabel();
   requestAnimationFrame(tick);
 }
@@ -570,13 +528,29 @@ function startLive(th, fi, seedPt) {
   ensureCache(th, fi);
   const tool = R.eraser ? 'eraser' : R.tool;
   const st = { t: tool, s: SIZES[R.size], p: [] };
-  const ctx = tool === 'eraser' ? th.frames[fi].cache.getContext('2d') : lctx;
-  R.live = { th, fi, st, wk: makeWalker(st.s), rnd: mulberry32((Date.now() & 0xffff) + fi), ctx, lastPt: null, lastT: 0, w: 0.6 };
-  ctx.save(); beginStrokeCtx(ctx, tool, th.color);
+  // a straight line previews on the live canvas whatever the tool; a freehand eraser works on the frame directly
+  const ctx = (tool === 'eraser' && !R.straight) ? th.frames[fi].cache.getContext('2d') : lctx;
+  R.live = { th, fi, st, wk: makeWalker(st.s), rnd: mulberry32((Date.now() & 0xffff) + fi), ctx, lastPt: null, lastT: 0, w: 0.6, straight: R.straight, p0: null };
+  ctx.save(); beginStrokeCtx(ctx, tool, R.straight && tool === 'eraser' ? S.paper : th.color);
+  if (R.straight && tool === 'eraser') ctx.globalCompositeOperation = 'source-over';
   if (seedPt) addPoint(seedPt[0], seedPt[1], seedPt[2]);
+}
+function straightPts(a, b, w) {
+  const d = Math.hypot(b[0] - a[0], b[1] - a[1]); const n = Math.max(1, Math.ceil(d / 4)); const p = [];
+  for (let i = 0; i <= n; i++) { const k = i / n; p.push(Math.round((a[0] + (b[0] - a[0]) * k) * 10) / 10, Math.round((a[1] + (b[1] - a[1]) * k) * 10) / 10, w); }
+  return p;
 }
 function addPoint(x, y, w) {
   const L = R.live; if (!L) return;
+  if (L.straight) {
+    if (!L.p0) L.p0 = [x, y];
+    L.lastPt = [x, y, w];
+    L.st.p = straightPts(L.p0, [x, y], 0.7);
+    lctx.setTransform(1, 0, 0, 1, 0, 0); lctx.clearRect(0, 0, W, H);
+    const color = L.st.t === 'eraser' ? S.paper : L.th.color; const rnd = mulberry32(7); const wk = makeWalker(L.st.s);
+    for (let i = 0; i < L.st.p.length; i += 3) walk(wk, L.st.p[i], L.st.p[i + 1], L.st.p[i + 2], (sx, sy, sw) => putStamp(L.ctx, L.st.t === 'eraser' ? 'ink' : L.st.t, color, L.st.s, sx, sy, sw, rnd));
+    return;
+  }
   L.st.p.push(Math.round(x * 10) / 10, Math.round(y * 10) / 10, Math.round(w * 100) / 100);
   L.lastPt = [x, y, w];
   walk(L.wk, x, y, w, (sx, sy, sw) => putStamp(L.ctx, L.st.t, L.th.color, L.st.s, sx, sy, sw, L.rnd));
@@ -585,18 +559,23 @@ function commitLive() {
   const L = R.live; if (!L) return; R.live = null;
   L.ctx.restore();
   const f = L.th.frames[L.fi];
+  if (L.straight && L.st.p.length >= 3) {
+    // render the finished line onto the frame itself, eraser included
+    f.strokes.push(L.st); L.th.undo.push({ fi: L.fi, st: L.st }); if (L.th.undo.length > 80) L.th.undo.shift(); L.th.redo.length = 0;
+    drawStroke(f.cache.getContext('2d'), L.st, L.th.color, L.fi * 131 + f.strokes.length * 17 + 1);
+    lctx.setTransform(1, 0, 0, 1, 0, 0); lctx.clearRect(0, 0, W, H); scheduleSave(); return;
+  }
   if (L.st.p.length >= 3) {
     f.strokes.push(L.st);
     L.th.undo.push({ fi: L.fi, st: L.st }); if (L.th.undo.length > 80) L.th.undo.shift(); L.th.redo.length = 0;
     if (L.st.t !== 'eraser') { const g = f.cache.getContext('2d'); g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.drawImage(liveC, 0, 0); g.restore(); }
-    f.boilDirty = true; f.boil = null;
     scheduleSave();
   } else if (L.st.t === 'eraser') { f.cache = null; }
   lctx.setTransform(1, 0, 0, 1, 0, 0); lctx.clearRect(0, 0, W, H);
 }
 function discardLive() {
   const L = R.live; if (!L) return; R.live = null; L.ctx.restore();
-  if (L.st.t === 'eraser') L.th.frames[L.fi].cache = null;
+  if (L.st.t === 'eraser' && !L.straight) L.th.frames[L.fi].cache = null;
   lctx.setTransform(1, 0, 0, 1, 0, 0); lctx.clearRect(0, 0, W, H);
 }
 function widthFor(e, x, y) {
@@ -631,7 +610,7 @@ function endPointer(e) {
   R.pointers.delete(e.pointerId);
   if (R.pointers.size === 0) {
     const d = R.down; R.down = null;
-    const flick = d && R.live && e.timeStamp - d.t < 220 && Math.abs(e.clientX - d.x) > 70 && Math.abs(e.clientX - d.x) > 2.2 * Math.abs(e.clientY - d.y);
+    const flick = d && R.live && !R.straight && e.timeStamp - d.t < 220 && Math.abs(e.clientX - d.x) > 70 && Math.abs(e.clientX - d.x) > 2.2 * Math.abs(e.clientY - d.y);
     if (R.twoTap && e.timeStamp - R.twoTap < 350) { undo(); R.twoTap = 0; }
     else if (flick) { discardLive(); R.hold = null; stepFrame(e.clientX < d.x ? 1 : -1); }
     else { commitLive(); }
@@ -647,11 +626,11 @@ document.addEventListener('touchmove', e => { if (e.target === view) e.preventDe
 function undo() {
   const th = selTh(); const u = th.undo.pop(); if (!u) { toast('Nothing to undo'); return; }
   const f = th.frames[u.fi]; const i = f.strokes.lastIndexOf(u.st); if (i >= 0) f.strokes.splice(i, 1);
-  th.redo.push(u); f.cache = null; f.boil = null; f.boilDirty = true; scheduleSave(); haptic(4);
+  th.redo.push(u); f.cache = null; scheduleSave(); haptic(4);
 }
 function redo() {
   const th = selTh(); const u = th.redo.pop(); if (!u) return;
-  th.frames[u.fi].strokes.push(u.st); th.undo.push(u); const f = th.frames[u.fi]; f.cache = null; f.boil = null; f.boilDirty = true; scheduleSave();
+  th.frames[u.fi].strokes.push(u.st); th.undo.push(u); th.frames[u.fi].cache = null; scheduleSave();
 }
 
 // ---------- wheel scrub ----------
@@ -663,32 +642,6 @@ function redo() {
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
 })();
 
-// ---------- microphone ----------
-let micAn = null, micBuf = null, micStream = null, audioCtx = null;
-async function enableMic() {
-  if (R.mic) return true;
-  try {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false } });
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') await audioCtx.resume();
-    const src = audioCtx.createMediaStreamSource(micStream); micAn = audioCtx.createAnalyser(); micAn.fftSize = 1024; micBuf = new Float32Array(1024); src.connect(micAn);
-    R.mic = true; return true;
-  } catch (e) { toast('Microphone not available.'); return false; }
-}
-function disableMic() {
-  if (micStream) micStream.getTracks().forEach(t => t.stop()); micStream = null; micAn = null; R.mic = false; R.voice = 0;
-}
-function updateVoice() {
-  if (!micAn) { $('#micmeter').style.width = '0'; return; }
-  micAn.getFloatTimeDomainData(micBuf);
-  let s = 0; for (let i = 0; i < micBuf.length; i++) s += micBuf[i] * micBuf[i];
-  const rms = Math.sqrt(s / micBuf.length);
-  R.voicePeak = Math.max(R.voicePeak * 0.996, rms, 0.03);
-  const raw = clamp((rms - 0.006) / (R.voicePeak - 0.006), 0, 1);
-  R.voice += (raw - R.voice) * (raw > R.voice ? 0.55 : 0.12);
-  $('#micmeter').style.width = Math.round(R.voice * 100) + '%';
-}
-
 // ---------- top bar ----------
 function setPlaying(p) {
   S.playing = p;
@@ -698,18 +651,6 @@ function setPlaying(p) {
 }
 $('#bPlay').innerHTML = ICON.pause;
 $('#bPlay').addEventListener('click', () => setPlaying(!S.playing));
-$('#bMic').innerHTML = ICON.mic + $('#bMic').innerHTML;
-$('#bMic').addEventListener('click', async () => {
-  if (R.mic) { disableMic(); $('#bMic').classList.remove('on'); return; }
-  if (await enableMic()) { $('#bMic').classList.add('on'); toast(S.threads.some(t => t.drive === 'voice') ? 'Talk. The voice thread follows you.' : 'Mic on. Tap a coin twice and set it to Voice so it can follow you.'); }
-});
-$('#bWob').innerHTML = ICON.wob;
-function setWobble(v) { S.wobble = clamp(v, 0, 1); $('#bWob').classList.toggle('on', S.wobble > 0); invalidateAll(true); scheduleSave(); }
-$('#bWob').addEventListener('click', () => {
-  if (S.wobble <= 0) { setWobble(0.35); toast('A little wobble. Tap again for more.'); }
-  else if (S.wobble < 0.6) { setWobble(0.8); toast('A lot of wobble. Tap again to calm it.'); }
-  else { setWobble(0); toast('Calm.'); }
-});
 $('#bHelp').innerHTML = ICON.help; $('#bHelp').addEventListener('click', () => openSheet('#shHow'));
 $('#bCam').innerHTML = ICON.cam; $('#bCam').addEventListener('click', () => openCamera('color'));
 $('#bMenu').innerHTML = ICON.menu; $('#bMenu').addEventListener('click', () => openSheet('#shMenu'));
@@ -718,22 +659,24 @@ $('#tempo').addEventListener('click', () => { syncTempoSheet(); openSheet('#shTe
 // ---------- rail ----------
 $('#bTool').innerHTML = ICON.brush + $('#bTool').innerHTML;
 $('#bSize').innerHTML = ICON.size + $('#bSize').innerHTML;
-$('#bEraser').innerHTML = ICON.eraser; $('#bUndo').innerHTML = ICON.undo; $('#bOnion').innerHTML = ICON.onion;
+$('#bEraser').innerHTML = ICON.eraser; $('#bUndo').innerHTML = ICON.undo; $('#bOnion').innerHTML = ICON.onion; $('#bLine').innerHTML = ICON.line;
 $('#bPrev').innerHTML = ICON.prev; $('#bNext').innerHTML = ICON.next;
 const TOOLS = ['crayon', 'ink', 'spray'];
 function updateRail() {
   const th = selTh(); if (th) $('#bColor').style.setProperty('--tc', th.color);
   $('#toollbl').textContent = R.tool.toUpperCase(); $('#sizelbl').textContent = R.size.toUpperCase();
-  $('#bEraser').classList.toggle('on', R.eraser);
+  $('#bEraser').classList.toggle('on', R.eraser); $('#bLine').classList.toggle('on', R.straight);
 }
 $('#bColor').addEventListener('click', openThreadSheet);
 $('#bTool').addEventListener('click', () => { R.eraser = false; R.tool = TOOLS[(TOOLS.indexOf(R.tool) + 1) % TOOLS.length]; updateRail(); toast(R.tool[0].toUpperCase() + R.tool.slice(1), 700); });
 $('#bSize').addEventListener('click', () => { const ks = ['s', 'm', 'l']; R.size = ks[(ks.indexOf(R.size) + 1) % 3]; updateRail(); });
 $('#bEraser').addEventListener('click', () => { R.eraser = !R.eraser; updateRail(); });
+$('#bLine').addEventListener('click', () => { R.straight = !R.straight; updateRail(); toast(R.straight ? 'Straight lines: touch, drag, let go. Works with every brush and the eraser.' : 'Freehand', 1800); });
 $('#bUndo').addEventListener('click', undo);
 $('#bOnion').addEventListener('click', () => { R.onion = !R.onion; $('#bOnion').classList.toggle('on', R.onion); toast(R.onion ? 'Onion skin on: red is the frame before, green the frame after. Shows while paused.' : 'Onion skin off', 2200); });
 function stepFrame(d) {
   const th = selTh(); if (!th) return;
+  if (th.drive === 'still') { th.stillIdx = mod(frameOf(th) + d, th.n); haptic(4); scheduleSave(); return; }
   if (S.playing) setPlaying(false);
   th.pauseIdx = mod((th.pauseIdx == null ? frameOf(th) : th.pauseIdx) + d, th.n); haptic(4);
 }
@@ -756,7 +699,7 @@ function syncThreadSheet() {
   const cb = document.createElement('button'); cb.className = 'sw cam'; cb.innerHTML = ICON.cam; cb.title = 'Steal a color with the camera'; cb.addEventListener('click', () => { closeSheet(); openCamera('color'); }); sw.appendChild(cb);
   $('#thN').textContent = th.n;
   $('#thDrive').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === th.drive));
-  $('#thDriveNote').textContent = th.drive === 'voice' ? 'Quiet shows the first frame, loud shows the last. Draw a mouth closed, half open, open, then talk.' :
+  $('#thDriveNote').textContent = th.drive === 'still' ? 'Never moves. Good for a background, a room, a body that stays put while another thread does the moving. With more than one frame, the arrows pick which one shows.' :
     'Runs with the tempo. Different frame counts on different threads make patterns against each other.';
   $('#thClockOpts').style.display = th.drive === 'clock' ? '' : 'none';
   $('#thSpeed').querySelectorAll('button').forEach(b => b.classList.toggle('on', Math.abs(th.speed) === parseFloat(b.dataset.v)));
@@ -774,10 +717,10 @@ function setFrames(th, n) {
   th.n = n; if (th.pauseIdx != null && th.pauseIdx >= n) th.pauseIdx = n - 1;
   syncThreadSheet(); buildCoins(); scheduleSave();
 }
-$('#thDrive').addEventListener('click', async e => {
-  const b = e.target.closest('button'); if (!b) return; const th = selTh(); th.drive = b.dataset.v;
-  if (th.drive === 'voice') { if (await enableMic()) { $('#bMic').classList.add('on'); toast('Talk and watch the thread.'); } }
-  syncThreadSheet(); scheduleSave();
+$('#thDrive').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; const th = selTh(); th.drive = b.dataset.v === 'still' ? 'still' : 'clock';
+  if (th.drive === 'still') th.stillIdx = frameOf(th);
+  syncThreadSheet(); buildCoins(); scheduleSave();
 });
 $('#thSpeed').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const th = selTh(); th.speed = Math.sign(th.speed || 1) * parseFloat(b.dataset.v); syncThreadSheet(); scheduleSave(); });
 $('#thRev').addEventListener('click', () => { const th = selTh(); th.speed = -th.speed; syncThreadSheet(); scheduleSave(); });
@@ -786,7 +729,7 @@ $('#thVis').addEventListener('click', () => { const th = selTh(); th.visible = !
 $('#thDup').addEventListener('click', () => {
   const th = selTh(); if (S.threads.length >= MAXTHREADS) return;
   const c = newThread(PALETTE[(PALETTE.indexOf(th.color) + 1) % PALETTE.length], th.n);
-  c.drive = th.drive; c.speed = th.speed; c.pingpong = th.pingpong;
+  c.drive = th.drive; c.speed = th.speed; c.pingpong = th.pingpong; c.stillIdx = th.stillIdx;
   c.frames = th.frames.map(f => { const nf = newFrame(); nf.strokes = f.strokes.map(s => ({ t: s.t, s: s.s, p: s.p.slice() })); return nf; });
   S.threads.splice(S.sel + 1, 0, c); S.sel++; buildCoins(); updateRail(); syncThreadSheet(); scheduleSave(); toast('Duplicated. It has the next color.');
 });
@@ -794,7 +737,7 @@ let clearArm = 0;
 $('#thClear').addEventListener('click', () => {
   const th = selTh();
   if (Date.now() - clearArm > 2500) { clearArm = Date.now(); toast('Tap again to clear every frame of this thread'); return; }
-  for (const f of th.frames) { f.strokes = []; f.cache = null; f.boil = null; }
+  for (const f of th.frames) { f.strokes = []; f.cache = null; }
   th.undo.length = 0; th.redo.length = 0; scheduleSave(); toast('Cleared'); clearArm = 0;
 });
 let delArm = 0;
@@ -835,7 +778,7 @@ let newArm = 0;
 $('#mNew').addEventListener('click', () => {
   if (Date.now() - newArm > 2500) { newArm = Date.now(); $('#newNote').textContent = 'Tap once more to start over'; return; }
   newArm = 0; $('#newNote').textContent = 'Tap twice. Save first if you want to keep this one.';
-  S.threads = [newThread(PALETTE[0], 6)]; S.sel = 0; S.photo = null; R.photoImg = null; setWobble(0); R.beat = 0;
+  S.threads = [newThread(PALETTE[0], 6)]; S.sel = 0; S.photo = null; R.photoImg = null; R.beat = 0;
   buildCoins(); updateRail(); closeSheet(); scheduleSave(); toast('Blank canvas');
 });
 
@@ -861,25 +804,25 @@ const HOW = [
   [ICON.hand, 'Draw with your thumb', 'The loop keeps playing while you work. Touching the canvas freezes your thread on the frame you see; let go and it runs again. Two-finger tap is undo.'],
   [ICON.flick, 'Flick for the next frame', 'Press pause to work frame by frame. Flick left across the canvas to go to the next frame, flick right to go back, or use the arrows in the corner. The strip under the canvas scrubs the whole piece.'],
   [ICON.onion, 'Onion skin', 'While paused you see the frame before in red and the frame after in green, so each drawing lands where it should. The overlapping-squares button turns it off.'],
-  [ICON.mic, 'A thread can listen', 'Set a thread to Voice and it follows your microphone: quiet shows the first frame, loud shows the last. Three frames of a mouth and it talks when you do.'],
-  [ICON.wob, 'Wobble and colors', 'Tap the wave and every line shivers the way hand-drawn cartoons breathe; tap again for more, again for calm. The camera button steals a color: drag the ring over it and snap. It can also snap a photo to trace over. Nothing you make leaves this phone. This help is the ? at the top.'],
+  [ICON.still, 'A thread can stand still', 'Tap a coin twice and set it to Still. It never moves: a background, a room, a body that stays put while another thread does the moving. It shows a pause mark on its coin.'],
+  [ICON.line, 'Straight lines and colors', 'The line button makes every touch a straight line, with any brush or the eraser: touch where it starts, drag to where it ends, let go. The camera button steals a color: drag the ring over it and snap. It can also snap a photo to trace over. Nothing you make leaves this phone. This help is the ? at the top.'],
 ];
 $('#howcards').innerHTML = HOW.map(([ic, t, p]) => `<div class="card"><div class="ic">${ic}</div><div><b>${t}</b><p>${p}</p></div></div>`).join('');
 $('#howOk').addEventListener('click', () => { S.seenHow = true; closeSheet(); scheduleSave(); });
 
 // spark
 const SPARKS = [
-  'Three frames, one mouth: closed, half open, open. Set the thread to Voice and say your name slowly.',
   'A 2-frame thread and a 3-frame thread on the same canvas. Watch where they line up. It happens every six beats.',
   'Pause. Draw one dot. Flick. Draw it a little to the right. Flick. Keep going until the loop closes.',
-  'Turn wobble all the way up. Now draw the calmest thing you can think of.',
+  'One Still thread for the room, one 4-frame thread for the thing in the room that will not sit still.',
+  'Straight lines only, for the next five minutes. Everything you draw is made of sticks.',
   'Point the camera at the most colorful thing in the room and steal that color for a new thread.',
   'Snap a photo of your own hand. Trace it in four frames, each a little different. Then remove the photo.',
   'Tap the tempo to a song that is playing right now. Draw something that agrees with it.',
   'One thread runs backwards at half speed. Decide what it is after you draw it.',
   'For the next two minutes, erase more than you draw.',
   'Twelve frames, one dot, no two frames with the dot in the same place. Play it at 240.',
-  'Draw a face in one frame only. Give it a second thread with eight frames of weather.',
+  'Draw a face on a Still thread. Give it a second thread with eight frames of weather.',
   'Ping-pong on. Four frames of something growing. It will shrink on its own.',
   'Use only the spray tool. Make rain that a second thread is walking through.',
   'Draw while it plays, without pausing, for one minute. Then pause and fix only one frame.',
@@ -968,20 +911,17 @@ async function exportGif() {
   const sc = 0.75; const c = mkCanvas(W * sc, H * sc); const g = c.getContext('2d');
   const gif = new GIF({ workers: 2, quality: 8, workerScript: lib.worker, width: c.width, height: c.height });
   const msPerTick = 60000 / S.bpm * step;
-  const savedBeat = R.beat; const wob = S.wobble;
+  const savedBeat = R.beat;
   const frameTuple = b => ths.map(th => effDrive(th) === 'clock' ? clockIdx(th, b) : frameOf(th));
   let t = 0;
   while (t < ticks) {
     const tup = frameTuple(t * step); let run = 1;
-    if (wob <= 0) while (t + run < ticks && frameTuple((t + run) * step).join() === tup.join()) run++;
+    while (t + run < ticks && frameTuple((t + run) * step).join() === tup.join()) run++;
     g.setTransform(sc, 0, 0, sc, 0, 0); g.globalAlpha = 1;
     g.fillStyle = S.paper; g.fillRect(0, 0, W, H);
     if (R.photoImg && S.photoExport) { g.globalAlpha = S.photoAlpha; g.drawImage(R.photoImg, 0, 0, W, H); g.globalAlpha = 1; }
     ths.forEach((th, i) => {
-      const fi = tup[i]; const f = th.frames[fi]; let img = ensureCache(th, fi); let dx = 0, dy = 0;
-      if (wob > 0) { const v = (t + i) % 3; if (v > 0) { if (!f.boil) { f.boil = [renderFrameCanvas(th, fi, wob, 1), renderFrameCanvas(th, fi, wob, 2)]; f.boilDirty = false; } img = f.boil[v - 1]; }
-        const r = mulberry32(t * 97 + i * 13 + 5); dx = (r() - .5) * wob * 6; dy = (r() - .5) * wob * 6; }
-      g.drawImage(img, dx, dy, W, H);
+      g.drawImage(ensureCache(th, tup[i]), 0, 0, W, H);
     });
     gif.addFrame(c, { delay: Math.max(20, Math.round(msPerTick * run)), copy: true });
     t += run;
@@ -995,7 +935,6 @@ function toggleRecord() {
   if (R.recording) { stopRecord(); return; }
   if (!window.MediaRecorder || !view.captureStream) { toast('Video recording is not supported in this browser.'); return; }
   const stream = view.captureStream(30);
-  if (micStream) micStream.getAudioTracks().forEach(tr => stream.addTrack(tr));
   const types = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
   const mime = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
   let rec; try { rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined); } catch (e) { toast('Could not start recording.'); return; }
@@ -1007,24 +946,24 @@ function toggleRecord() {
     deliver(blob, 'pocket-loops.' + ((blob.type.includes('mp4')) ? 'mp4' : 'webm'));
   };
   rec.start(250); R.recording = rec; $('#recdot').classList.add('show');
-  toast('Recording 10 seconds. Crank, talk, shake. Menu again to stop early.', 3000);
+  toast('Recording 10 seconds. Scrub the strip, step frames, whatever you like. Menu again to stop early.', 3000);
   setTimeout(() => { if (R.recording === rec) stopRecord(); }, 10000);
 }
 function stopRecord() { if (R.recording && R.recording.state !== 'inactive') R.recording.stop(); }
 
 // ---------- save / load ----------
 function serialize() {
-  return { app: 'pocket-loops', v: 1, bpm: S.bpm, paper: S.paper, photo: S.photo, photoAlpha: S.photoAlpha, photoExport: S.photoExport, wobble: S.wobble, lefty: S.lefty, seenHow: S.seenHow, sel: S.sel,
-    threads: S.threads.map(th => ({ color: th.color, n: th.n, drive: th.drive, speed: th.speed, pingpong: th.pingpong, visible: th.visible,
+  return { app: 'pocket-loops', v: 1, bpm: S.bpm, paper: S.paper, photo: S.photo, photoAlpha: S.photoAlpha, photoExport: S.photoExport, lefty: S.lefty, seenHow: S.seenHow, sel: S.sel,
+    threads: S.threads.map(th => ({ color: th.color, n: th.n, drive: th.drive, stillIdx: th.stillIdx, speed: th.speed, pingpong: th.pingpong, visible: th.visible,
       frames: th.frames.map(f => f.strokes.map(s => ({ t: s.t, s: s.s, p: s.p }))) })) };
 }
 function hydrate(d) {
   if (!d || d.app !== 'pocket-loops' || !Array.isArray(d.threads) || !d.threads.length) throw new Error('not a Pocket Loops file');
   S.bpm = clamp(+d.bpm || 120, 40, 240); S.paper = d.paper || PAPERS[0][1]; S.photoAlpha = d.photoAlpha ?? 0.5; S.photoExport = !!d.photoExport;
-  S.wobble = clamp(+d.wobble || 0, 0, 1); S.lefty = !!d.lefty; S.seenHow = !!d.seenHow;
+  S.lefty = !!d.lefty; S.seenHow = !!d.seenHow;
   S.threads = d.threads.slice(0, MAXTHREADS).map(t => {
     const th = newThread(t.color || PALETTE[0], clamp(+t.n || 1, 1, MAXFRAMES));
-    th.drive = t.drive === 'voice' ? 'voice' : 'clock'; th.speed = +t.speed || 1; th.pingpong = !!t.pingpong; th.visible = t.visible !== false;
+    th.drive = t.drive === 'still' ? 'still' : 'clock'; th.stillIdx = clamp(+t.stillIdx || 0, 0, MAXFRAMES - 1); th.speed = +t.speed || 1; th.pingpong = !!t.pingpong; th.visible = t.visible !== false;
     const frames = (t.frames || []).map(strokes => { const f = newFrame(); f.strokes = (strokes || []).filter(s => s && Array.isArray(s.p)).map(s => ({ t: ['crayon', 'ink', 'spray', 'eraser'].includes(s.t) ? s.t : 'crayon', s: +s.s || 13, p: s.p })); return f; });
     while (frames.length < th.n) frames.push(newFrame());
     th.frames = frames; return th;
@@ -1035,7 +974,7 @@ function hydrate(d) {
 function applyState() {
   document.documentElement.style.setProperty('--paper', S.paper); document.body.classList.toggle('lefty', S.lefty);
   $('#leftyNote').textContent = S.lefty ? 'Tools sit on the left' : 'Tools sit on the right';
-  setBpm(S.bpm); $('#bWob').classList.toggle('on', S.wobble > 0); buildCoins(); updateRail();
+  setBpm(S.bpm); buildCoins(); updateRail();
 }
 let saveT = 0;
 function scheduleSave() { clearTimeout(saveT); saveT = setTimeout(saveLocal, 700); }
@@ -1058,7 +997,7 @@ function starter() {
   const ball = newThread('#ff6b6b', 6);
   const ys = [740, 600, 490, 450, 490, 600]; const sq = [[74, 46], [56, 62], [52, 66], [58, 58], [52, 66], [56, 62]];
   ys.forEach((y, i) => ball.frames[i].strokes.push({ t: 'crayon', s: 14, p: ellipsePts(320, y - sq[i][1], sq[i][0], sq[i][1]) }));
-  const ground = newThread('#2ec4b6', 2); ground.speed = 0.5;
+  const ground = newThread('#2ec4b6', 2); ground.speed = 0.5; ground.drive = 'still';
   ground.frames[0].strokes.push({ t: 'crayon', s: 12, p: wavePts(758, 0) }); ground.frames[1].strokes.push({ t: 'crayon', s: 12, p: wavePts(758, 1.6) });
   const sun = newThread('#ffd93d', 3); sun.speed = 0.25;
   [190, 320, 450].forEach((x, i) => { sun.frames[i].strokes.push({ t: 'ink', s: 26, p: ellipsePts(x, 170, 34, 34, 0.9, 30) }); for (let r = 0; r < 8; r++) { const a = r / 8 * 6.2832; sun.frames[i].strokes.push({ t: 'ink', s: 9, p: [x + Math.cos(a) * 50, 170 + Math.sin(a) * 50, 0.7, x + Math.cos(a) * 68, 170 + Math.sin(a) * 68, 0.5] }); } });
