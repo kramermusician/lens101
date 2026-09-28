@@ -61,7 +61,9 @@ body.lefty #steps{left:auto;right:8px}
 .coin.sel{transform:scale(1.1)}
 .coin.sel::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--fg);pointer-events:none}
 .coin.hidden canvas{opacity:.35}
-.coinwrap{position:relative;flex:0 0 auto}
+.coinwrap{position:relative;flex:0 0 auto;transition:transform .16s}
+.coinwrap.lifted{transition:none;z-index:5}
+.coinwrap.lifted .coin{transform:scale(1.2);filter:drop-shadow(0 6px 10px rgba(0,0,0,.5))}
 .cpause{position:absolute;right:-6px;top:-6px;width:26px;height:26px;border-radius:50%;background:var(--ui3);box-shadow:0 0 0 2px var(--ui);display:flex;align-items:center;justify-content:center;z-index:2}
 .cpause::before{content:"";position:absolute;inset:-9px}
 .cpause svg{width:13px;height:13px;fill:var(--fg);stroke:none}
@@ -109,14 +111,14 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
 /* camera */
 #camsheet{position:fixed;inset:0;background:#000;z-index:30;display:none;flex-direction:column}
 #camstage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
-#camghost{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.42;pointer-events:none;display:none}
+#camghost{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none}
 #camsheet.frame #camdot,#camsheet.frame #camswatch,#camsheet.frame #camUse,#camsheet.frame #camSnap{display:none}
 #camsheet:not(.frame) #camShot{display:none}
 #camsheet.show{display:flex}
 #camwrap{position:relative;overflow:hidden;touch-action:none;background:#111}
 #camvid{width:100%;height:100%;object-fit:cover;display:block}
 #camdot{position:absolute;width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.4);transform:translate(-50%,-50%);left:50%;top:50%;pointer-events:none}
-#camhint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(27,26,34,.75);color:#f4f1ea;padding:8px 14px;border-radius:16px;font-size:13px;white-space:nowrap;pointer-events:none}
+#camhint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(27,26,34,.75);color:#f4f1ea;padding:8px 14px;border-radius:16px;font-size:13px;width:max-content;max-width:88%;text-align:center;line-height:1.35;pointer-events:none}
 #camdot{width:44px;height:44px}
 #cambar{display:flex;gap:8px;padding:12px 12px calc(14px + env(safe-area-inset-bottom));background:var(--ui);align-items:center;flex-wrap:wrap}
 #cambar .pill{flex:1;text-align:center;padding:14px 8px}
@@ -190,6 +192,8 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
       <button class="pill" id="thPhotoRemove">Remove this frame's photo</button>
     </div>
   </div>
+  <h3>Opacity</h3>
+  <div class="row" style="flex-wrap:nowrap"><input type="range" id="thAlpha" min="5" max="100" step="5" value="100"><b id="thAlphaV" style="min-width:52px;text-align:right">100%</b></div>
   <h3>Frames in the loop</h3>
   <div class="row">
     <div class="stepper"><button id="thNm">−</button><b id="thN">6</b><button id="thNp">+</button></div>
@@ -276,7 +280,7 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
 </div>
 
 <div id="camsheet">
-  <div id="camstage"><div id="camwrap"><video id="camvid" playsinline autoplay muted></video><img id="camghost" alt=""><div id="camdot"></div><div id="camhint">Drag the ring over a color, then snap</div></div></div>
+  <div id="camstage"><div id="camwrap"><video id="camvid" playsinline autoplay muted></video><canvas id="camghost" width="320" height="480"></canvas><div id="camdot"></div><div id="camhint">Drag the ring over a color, then snap</div></div></div>
   <div id="cambar">
     <div id="camswatch"></div>
     <button class="pill" id="camUse">Snap this color</button>
@@ -340,7 +344,7 @@ function haptic(ms = 6) { try { if (navigator.vibrate) navigator.vibrate(ms); } 
 // ---------- threads and frames ----------
 function newFrame() { return { strokes: [], cache: null, photo: null, img: null }; }
 function newThread(color, n) {
-  return { id: uid(), color, n, kind: 'draw', drive: 'clock', speed: 1, pingpong: false, visible: true, paused: false, pauseIdx: null, stillIdx: 0, shootIdx: 0,
+  return { id: uid(), color, n, kind: 'draw', drive: 'clock', speed: 1, pingpong: false, visible: true, opacity: 1, paused: false, pauseIdx: null, stillIdx: 0, shootIdx: 0,
            frames: Array.from({ length: n }, newFrame), undo: [], redo: [] };
 }
 function selTh() { return S.threads[S.sel]; }
@@ -445,7 +449,7 @@ function renderFrameCanvas(th, fi) {
   const c = mkCanvas(W, H); const g = c.getContext('2d');
   const f = th.frames[fi];
   if (th.kind === 'photo' && f.photo) {
-    if (!f.img) { const im = new Image(); im.onload = () => { f.cache = null; }; im.src = f.photo; f.img = im; }
+    if (!f.img) { const im = new Image(); im.onload = () => { f.cache = null; if (camStream && camMode === 'frame') syncShoot(); }; im.src = f.photo; f.img = im; }
     if (f.img.complete && f.img.naturalWidth) coverInto(g, f.img, W, H);
   }
   for (let i = 0; i < f.strokes.length; i++) drawStroke(g, f.strokes[i], th.color, fi * 131 + i * 17 + 1);
@@ -494,6 +498,33 @@ function drawGrid(ctx) {
   }
   ctx.restore();
 }
+// onion colors: tinted() flattens a drawing to one color. Photos fill the whole frame, so two tinted photos would
+// just mix to mud; photoGhost() lights the frame before in red and the frame after in green and adds them, like
+// 3D glasses: what stayed put reads yellow, what moved splits into red and green.
+const ONION_PREV = '#e23b22', ONION_NEXT = '#1f9d55';
+function onionOf(th, fi, color) { return tinted(ensureCache(th, fi), color); }
+const ghostCache = []; // the last few ghosts, keyed by the two frame canvases they were made from
+function photoGhost(th, prev, next) {
+  const fa = th.frames[prev], fb = th.frames[next];
+  const a = hasContent(fa) ? ensureCache(th, prev) : null, b = next !== prev && hasContent(fb) ? ensureCache(th, next) : null;
+  if (!a && !b) return null;
+  const hit = ghostCache.find(e => e.a === a && e.b === b); if (hit) return hit.c;
+  const c = mkCanvas(W, H); const g = c.getContext('2d'); const out = g.createImageData(W, H), o = out.data;
+  const read = src => { if (!src) return null; g.clearRect(0, 0, W, H); g.drawImage(src, 0, 0, W, H); return g.getImageData(0, 0, W, H).data; };
+  const da = read(a), db = read(b); const pa = !!(fa && fa.photo), pb = !!(fb && fb.photo);
+  // a photo frame lights by brightness; a frame with only strokes lights where the strokes are
+  const lit = (d, i, photo) => { const al = d[i + 3] / 255; if (!photo) return al; const L = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) / 255; return al * L * L; };
+  for (let i = 0; i < o.length; i += 4) {
+    const la = da ? lit(da, i, pa) : 0, lb = db ? lit(db, i, pb) : 0;
+    const r = Math.min(255, la * 255 + lb * 30), gg = Math.min(255, la * 45 + lb * 225), bb = Math.min(255, la * 25 + lb * 95);
+    const m = Math.max(r, gg, bb); if (m < 1) continue;
+    o[i] = r * 255 / m; o[i + 1] = gg * 255 / m; o[i + 2] = bb * 255 / m; o[i + 3] = m;
+  }
+  g.putImageData(out, 0, 0);
+  ghostCache.push({ a, b, c }); if (ghostCache.length > 3) ghostCache.shift();
+  return c;
+}
+function hasContent(f) { return !!(f && (f.photo || f.strokes.length)); }
 function render() {
   const ctx = vctx;
   ctx.setTransform(k, 0, 0, k, 0, 0);
@@ -502,22 +533,23 @@ function render() {
   if (R.photoImg) { ctx.globalAlpha = S.photoAlpha; ctx.drawImage(R.photoImg, 0, 0, W, H); ctx.globalAlpha = 1; }
   drawGrid(ctx);
   const sel = selTh();
-  S.threads.forEach(th => {
-    if (!th.visible) return;
+  for (let ti = S.threads.length - 1; ti >= 0; ti--) { // the leftmost coin is the top layer, so it draws last
+    const th = S.threads[ti];
+    if (!th.visible) continue;
     const fi = frameOf(th);
-    ctx.drawImage(ensureCache(th, fi), 0, 0, W, H);
+    ctx.globalAlpha = th.opacity ?? 1; ctx.drawImage(ensureCache(th, fi), 0, 0, W, H); ctx.globalAlpha = 1;
     // onion skin: the frame before in red, the frame after in green, selected thread, while it is paused
     if (R.onion && th === sel && frozen(th) && th.n > 1 && th.drive !== 'still') {
       const prev = mod(fi - 1, th.n), next = mod(fi + 1, th.n);
-      if (th.kind === 'photo') { ctx.globalAlpha = 0.3; ctx.drawImage(ensureCache(th, prev), 0, 0, W, H); }
+      if (th.kind === 'photo') { const gc = photoGhost(th, prev, next); if (gc) { ctx.globalAlpha = 0.45; ctx.drawImage(gc, 0, 0, W, H); } }
       else {
-        ctx.globalAlpha = 0.28; ctx.drawImage(tinted(ensureCache(th, prev), '#e23b22'), 0, 0, W, H);
-        if (next !== prev) { ctx.globalAlpha = 0.22; ctx.drawImage(tinted(ensureCache(th, next), '#1f9d55'), 0, 0, W, H); }
+        ctx.globalAlpha = 0.28; ctx.drawImage(onionOf(th, prev, ONION_PREV), 0, 0, W, H);
+        if (next !== prev) { ctx.globalAlpha = 0.22; ctx.drawImage(onionOf(th, next, ONION_NEXT), 0, 0, W, H); }
       }
       ctx.globalAlpha = 1;
     }
-  });
-  if (R.live) ctx.drawImage(liveC, 0, 0);
+  }
+  if (R.live) { ctx.globalAlpha = R.live.th.opacity ?? 1; ctx.drawImage(liveC, 0, 0); ctx.globalAlpha = 1; }
 }
 
 // ---------- coins and wheel ----------
@@ -528,7 +560,7 @@ function buildCoins() {
     const wrap = document.createElement('div'); wrap.className = 'coinwrap';
     const d = document.createElement('button'); d.className = 'coin' + (i === S.sel ? ' sel' : '') + (th.visible ? '' : ' hidden');
     const c = mkCanvas(116, 116); d.appendChild(c); th._coin = c;
-    d.addEventListener('click', () => { if (S.sel === i) openThreadSheet(); else { S.sel = i; buildCoins(); updateRail(); } });
+    d.addEventListener('click', () => { if (performance.now() - CD.dropped < 400) return; if (S.sel === i) openThreadSheet(); else { S.sel = i; buildCoins(); updateRail(); } });
     wrap.appendChild(d);
     // its own pause: this thread holds its frame while the others keep running (a Still or one-frame thread never moves, so it has none)
     if (effDrive(th) === 'clock' && th.n > 1) {
@@ -545,6 +577,46 @@ function buildCoins() {
   }
   const selEl = coinsEl.children[S.sel]; if (selEl && selEl.scrollIntoView) selEl.scrollIntoView({ inline: 'nearest', block: 'nearest' });
 }
+// hold a coin, then slide it along the row to restack: leftmost is the top layer, rightmost the bottom
+const CD = { timer: 0, start: null, drag: null, dropped: 0 };
+coinsEl.addEventListener('pointerdown', e => {
+  const wrap = e.target.closest('.coinwrap'); if (!wrap || e.target.closest('.cpause') || S.threads.length < 2) return;
+  const wraps = [...coinsEl.querySelectorAll('.coinwrap')];
+  CD.start = { x: e.clientX, y: e.clientY, id: e.pointerId, i: wraps.indexOf(wrap), wrap, wraps };
+  clearTimeout(CD.timer); CD.timer = setTimeout(liftCoin, 300);
+});
+function liftCoin() {
+  const s = CD.start; if (!s) return;
+  const r0 = s.wraps[0].getBoundingClientRect(), r1 = s.wraps[1].getBoundingClientRect();
+  CD.drag = { i: s.i, to: s.i, slot: r1.left - r0.left };
+  s.wrap.classList.add('lifted'); try { coinsEl.setPointerCapture(s.id); } catch (err) {}
+  haptic(12);
+}
+coinsEl.addEventListener('pointermove', e => {
+  const s = CD.start; if (!s || e.pointerId !== s.id) return;
+  if (!CD.drag) { if (Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) { clearTimeout(CD.timer); CD.start = null; } return; } // a scroll, not a hold
+  const D = CD.drag; const n = s.wraps.length;
+  const dx = clamp(e.clientX - s.x, -D.i * D.slot - 12, (n - 1 - D.i) * D.slot + 12);
+  const to = clamp(Math.round(D.i + dx / D.slot), 0, n - 1); if (to !== D.to) haptic(4); D.to = to;
+  s.wraps.forEach((w, j) => {
+    if (j === D.i) { w.style.transform = 'translateX(' + dx + 'px)'; return; }
+    const sh = (D.i < to && j > D.i && j <= to) ? -D.slot : (D.i > to && j < D.i && j >= to) ? D.slot : 0;
+    w.style.transform = sh ? 'translateX(' + sh + 'px)' : '';
+  });
+});
+function dropCoin(e) {
+  const s = CD.start; if (!s || e.pointerId !== s.id) return;
+  clearTimeout(CD.timer); CD.start = null; const D = CD.drag; CD.drag = null; if (!D) return;
+  CD.dropped = performance.now();
+  const th = S.threads[D.i];
+  if (D.to !== D.i) { S.threads.splice(D.i, 1); S.threads.splice(D.to, 0, th); scheduleSave(); }
+  S.sel = S.threads.indexOf(th); buildCoins(); updateRail();
+  const n = S.threads.length; toast(D.to === 0 ? 'On top' : D.to === n - 1 ? 'At the bottom' : 'Layer ' + (D.to + 1) + ' of ' + n + ' from the top', 1000);
+}
+coinsEl.addEventListener('pointerup', dropCoin);
+coinsEl.addEventListener('pointercancel', dropCoin);
+coinsEl.addEventListener('touchmove', e => { if (CD.drag) e.preventDefault(); }, { passive: false }); // no row scroll while a coin is lifted
+coinsEl.addEventListener('contextmenu', e => e.preventDefault());
 function drawCoins() {
   S.threads.forEach((th, i) => {
     const c = th._coin; if (!c) return; const g = c.getContext('2d');
@@ -788,6 +860,7 @@ function syncThreadSheet() {
   PALETTE.forEach(c => { const b = document.createElement('button'); b.className = 'sw' + (c === th.color ? ' on' : ''); b.style.background = c; b.addEventListener('click', () => { setThreadColor(th, c); syncThreadSheet(); }); sw.appendChild(b); });
   const cb = document.createElement('button'); cb.className = 'sw cam'; cb.innerHTML = ICON.cam; cb.title = 'Steal a color with the camera'; cb.addEventListener('click', () => { closeSheet(); openCamera('color'); }); sw.appendChild(cb);
   $('#thN').textContent = th.n;
+  const op = Math.round((th.opacity ?? 1) * 100); $('#thAlpha').value = op; $('#thAlphaV').textContent = op + '%';
   $('#thKind').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === th.kind));
   $('#thPhotoOpts').style.display = th.kind === 'photo' ? '' : 'none';
   if (th.kind === 'photo') {
@@ -807,6 +880,7 @@ function syncThreadSheet() {
   $('#thDup').style.display = S.threads.length < MAXTHREADS ? '' : 'none';
 }
 function setThreadColor(th, c) { th.color = c; invalidateThread(th, false); updateRail(); scheduleSave(); }
+$('#thAlpha').addEventListener('input', e => { const th = selTh(); th.opacity = clamp(+e.target.value / 100, 0.05, 1); $('#thAlphaV').textContent = Math.round(th.opacity * 100) + '%'; scheduleSave(); });
 $('#thNm').addEventListener('click', () => setFrames(selTh(), selTh().n - 1));
 $('#thNp').addEventListener('click', () => setFrames(selTh(), selTh().n + 1));
 function setFrames(th, n) {
@@ -851,7 +925,7 @@ $('#thVis').addEventListener('click', () => { const th = selTh(); th.visible = !
 $('#thDup').addEventListener('click', () => {
   const th = selTh(); if (S.threads.length >= MAXTHREADS) return;
   const c = newThread(PALETTE[(PALETTE.indexOf(th.color) + 1) % PALETTE.length], th.n);
-  c.drive = th.drive; c.speed = th.speed; c.pingpong = th.pingpong; c.stillIdx = th.stillIdx; c.kind = th.kind;
+  c.drive = th.drive; c.speed = th.speed; c.pingpong = th.pingpong; c.stillIdx = th.stillIdx; c.kind = th.kind; c.opacity = th.opacity;
   c.frames = th.frames.map(f => { const nf = newFrame(); nf.strokes = f.strokes.map(s => ({ t: s.t, s: s.s, p: s.p.slice() })); nf.photo = f.photo; return nf; });
   S.threads.splice(S.sel + 1, 0, c); S.sel++; buildCoins(); updateRail(); syncThreadSheet(); scheduleSave(); toast('Duplicated. It has the next color.');
 });
@@ -924,11 +998,11 @@ function setPhoto(dataUrl) {
 
 // how-to
 const HOW = [
-  [ICON.loops, 'Threads are loops', 'Every coin at the bottom is a thread: its own short loop, in its own color, with its own number of frames. All of them spin together at one tempo. A 2-frame thread next to a 3-frame thread makes a pattern neither has alone. Tap a coin to pick it, tap it again to change it.'],
+  [ICON.loops, 'Threads are loops', 'Every coin at the bottom is a thread: its own short loop, in its own color, with its own number of frames. All of them spin together at one tempo. A 2-frame thread next to a 3-frame thread makes a pattern neither has alone. Tap a coin to pick it, tap it again to change it, down to how see-through it is. Hold a coin and slide it to restack: the leftmost thread sits on top.'],
   [ICON.hand, 'Draw while it plays', 'The loop keeps playing while you draw, so every mark lands on the frame showing right then. Keep drawing as the frames turn over and the drawing moves with the beat. Two-finger tap undoes the whole touch.'],
   [ICON.flick, 'Pause one thread, or all of them', 'The small button on a coin pauses just that thread while the others keep running. The big button at the top pauses everything. On a paused thread, flick left across the canvas for the next frame and right to go back, or use the arrows in the corner. The strip under the canvas scrubs the whole piece.'],
   [ICON.onion, 'Onion skin and grid', 'While your thread is paused you see the frame before in red and the frame after in green, so each drawing lands where it should. The overlapping-squares button turns it off. Menu, Paper, lays a grid on the paper to draw against.'],
-  [ICON.still, 'Still threads, photo threads', 'Tap a coin twice. Still means it never moves: a background, a room, a body that stays put while another thread does the moving. Photo makes it hold photos instead of drawings: one that stays put, or one per frame shot in a row from the camera with the last shot ghosted over the live view. That is stop motion, up to twenty frames. You can draw on the photos.'],
+  [ICON.still, 'Still threads, photo threads', 'Tap a coin twice. Still means it never moves: a background, a room, a body that stays put while another thread does the moving. Photo makes it hold photos instead of drawings: one that stays put, or one per frame shot in a row from the camera, with the frame before ghosted in red and the frame after in green over the live view. That is stop motion, up to twenty frames. You can draw on the photos.'],
   [ICON.line, 'Straight lines and colors', 'The line button makes every touch a straight line, with any brush or the eraser: touch where it starts, drag to where it ends, let go. The camera button steals a color: drag the ring over it and snap. It can also snap a photo to trace over. Nothing you make leaves this phone. This help is the ? at the top.'],
 ];
 $('#howcards').innerHTML = HOW.map(([ic, t, p]) => `<div class="card"><div class="ic">${ic}</div><div><b>${t}</b><p>${p}</p></div></div>`).join('');
@@ -968,11 +1042,17 @@ function shootTarget(th) { return th.drive === 'still' ? clamp(th.stillIdx || 0,
 function syncShoot() {
   const th = selTh(); if (!th || camMode !== 'frame') return;
   const fi = shootTarget(th); if (th.drive !== 'still') th.pauseIdx = fi;
-  const ghostFrom = th.drive === 'still' ? null : th.frames[mod(fi - 1, th.n)];
-  const ghost = ghostFrom && ghostFrom.photo && th.n > 1 ? ghostFrom.photo : null;
-  const gh = $('#camghost'); if (ghost) { gh.src = ghost; gh.style.display = 'block'; } else gh.style.display = 'none';
+  const ghost = th.drive !== 'still' && th.n > 1 && drawCamGhost(th, fi);
   $('#camShot').textContent = th.drive === 'still' ? 'Snap the photo' : 'Snap frame ' + (fi + 1) + ' of ' + th.n;
-  $('#camhint').textContent = th.drive === 'still' ? 'Frame it, then snap' : (ghost ? 'The last shot is ghosted. Move things a little, then snap.' : 'Snap, move things a little, snap again.');
+  $('#camhint').textContent = th.drive === 'still' ? 'Frame it, then snap' : (ghost ? 'Red is the frame before, green the frame after. Move things a little, then snap.' : 'Snap, move things a little, snap again.');
+}
+// the onion frames of this thread over the live view, same crop as the snap: before in red, after in green
+function drawCamGhost(th, fi) {
+  const gh = $('#camghost'); const g = gh.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.clearRect(0, 0, gh.width, gh.height);
+  const gc = photoGhost(th, mod(fi - 1, th.n), mod(fi + 1, th.n) === fi ? mod(fi - 1, th.n) : mod(fi + 1, th.n));
+  if (gc) { g.globalAlpha = 0.7; g.drawImage(gc, 0, 0, gh.width, gh.height); }
+  gh.style.display = gc ? 'block' : 'none';
+  return !!gc;
 }
 async function openCamera(mode) {
   camMode = mode;
@@ -1080,9 +1160,8 @@ async function exportGif() {
     g.setTransform(sc, 0, 0, sc, 0, 0); g.globalAlpha = 1;
     g.fillStyle = S.paper; g.fillRect(0, 0, W, H);
     if (R.photoImg && S.photoExport) { g.globalAlpha = S.photoAlpha; g.drawImage(R.photoImg, 0, 0, W, H); g.globalAlpha = 1; }
-    ths.forEach((th, i) => {
-      g.drawImage(ensureCache(th, tup[i]), 0, 0, W, H);
-    });
+    for (let i = ths.length - 1; i >= 0; i--) { g.globalAlpha = ths[i].opacity ?? 1; g.drawImage(ensureCache(ths[i], tup[i]), 0, 0, W, H); }
+    g.globalAlpha = 1;
     gif.addFrame(c, { delay: Math.max(20, Math.round(msPerTick * run)), copy: true });
     t += run;
     await new Promise(r => setTimeout(r, 0));
@@ -1118,8 +1197,8 @@ function stopRecord() { if (R.recording && R.recording.state !== 'inactive') R.r
 
 // ---------- save / load ----------
 function serialize() {
-  return { app: 'pocket-loops', v: 1, bpm: S.bpm, paper: S.paper, photo: S.photo, photoAlpha: S.photoAlpha, photoExport: S.photoExport, grid: S.grid, lefty: S.lefty, seenHow: S.seenHow, sel: S.sel,
-    threads: S.threads.map(th => ({ color: th.color, n: th.n, kind: th.kind, drive: th.drive, stillIdx: th.stillIdx, speed: th.speed, pingpong: th.pingpong, visible: th.visible, paused: !!th.paused, pauseIdx: th.paused ? th.pauseIdx : null,
+  return { app: 'pocket-loops', v: 2, bpm: S.bpm, paper: S.paper, photo: S.photo, photoAlpha: S.photoAlpha, photoExport: S.photoExport, grid: S.grid, lefty: S.lefty, seenHow: S.seenHow, sel: S.sel,
+    threads: S.threads.map(th => ({ color: th.color, n: th.n, kind: th.kind, drive: th.drive, stillIdx: th.stillIdx, speed: th.speed, pingpong: th.pingpong, visible: th.visible, opacity: th.opacity ?? 1, paused: !!th.paused, pauseIdx: th.paused ? th.pauseIdx : null,
       frames: th.frames.map(f => { const strokes = f.strokes.map(s => ({ t: s.t, s: s.s, p: s.p })); return f.photo ? { s: strokes, photo: f.photo } : strokes; }) })) };
 }
 function hydrate(d) {
@@ -1128,13 +1207,14 @@ function hydrate(d) {
   S.lefty = !!d.lefty; S.seenHow = !!d.seenHow;
   S.threads = d.threads.slice(0, MAXTHREADS).map(t => {
     const th = newThread(t.color || PALETTE[0], clamp(+t.n || 1, 1, MAXFRAMES));
-    th.kind = t.kind === 'photo' ? 'photo' : 'draw'; th.drive = t.drive === 'still' ? 'still' : 'clock'; th.stillIdx = clamp(+t.stillIdx || 0, 0, MAXFRAMES - 1); th.speed = +t.speed || 1; th.pingpong = !!t.pingpong; th.visible = t.visible !== false;
+    th.kind = t.kind === 'photo' ? 'photo' : 'draw'; th.drive = t.drive === 'still' ? 'still' : 'clock'; th.stillIdx = clamp(+t.stillIdx || 0, 0, MAXFRAMES - 1); th.speed = +t.speed || 1; th.pingpong = !!t.pingpong; th.visible = t.visible !== false; th.opacity = clamp(t.opacity == null ? 1 : +t.opacity || 1, 0.05, 1);
     if (t.paused && th.drive === 'clock') { th.paused = true; th.pauseIdx = clamp(+t.pauseIdx || 0, 0, th.n - 1); }
     const frames = (t.frames || []).map(fr => { const strokes = Array.isArray(fr) ? fr : (fr && fr.s) || []; const f = newFrame(); if (fr && !Array.isArray(fr) && typeof fr.photo === 'string') f.photo = fr.photo; f.strokes = (strokes || []).filter(s => s && Array.isArray(s.p)).map(s => ({ t: ['crayon', 'ink', 'spray', 'eraser'].includes(s.t) ? s.t : 'crayon', s: +s.s || 13, p: s.p })); return f; });
     while (frames.length < th.n) frames.push(newFrame());
     th.frames = frames; return th;
   });
   S.sel = clamp(+d.sel || 0, 0, S.threads.length - 1);
+  if ((+d.v || 1) < 2) { S.threads.reverse(); S.sel = S.threads.length - 1 - S.sel; } // keep an older piece stacked the way it looked
   setPhoto(d.photo || null);
 }
 function applyState() {
