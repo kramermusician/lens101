@@ -102,8 +102,12 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
 .tapbtn:active{background:var(--acc)}
 /* camera */
 #camsheet{position:fixed;inset:0;background:#000;z-index:30;display:none;flex-direction:column}
+#camstage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
+#camghost{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.42;pointer-events:none;display:none}
+#camsheet.frame #camdot,#camsheet.frame #camswatch,#camsheet.frame #camUse,#camsheet.frame #camSnap{display:none}
+#camsheet:not(.frame) #camShot{display:none}
 #camsheet.show{display:flex}
-#camwrap{flex:1;position:relative;overflow:hidden;touch-action:none}
+#camwrap{position:relative;overflow:hidden;touch-action:none;background:#111}
 #camvid{width:100%;height:100%;object-fit:cover;display:block}
 #camdot{position:absolute;width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.4);transform:translate(-50%,-50%);left:50%;top:50%;pointer-events:none}
 #camhint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(27,26,34,.75);color:#f4f1ea;padding:8px 14px;border-radius:16px;font-size:13px;white-space:nowrap;pointer-events:none}
@@ -170,10 +174,20 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
   <h2><span class="dot" id="thDot"></span><span id="thTitle">Thread</span></h2>
   <h3>Color</h3>
   <div class="swatches" id="thColors"></div>
+  <h3>Kind</h3>
+  <div class="seg" id="thKind"><button data-v="draw">Drawing</button><button data-v="photo">Photo</button></div>
+  <div id="thPhotoOpts">
+    <div id="thPhotoNote" style="color:var(--dim);font-size:13px;margin-top:8px"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="pill" id="thShoot">Shoot with the camera</button>
+      <button class="pill" id="thPick">Choose a photo</button>
+      <button class="pill" id="thPhotoRemove">Remove this frame's photo</button>
+    </div>
+  </div>
   <h3>Frames in the loop</h3>
   <div class="row">
     <div class="stepper"><button id="thNm">−</button><b id="thN">6</b><button id="thNp">+</button></div>
-    <span style="color:var(--dim);font-size:13px">1 to 12. Shrinking keeps the hidden frames.</span>
+    <span style="color:var(--dim);font-size:13px">1 to 20. Shrinking keeps the hidden frames.</span>
   </div>
   <h3>What moves it</h3>
   <div class="seg" id="thDrive">
@@ -253,10 +267,11 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
 </div>
 
 <div id="camsheet">
-  <div id="camwrap"><video id="camvid" playsinline autoplay muted></video><div id="camdot"></div><div id="camhint">Drag the ring over a color, then snap</div></div>
+  <div id="camstage"><div id="camwrap"><video id="camvid" playsinline autoplay muted></video><img id="camghost" alt=""><div id="camdot"></div><div id="camhint">Drag the ring over a color, then snap</div></div></div>
   <div id="cambar">
     <div id="camswatch"></div>
     <button class="pill" id="camUse">Snap this color</button>
+    <button class="pill" id="camShot">Snap frame</button>
     <button class="pill" id="camSnap">Snap photo to trace</button>
     <button class="pill" id="camFlip">Flip</button>
     <button class="pill" id="camClose">Close</button>
@@ -264,13 +279,14 @@ input[type=range]{width:100%;accent-color:var(--acc);height:36px}
 </div>
 
 <input type="file" id="fileIn" accept=".json,application/json" style="display:none">
+<input type="file" id="imgIn" accept="image/*" style="display:none">
 
 <script>
 (() => {
 'use strict';
 // ---------- constants ----------
 const W = 640, H = 960;            // logical canvas, 2:3, fills a phone
-const MAXTHREADS = 6, MAXFRAMES = 12;
+const MAXTHREADS = 6, MAXFRAMES = 20;
 const STORE = 'pocketloops.v1';
 const $ = s => document.querySelector(s);
 const PALETTE = ['#ff6b6b','#ff9f43','#ffd93d','#9ee37d','#2ec4b6','#4cc9f0','#8b7bff','#f15bb5','#1d3557','#b5573a','#2d6a4f','#1b1a22'];
@@ -313,9 +329,9 @@ function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.c
 function haptic(ms = 6) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
 
 // ---------- threads and frames ----------
-function newFrame() { return { strokes: [], cache: null }; }
+function newFrame() { return { strokes: [], cache: null, photo: null, img: null }; }
 function newThread(color, n) {
-  return { id: uid(), color, n, drive: 'clock', speed: 1, pingpong: false, visible: true, pauseIdx: null, stillIdx: 0,
+  return { id: uid(), color, n, kind: 'draw', drive: 'clock', speed: 1, pingpong: false, visible: true, pauseIdx: null, stillIdx: 0, shootIdx: 0,
            frames: Array.from({ length: n }, newFrame), undo: [], redo: [] };
 }
 function selTh() { return S.threads[S.sel]; }
@@ -398,9 +414,14 @@ function drawStroke(ctx, st, color, seed) {
   for (let i = 0; i < p.length; i += 3) walk(wk, p[i], p[i + 1], p[i + 2], (sx, sy, sw) => putStamp(ctx, st.t, color, st.s, sx, sy, sw, rnd));
   ctx.restore();
 }
+function coverInto(g, img, w, h) { const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height; const s = Math.max(w / iw, h / ih); g.drawImage(img, (w - iw * s) / 2, (h - ih * s) / 2, iw * s, ih * s); }
 function renderFrameCanvas(th, fi) {
   const c = mkCanvas(W, H); const g = c.getContext('2d');
   const f = th.frames[fi];
+  if (th.kind === 'photo' && f.photo) {
+    if (!f.img) { const im = new Image(); im.onload = () => { f.cache = null; }; im.src = f.photo; f.img = im; }
+    if (f.img.complete && f.img.naturalWidth) coverInto(g, f.img, W, H);
+  }
   for (let i = 0; i < f.strokes.length; i++) drawStroke(g, f.strokes[i], th.color, fi * 131 + i * 17 + 1);
   return c;
 }
@@ -410,6 +431,7 @@ function ensureCache(th, fi) {
   return f.cache;
 }
 function invalidateThread(th) { for (const f of th.frames) f.cache = null; }
+function setFramePhoto(th, fi, dataUrl) { const f = th.frames[fi]; f.photo = dataUrl; f.img = null; f.cache = null; scheduleSave(); }
 // ---------- view canvas ----------
 const view = $('#view'); const vctx = view.getContext('2d');
 let dpr = 1, cssW = 0, cssH = 0, k = 1;
@@ -447,8 +469,11 @@ function render() {
     // onion skin: the frame before in red, the frame after in green, selected thread, while paused
     if (R.onion && th === sel && !S.playing && !R.scrub && th.n > 1 && th.drive !== 'still') {
       const prev = mod(fi - 1, th.n), next = mod(fi + 1, th.n);
-      ctx.globalAlpha = 0.28; ctx.drawImage(tinted(ensureCache(th, prev), '#e23b22'), 0, 0, W, H);
-      if (next !== prev) { ctx.globalAlpha = 0.22; ctx.drawImage(tinted(ensureCache(th, next), '#1f9d55'), 0, 0, W, H); }
+      if (th.kind === 'photo') { ctx.globalAlpha = 0.3; ctx.drawImage(ensureCache(th, prev), 0, 0, W, H); }
+      else {
+        ctx.globalAlpha = 0.28; ctx.drawImage(tinted(ensureCache(th, prev), '#e23b22'), 0, 0, W, H);
+        if (next !== prev) { ctx.globalAlpha = 0.22; ctx.drawImage(tinted(ensureCache(th, next), '#1f9d55'), 0, 0, W, H); }
+      }
       ctx.globalAlpha = 1;
     }
   });
@@ -479,13 +504,17 @@ function drawCoins() {
     const fi = frameOf(th); const n = th.n;
     for (let j = 0; j < n; j++) {
       const a = -Math.PI / 2 + j / n * 6.2832; const x = 58 + Math.cos(a) * 42, y = 58 + Math.sin(a) * 42;
-      g.beginPath(); g.arc(x, y, j === fi ? 8 : 4.5, 0, 6.2832);
+      g.beginPath(); g.arc(x, y, j === fi ? (n > 12 ? 6.5 : 8) : (n > 12 ? 3.2 : 4.5), 0, 6.2832);
       g.fillStyle = j === fi ? th.color : th.color + '66'; g.fill();
     }
     g.fillStyle = th.color; g.beginPath(); g.arc(58, 58, 20, 0, 6.2832); g.fill();
     const d = effDrive(th);
     g.fillStyle = '#1b1a22'; g.font = 'bold 15px -apple-system, Helvetica, Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    if (d === 'still') { g.fillRect(50, 51, 5, 16); g.fillRect(61, 51, 5, 16); } else g.fillText(String(n), 58, 59);
+    if (th.kind === 'photo') {
+      g.strokeStyle = '#1b1a22'; g.lineWidth = 2.4; g.beginPath(); g.roundRect ? g.roundRect(47, 52, 22, 15, 2) : g.rect(47, 52, 22, 15); g.stroke();
+      g.beginPath(); g.arc(58, 59.5, 4, 0, 6.2832); g.stroke(); g.fillRect(53, 48, 6, 4);
+      if (d === 'still') { g.fillRect(50, 72, 4, 9); g.fillRect(62, 72, 4, 9); } else { g.font = 'bold 11px -apple-system, Helvetica, Arial'; g.fillText(String(n), 58, 76); }
+    } else if (d === 'still') { g.fillRect(50, 51, 5, 16); g.fillRect(61, 51, 5, 16); } else g.fillText(String(n), 58, 59);
     if (R.hold && R.hold.th === th) { g.fillStyle = '#f4f1ea'; g.fillRect(50, 88, 5, 14); g.fillRect(61, 88, 5, 14); }
   });
 }
@@ -654,7 +683,7 @@ function setPlaying(p) {
 $('#bPlay').innerHTML = ICON.pause;
 $('#bPlay').addEventListener('click', () => setPlaying(!S.playing));
 $('#bHelp').innerHTML = ICON.help; $('#bHelp').addEventListener('click', () => openSheet('#shHow'));
-$('#bCam').innerHTML = ICON.cam; $('#bCam').addEventListener('click', () => openCamera('color'));
+$('#bCam').innerHTML = ICON.cam; $('#bCam').addEventListener('click', () => openCamera(selTh() && selTh().kind === 'photo' ? 'frame' : 'color'));
 $('#bMenu').innerHTML = ICON.menu; $('#bMenu').addEventListener('click', () => openSheet('#shMenu'));
 $('#tempo').addEventListener('click', () => { syncTempoSheet(); openSheet('#shTempo'); });
 
@@ -700,6 +729,14 @@ function syncThreadSheet() {
   PALETTE.forEach(c => { const b = document.createElement('button'); b.className = 'sw' + (c === th.color ? ' on' : ''); b.style.background = c; b.addEventListener('click', () => { setThreadColor(th, c); syncThreadSheet(); }); sw.appendChild(b); });
   const cb = document.createElement('button'); cb.className = 'sw cam'; cb.innerHTML = ICON.cam; cb.title = 'Steal a color with the camera'; cb.addEventListener('click', () => { closeSheet(); openCamera('color'); }); sw.appendChild(cb);
   $('#thN').textContent = th.n;
+  $('#thKind').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === th.kind));
+  $('#thPhotoOpts').style.display = th.kind === 'photo' ? '' : 'none';
+  if (th.kind === 'photo') {
+    const fi = frameOf(th); const has = !!th.frames[fi].photo; const shot = th.frames.slice(0, th.n).filter(f => f.photo).length;
+    $('#thPhotoNote').textContent = (th.drive === 'still' ? 'One photo that stays put. ' : 'One photo per frame, shot in a row: that is stop motion. ') +
+      (shot ? shot + ' of ' + th.n + ' frames have a photo. ' : 'No photos yet. ') + 'You can draw on top of them.';
+    $('#thPhotoRemove').style.display = has ? '' : 'none';
+  }
   $('#thDrive').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === th.drive));
   $('#thDriveNote').textContent = th.drive === 'still' ? 'Never moves. Good for a background, a room, a body that stays put while another thread does the moving. With more than one frame, the arrows pick which one shows.' :
     'Runs with the tempo. Different frame counts on different threads make patterns against each other.';
@@ -719,6 +756,22 @@ function setFrames(th, n) {
   th.n = n; if (th.pauseIdx != null && th.pauseIdx >= n) th.pauseIdx = n - 1;
   syncThreadSheet(); buildCoins(); scheduleSave();
 }
+$('#thKind').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; const th = selTh(); const kind = b.dataset.v === 'photo' ? 'photo' : 'draw';
+  if (kind === th.kind) return; th.kind = kind; invalidateThread(th); syncThreadSheet(); buildCoins(); scheduleSave();
+  if (kind === 'photo') toast(th.drive === 'still' ? 'A photo thread. Shoot or choose a photo for it.' : 'A photo thread. Shoot one photo per frame for stop motion.', 2600);
+});
+$('#thShoot').addEventListener('click', () => { closeSheet(); openCamera('frame'); });
+$('#thPick').addEventListener('click', () => { closeSheet(); $('#imgIn').click(); });
+$('#thPhotoRemove').addEventListener('click', () => { const th = selTh(); setFramePhoto(th, frameOf(th), null); syncThreadSheet(); toast('Photo removed from this frame'); });
+$('#imgIn').addEventListener('change', e => {
+  const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+  const url = URL.createObjectURL(file); const im = new Image();
+  im.onload = () => { const c = mkCanvas(W, H); coverInto(c.getContext('2d'), im, W, H); URL.revokeObjectURL(url);
+    const th = selTh(); if (th.kind !== 'photo') { th.kind = 'photo'; invalidateThread(th); }
+    setFramePhoto(th, frameOf(th), c.toDataURL('image/jpeg', 0.72)); buildCoins(); toast('Photo on frame ' + (frameOf(th) + 1)); };
+  im.onerror = () => toast('Could not read that image.'); im.src = url;
+});
 $('#thDrive').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; const th = selTh(); th.drive = b.dataset.v === 'still' ? 'still' : 'clock';
   if (th.drive === 'still') th.stillIdx = frameOf(th);
@@ -731,8 +784,8 @@ $('#thVis').addEventListener('click', () => { const th = selTh(); th.visible = !
 $('#thDup').addEventListener('click', () => {
   const th = selTh(); if (S.threads.length >= MAXTHREADS) return;
   const c = newThread(PALETTE[(PALETTE.indexOf(th.color) + 1) % PALETTE.length], th.n);
-  c.drive = th.drive; c.speed = th.speed; c.pingpong = th.pingpong; c.stillIdx = th.stillIdx;
-  c.frames = th.frames.map(f => { const nf = newFrame(); nf.strokes = f.strokes.map(s => ({ t: s.t, s: s.s, p: s.p.slice() })); return nf; });
+  c.drive = th.drive; c.speed = th.speed; c.pingpong = th.pingpong; c.stillIdx = th.stillIdx; c.kind = th.kind;
+  c.frames = th.frames.map(f => { const nf = newFrame(); nf.strokes = f.strokes.map(s => ({ t: s.t, s: s.s, p: s.p.slice() })); nf.photo = f.photo; return nf; });
   S.threads.splice(S.sel + 1, 0, c); S.sel++; buildCoins(); updateRail(); syncThreadSheet(); scheduleSave(); toast('Duplicated. It has the next color.');
 });
 let clearArm = 0;
@@ -806,7 +859,7 @@ const HOW = [
   [ICON.hand, 'Draw with your thumb', 'The loop keeps playing while you work. Touching the canvas freezes your thread on the frame you see; let go and it runs again. Two-finger tap is undo.'],
   [ICON.flick, 'Flick for the next frame', 'Press pause to work frame by frame. Flick left across the canvas to go to the next frame, flick right to go back, or use the arrows in the corner. The strip under the canvas scrubs the whole piece.'],
   [ICON.onion, 'Onion skin', 'While paused you see the frame before in red and the frame after in green, so each drawing lands where it should. The overlapping-squares button turns it off.'],
-  [ICON.still, 'A thread can stand still', 'Tap a coin twice and set it to Still. It never moves: a background, a room, a body that stays put while another thread does the moving. It shows a pause mark on its coin.'],
+  [ICON.still, 'Still threads, photo threads', 'Tap a coin twice. Still means it never moves: a background, a room, a body that stays put while another thread does the moving. Photo makes it hold photos instead of drawings: one that stays put, or one per frame shot in a row from the camera with the last shot ghosted over the live view. That is stop motion, up to twenty frames. You can draw on the photos.'],
   [ICON.line, 'Straight lines and colors', 'The line button makes every touch a straight line, with any brush or the eraser: touch where it starts, drag to where it ends, let go. The camera button steals a color: drag the ring over it and snap. It can also snap a photo to trace over. Nothing you make leaves this phone. This help is the ? at the top.'],
 ];
 $('#howcards').innerHTML = HOW.map(([ic, t, p]) => `<div class="card"><div class="ic">${ic}</div><div><b>${t}</b><p>${p}</p></div></div>`).join('');
@@ -828,6 +881,8 @@ const SPARKS = [
   'Ping-pong on. Four frames of something growing. It will shrink on its own.',
   'Use only the spray tool. Make rain that a second thread is walking through.',
   'Draw while it plays, without pausing, for one minute. Then pause and fix only one frame.',
+  'A Photo thread: shoot eight frames of your hand opening. Then a drawing thread that lives on the palm.',
+  'A Still photo of your desk. Now a 6-frame drawing thread of something that should not be on your desk.',
 ];
 function spark() { $('#sparkText').textContent = SPARKS[Math.floor(Math.random() * SPARKS.length)]; }
 $('#sparkAgain').addEventListener('click', spark); $('#sparkGo').addEventListener('click', closeSheet);
@@ -835,19 +890,56 @@ $('#sparkAgain').addEventListener('click', spark); $('#sparkGo').addEventListene
 // ---------- camera ----------
 let camStream = null, camMode = 'color', camFacing = 'environment', camPick = null, camPos = [0.5, 0.5], camTimer = 0;
 const camVid = $('#camvid'); const camSamp = mkCanvas(64, 64);
+function fitCam() {
+  const r = $('#camstage').getBoundingClientRect(); const s = Math.min(r.width / 2, r.height / 3);
+  const w = $('#camwrap'); w.style.width = Math.floor(2 * s) + 'px'; w.style.height = Math.floor(3 * s) + 'px';
+}
+window.addEventListener('resize', () => { if (camStream) fitCam(); });
+function shootTarget(th) { return th.drive === 'still' ? clamp(th.stillIdx || 0, 0, th.n - 1) : clamp(th.shootIdx || 0, 0, th.n - 1); }
+function syncShoot() {
+  const th = selTh(); if (!th || camMode !== 'frame') return;
+  const fi = shootTarget(th); if (th.drive !== 'still') th.pauseIdx = fi;
+  const ghostFrom = th.drive === 'still' ? null : th.frames[mod(fi - 1, th.n)];
+  const ghost = ghostFrom && ghostFrom.photo && th.n > 1 ? ghostFrom.photo : null;
+  const gh = $('#camghost'); if (ghost) { gh.src = ghost; gh.style.display = 'block'; } else gh.style.display = 'none';
+  $('#camShot').textContent = th.drive === 'still' ? 'Snap the photo' : 'Snap frame ' + (fi + 1) + ' of ' + th.n;
+  $('#camhint').textContent = th.drive === 'still' ? 'Frame it, then snap' : (ghost ? 'The last shot is ghosted. Move things a little, then snap.' : 'Snap, move things a little, snap again.');
+}
 async function openCamera(mode) {
   camMode = mode;
   try {
     camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacing, width: { ideal: 1280 } }, audio: false });
-    camVid.srcObject = camStream; $('#camsheet').classList.add('show');
-    $('#camUse').style.display = mode === 'color' ? '' : 'none';
+    camVid.srcObject = camStream; $('#camsheet').classList.add('show'); $('#camsheet').classList.toggle('frame', mode === 'frame');
+    fitCam(); setTimeout(fitCam, 60);
     camPick = null; $('#camswatch').style.background = '#888'; camPos = [0.5, 0.5];
     $('#camdot').style.left = '50%'; $('#camdot').style.top = '50%';
-    $('#camhint').textContent = mode === 'color' ? 'Drag the ring over a color, then snap' : 'Frame it, then snap';
-    clearInterval(camTimer); camTimer = setInterval(() => sampleAt(camPos[0], camPos[1]), 120);
+    $('#camghost').style.display = 'none';
+    clearInterval(camTimer);
+    if (mode === 'frame') {
+      const th = selTh(); if (th.kind !== 'photo') { th.kind = 'photo'; invalidateThread(th); buildCoins(); }
+      if (S.playing) setPlaying(false);
+      if (th.drive !== 'still') th.shootIdx = frameOf(th);
+      syncShoot();
+    } else {
+      $('#camhint').textContent = mode === 'color' ? 'Drag the ring over a color, then snap' : 'Frame it, then snap';
+      camTimer = setInterval(() => sampleAt(camPos[0], camPos[1]), 120);
+    }
   } catch (e) { toast('Camera not available here.'); }
 }
-function closeCamera() { clearInterval(camTimer); if (camStream) camStream.getTracks().forEach(t => t.stop()); camStream = null; camVid.srcObject = null; $('#camsheet').classList.remove('show'); }
+function closeCamera() { clearInterval(camTimer); if (camStream) camStream.getTracks().forEach(t => t.stop()); camStream = null; camVid.srcObject = null; $('#camsheet').classList.remove('show'); $('#camsheet').classList.remove('frame'); }
+function grabFrame() {
+  if (!camVid.videoWidth) return null;
+  const c = mkCanvas(W, H); coverInto(c.getContext('2d'), camVid, W, H); return c.toDataURL('image/jpeg', 0.72);
+}
+$('#camShot').addEventListener('click', () => {
+  const th = selTh(); const data = grabFrame(); if (!data) { toast('The camera is not ready yet.'); return; }
+  const fi = shootTarget(th); setFramePhoto(th, fi, data); haptic(8);
+  if (th.drive === 'still') { closeCamera(); syncThreadSheet(); buildCoins(); toast('Photo on the still thread. Draw on it if you like.'); return; }
+  // stop motion: move on to the next frame, growing the loop until it is full
+  if (fi + 1 >= th.n) { if (th.n < MAXFRAMES) setFrames(th, th.n + 1); }
+  th.shootIdx = mod(fi + 1, th.n); buildCoins(); syncShoot();
+  if (fi + 1 >= MAXFRAMES) toast('Twenty frames, the loop is full. Snapping again starts over at frame 1.', 2600);
+});
 function sampleAt(fx, fy) {
   if (!camVid.videoWidth) return;
   // map the tap through object-fit: cover
@@ -865,18 +957,15 @@ function sampleAt(fx, fy) {
   const wrap = $('#camwrap'); let dragging = false;
   const moveTo = e => { const r = wrap.getBoundingClientRect(); camPos = [clamp((e.clientX - r.left) / r.width, 0, 1), clamp((e.clientY - r.top) / r.height, 0, 1)];
     $('#camdot').style.left = (camPos[0] * 100) + '%'; $('#camdot').style.top = (camPos[1] * 100) + '%'; sampleAt(camPos[0], camPos[1]); };
-  wrap.addEventListener('pointerdown', e => { dragging = true; wrap.setPointerCapture(e.pointerId); moveTo(e); });
+  wrap.addEventListener('pointerdown', e => { if (camMode === 'frame') return; dragging = true; wrap.setPointerCapture(e.pointerId); moveTo(e); });
   wrap.addEventListener('pointermove', e => { if (dragging) moveTo(e); });
   const end = () => { dragging = false; };
   wrap.addEventListener('pointerup', end); wrap.addEventListener('pointercancel', end);
 })();
 $('#camUse').addEventListener('click', () => { sampleAt(camPos[0], camPos[1]); if (!camPick) return; setThreadColor(selTh(), camPick); closeCamera(); toast('Color snapped'); });
 $('#camSnap').addEventListener('click', () => {
-  if (!camVid.videoWidth) return;
-  const c = mkCanvas(W, H); const g = c.getContext('2d');
-  const vw = camVid.videoWidth, vh = camVid.videoHeight; const s = Math.max(W / vw, H / vh);
-  g.drawImage(camVid, (W - vw * s) / 2, (H - vh * s) / 2, vw * s, vh * s);
-  setPhoto(c.toDataURL('image/jpeg', 0.72)); closeCamera(); scheduleSave(); toast('Photo under the paper. Menu, Paper and photo, to fade or remove it.');
+  const data = grabFrame(); if (!data) return;
+  setPhoto(data); closeCamera(); scheduleSave(); toast('Photo under the paper. Menu, Paper and photo, to fade or remove it.');
 });
 $('#camFlip').addEventListener('click', () => { camFacing = camFacing === 'environment' ? 'user' : 'environment'; closeCamera(); openCamera(camMode); });
 $('#camClose').addEventListener('click', closeCamera);
@@ -961,8 +1050,8 @@ function stopRecord() { if (R.recording && R.recording.state !== 'inactive') R.r
 // ---------- save / load ----------
 function serialize() {
   return { app: 'pocket-loops', v: 1, bpm: S.bpm, paper: S.paper, photo: S.photo, photoAlpha: S.photoAlpha, photoExport: S.photoExport, lefty: S.lefty, seenHow: S.seenHow, sel: S.sel,
-    threads: S.threads.map(th => ({ color: th.color, n: th.n, drive: th.drive, stillIdx: th.stillIdx, speed: th.speed, pingpong: th.pingpong, visible: th.visible,
-      frames: th.frames.map(f => f.strokes.map(s => ({ t: s.t, s: s.s, p: s.p }))) })) };
+    threads: S.threads.map(th => ({ color: th.color, n: th.n, kind: th.kind, drive: th.drive, stillIdx: th.stillIdx, speed: th.speed, pingpong: th.pingpong, visible: th.visible,
+      frames: th.frames.map(f => { const strokes = f.strokes.map(s => ({ t: s.t, s: s.s, p: s.p })); return f.photo ? { s: strokes, photo: f.photo } : strokes; }) })) };
 }
 function hydrate(d) {
   if (!d || d.app !== 'pocket-loops' || !Array.isArray(d.threads) || !d.threads.length) throw new Error('not a Pocket Loops file');
@@ -970,8 +1059,8 @@ function hydrate(d) {
   S.lefty = !!d.lefty; S.seenHow = !!d.seenHow;
   S.threads = d.threads.slice(0, MAXTHREADS).map(t => {
     const th = newThread(t.color || PALETTE[0], clamp(+t.n || 1, 1, MAXFRAMES));
-    th.drive = t.drive === 'still' ? 'still' : 'clock'; th.stillIdx = clamp(+t.stillIdx || 0, 0, MAXFRAMES - 1); th.speed = +t.speed || 1; th.pingpong = !!t.pingpong; th.visible = t.visible !== false;
-    const frames = (t.frames || []).map(strokes => { const f = newFrame(); f.strokes = (strokes || []).filter(s => s && Array.isArray(s.p)).map(s => ({ t: ['crayon', 'ink', 'spray', 'eraser'].includes(s.t) ? s.t : 'crayon', s: +s.s || 13, p: s.p })); return f; });
+    th.kind = t.kind === 'photo' ? 'photo' : 'draw'; th.drive = t.drive === 'still' ? 'still' : 'clock'; th.stillIdx = clamp(+t.stillIdx || 0, 0, MAXFRAMES - 1); th.speed = +t.speed || 1; th.pingpong = !!t.pingpong; th.visible = t.visible !== false;
+    const frames = (t.frames || []).map(fr => { const strokes = Array.isArray(fr) ? fr : (fr && fr.s) || []; const f = newFrame(); if (fr && !Array.isArray(fr) && typeof fr.photo === 'string') f.photo = fr.photo; f.strokes = (strokes || []).filter(s => s && Array.isArray(s.p)).map(s => ({ t: ['crayon', 'ink', 'spray', 'eraser'].includes(s.t) ? s.t : 'crayon', s: +s.s || 13, p: s.p })); return f; });
     while (frames.length < th.n) frames.push(newFrame());
     th.frames = frames; return th;
   });
@@ -985,7 +1074,18 @@ function applyState() {
 }
 let saveT = 0;
 function scheduleSave() { clearTimeout(saveT); saveT = setTimeout(saveLocal, 700); }
-function saveLocal() { try { localStorage.setItem(STORE, JSON.stringify(serialize())); } catch (e) { /* storage full or blocked: the file save still works */ } }
+// autosave lives in IndexedDB (photos are too big for localStorage); localStorage is the fallback and the pre-photo legacy store
+const idb = {
+  db: null,
+  open() { return new Promise((res, rej) => { const r = indexedDB.open('pocketloops', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+  async get(k) { const db = this.db || (this.db = await this.open()); return new Promise((res, rej) => { const t = db.transaction('kv', 'readonly').objectStore('kv').get(k); t.onsuccess = () => res(t.result); t.onerror = () => rej(t.error); }); },
+  async set(k, v) { const db = this.db || (this.db = await this.open()); return new Promise((res, rej) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = () => rej(t.error); }); },
+};
+async function saveLocal() {
+  const data = serialize();
+  try { await idb.set(STORE, data); return; } catch (e) {}
+  try { localStorage.setItem(STORE, JSON.stringify(data)); } catch (e) { /* storage full or blocked: the file save still works */ }
+}
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveLocal(); });
 function saveFile() {
   const blob = new Blob([JSON.stringify(serialize())], { type: 'application/json' });
@@ -1023,12 +1123,15 @@ document.addEventListener('keydown', e => {
 });
 
 // ---------- boot ----------
-let restored = false;
-try { const raw = localStorage.getItem(STORE); if (raw) { hydrate(JSON.parse(raw)); restored = true; } } catch (e) { restored = false; }
-if (!restored) starter();
-applyState(); fit();
-requestAnimationFrame(t => { R.lastT = t; tick(t); });
-if (!S.seenHow) setTimeout(() => openSheet('#shHow'), 400);
+(async () => {
+  let restored = false;
+  try { const d = await idb.get(STORE); if (d) { hydrate(d); restored = true; } } catch (e) {}
+  if (!restored) { try { const raw = localStorage.getItem(STORE); if (raw) { hydrate(JSON.parse(raw)); restored = true; } } catch (e) { restored = false; } }
+  if (!restored) starter();
+  applyState(); fit();
+  requestAnimationFrame(t => { R.lastT = t; tick(t); });
+  if (!S.seenHow) setTimeout(() => openSheet('#shHow'), 400);
+})();
 })();
 </script>
 </body>
