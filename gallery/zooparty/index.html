@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#17161c">
+<title>Zooparty</title>
+<meta name="description" content="Draw a zoetrope on a spinning record. Frame lines, echo, strobe, photos, zoom. Works with an iPad and Apple Pencil, a phone, or a laptop. Nothing is uploaded.">
+<style>
+:root{
+  --ui:#17161c; --ui2:#24232c; --ui3:#32313d; --ui4:#423f4e; --fg:#f6f1e7; --dim:#9b98a8; --acc:#ffc145; --acc2:#ff5d73; --ok:#5fd4a0;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--ui);color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;font-size:15px;
+  overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;touch-action:manipulation;cursor:pointer}
+svg{display:block}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+/* top bar */
+#top{display:flex;align-items:center;gap:6px;padding:8px 10px 6px;flex:0 0 auto}
+#top .spacer{flex:1}
+#brand{font-size:20px;letter-spacing:.02em;font-weight:600;padding:0 6px;white-space:nowrap}
+#brand i{font-style:normal;color:var(--acc)}
+.btn{width:42px;height:42px;border-radius:50%;background:var(--ui2);display:flex;align-items:center;justify-content:center;flex:0 0 auto;transition:background .12s,transform .08s}
+.btn:active{transform:scale(.92)}
+.btn svg,.tool svg,.sbtn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn.on{background:var(--acc);color:var(--ui)}
+.btn.big{width:50px;height:50px;background:var(--fg);color:var(--ui)}
+.btn.big svg{fill:var(--ui);stroke:var(--ui)}
+.btn.big.on{background:var(--acc2);color:#fff}
+.btn.big.on svg{fill:#fff;stroke:#fff}
+.btn:disabled{opacity:.35}
+#chip{height:42px;padding:0 12px;border-radius:21px;background:var(--ui2);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;min-width:74px}
+#chip b{font-size:17px;font-weight:600}
+#chip small{font-size:10px;color:var(--dim);letter-spacing:.08em;margin-top:3px;white-space:nowrap}
+/* stage */
+#stage{flex:1 1 auto;position:relative;min-height:0;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 40%,#232129 0%,#17161c 70%)}
+#view{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block;cursor:crosshair}
+#view.grab{cursor:grab}
+#view.pointer{cursor:default}
+.float{position:absolute;z-index:3;display:flex;gap:6px;align-items:center}
+.sbtn{width:40px;height:40px;border-radius:50%;background:rgba(36,35,44,.85);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.3)}
+.sbtn.on{background:var(--acc);color:var(--ui)}
+.sbtn:active{transform:scale(.92)}
+#stepper{left:10px;bottom:10px}
+#frTxt{height:40px;min-width:64px;padding:0 10px;border-radius:20px;background:rgba(36,35,44,.85);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  font-size:14px;font-weight:600;letter-spacing:.04em;font-variant-numeric:tabular-nums}
+#zoomer{right:10px;bottom:10px;flex-direction:column}
+#zoomTxt{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+#selbar{left:50%;top:10px;transform:translateX(-50%);background:rgba(36,35,44,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border-radius:22px;padding:4px;display:none;box-shadow:0 6px 20px rgba(0,0,0,.4);max-width:calc(100% - 20px);overflow-x:auto}
+#selbar.show{display:flex}
+#selbar button{height:36px;padding:0 12px;border-radius:18px;font-size:13px;white-space:nowrap}
+#selbar button.on{background:var(--acc);color:var(--ui)}
+#selbar button.warn{color:var(--acc2)}
+#toast{position:absolute;left:50%;top:14px;transform:translate(-50%,-12px);background:rgba(246,241,231,.96);color:var(--ui);padding:10px 16px;border-radius:14px;
+  font-size:14px;line-height:1.35;max-width:min(440px,calc(100% - 32px));text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:9;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#recdot{position:absolute;right:14px;top:14px;width:16px;height:16px;border-radius:50%;background:var(--acc2);display:none;z-index:8;animation:blink 1s infinite}
+#recdot.show{display:block}
+@keyframes blink{50%{opacity:.3}}
+/* dock */
+#dock{flex:0 0 auto;display:flex;gap:4px;padding:6px 8px 8px;overflow-x:auto;scrollbar-width:none;align-items:center}
+#dock::-webkit-scrollbar{display:none}
+.tool{min-width:54px;height:54px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex:0 0 auto;color:var(--fg);padding:0 4px}
+.tool span{font-size:10.5px;color:var(--dim);letter-spacing:.03em;white-space:nowrap}
+.tool.on{background:var(--ui3)}
+.tool.on span{color:var(--fg)}
+.tool.lit{color:var(--acc)}
+.tool.lit span{color:var(--acc)}
+.tool:active{transform:scale(.94)}
+#inkDot{width:24px;height:24px;border-radius:50%;box-shadow:0 0 0 2px var(--ui),0 0 0 4px var(--ui4);display:block}
+.sep{width:1px;height:34px;background:var(--ui3);margin:0 4px;flex:0 0 auto}
+@media (min-width:700px){ #dock{justify-content:center} }
+@media (max-width:460px){
+  #brand{display:none}
+  #top{gap:5px;padding:6px 8px 4px}
+  .btn{width:40px;height:40px}
+  .btn.big{width:46px;height:46px}
+  #chip{min-width:0;padding:0 10px}
+  .tool{min-width:48px}
+}
+/* sheet */
+#sheet{position:fixed;left:0;right:0;bottom:0;max-height:62vh;background:var(--ui2);border-radius:18px 18px 0 0;z-index:20;
+  transform:translateY(105%);transition:transform .22s ease;display:flex;flex-direction:column;box-shadow:0 -10px 30px rgba(0,0,0,.4);
+  padding-bottom:env(safe-area-inset-bottom)}
+#sheet.show{transform:none}
+@media (min-width:820px) and (min-height:520px){
+  #sheet{left:auto;right:12px;bottom:auto;top:calc(64px + env(safe-area-inset-top));width:340px;max-height:calc(100vh - 170px);border-radius:18px;transform:translateX(120%)}
+  #sheet.show{transform:none}
+}
+#sheetHead{display:flex;align-items:center;padding:12px 12px 6px 18px;flex:0 0 auto}
+#sheetHead h3{margin:0;font-size:17px;font-weight:600;flex:1}
+#sheetBody{overflow-y:auto;padding:4px 18px 18px;-webkit-overflow-scrolling:touch}
+.panel{display:none}
+.panel.show{display:block}
+.row{margin:14px 0 6px}
+.lbl{font-size:12px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline}
+.lbl output{font-size:13px;color:var(--fg);letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums}
+.hint{font-size:13px;color:var(--dim);line-height:1.45;margin:6px 0}
+.swatches{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.swatches button{width:32px;height:32px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
+.swatches button.on{box-shadow:0 0 0 2px var(--ui2),0 0 0 4px var(--fg)}
+.swatches input[type=color]{width:34px;height:34px;border:0;padding:0;background:none;border-radius:50%;cursor:pointer}
+.seg{display:flex;background:var(--ui);border-radius:12px;padding:3px;gap:3px;flex-wrap:wrap}
+.seg button{flex:1;height:34px;border-radius:9px;font-size:13px;color:var(--dim);min-width:44px;padding:0 6px}
+.seg button.on{background:var(--ui3);color:var(--fg)}
+.tog{display:flex;align-items:center;gap:10px;width:100%;padding:9px 0;font-size:15px;text-align:left}
+.tog i{width:40px;height:24px;border-radius:12px;background:var(--ui4);position:relative;flex:0 0 auto;transition:background .15s}
+.tog i::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--fg);transition:left .15s}
+.tog.on i{background:var(--ok)}
+.tog.on i::after{left:19px}
+input[type=range]{width:100%;accent-color:var(--acc);height:28px}
+.big-tog{display:flex;align-items:center;justify-content:center;width:100%;height:46px;border-radius:14px;background:var(--ui3);font-size:16px;font-weight:600;margin-top:4px}
+.big-tog.on{background:var(--acc);color:var(--ui)}
+.list button{display:flex;align-items:center;width:100%;padding:12px 4px;font-size:15px;border-bottom:1px solid var(--ui3);text-align:left;gap:10px}
+.list button small{color:var(--dim);margin-left:auto;font-size:12px;text-align:right}
+.counter{display:flex;align-items:center;gap:10px}
+.counter b{font-size:30px;font-weight:600;min-width:56px;text-align:center;font-variant-numeric:tabular-nums}
+.counter button{width:40px;height:40px;border-radius:50%;background:var(--ui3);font-size:22px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{height:32px;padding:0 12px;border-radius:16px;background:var(--ui);font-size:13px;color:var(--dim)}
+.chips button.on{background:var(--ui3);color:var(--fg)}
+.box{background:var(--ui);border-radius:12px;padding:12px;margin-top:8px}
+#sizePrev{display:flex;align-items:center;justify-content:center;height:56px}
+#sizePrev i{display:block;border-radius:50%;background:var(--fg)}
+a{color:var(--acc)}
+/* overlays */
+.overlay{position:fixed;inset:0;background:rgba(10,10,14,.72);z-index:40;display:none;align-items:center;justify-content:center;padding:16px}
+.overlay.show{display:flex}
+.card{background:var(--ui2);border-radius:20px;padding:22px;max-width:420px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.card h2{margin:0 0 10px;font-size:21px;font-weight:600;line-height:1.25}
+.card p{margin:0 0 10px;color:#d9d4ca;line-height:1.5;font-size:15px}
+.card .art{height:120px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.card .nav{display:flex;align-items:center;gap:8px;margin-top:14px}
+.card .dots{flex:1;display:flex;gap:6px}
+.card .dots i{width:7px;height:7px;border-radius:50%;background:var(--ui4)}
+.card .dots i.on{background:var(--acc)}
+.pill{height:40px;padding:0 18px;border-radius:20px;background:var(--ui3);font-size:15px}
+.pill.go{background:var(--acc);color:var(--ui);font-weight:600}
+#tInput{width:100%;height:46px;border-radius:12px;border:0;background:var(--ui);color:var(--fg);font-size:18px;padding:0 14px;margin:6px 0 12px;-webkit-user-select:text;user-select:text}
+#tInput:focus{outline:2px solid var(--acc)}
+kbd{background:var(--ui);border-radius:5px;padding:1px 6px;font-size:12px;font-family:inherit}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <button class="btn" id="bFile" title="Menu" data-i="menu"></button>
+    <div id="brand">zoo<i>party</i></div>
+    <div class="spacer"></div>
+    <button class="btn" id="bUndo" title="Undo (Ctrl+Z, or tap with two fingers)" data-i="undo"></button>
+    <button class="btn" id="bRedo" title="Redo (Shift+Ctrl+Z)" data-i="redo"></button>
+    <div class="spacer"></div>
+    <button id="chip" title="Spin settings"><b id="rpmTxt">33⅓</b><small id="fpsTxt">RPM</small></button>
+    <button class="btn" id="bStrobe" title="Strobe (S)" data-i="strobe"></button>
+    <button class="btn big" id="bPlay" title="Spin (Space)" data-i="play"></button>
+  </header>
+
+  <main id="stage">
+    <canvas id="view"></canvas>
+    <div id="stepper" class="float">
+      <button class="sbtn" id="bPrev" title="Previous frame (Left arrow)" data-i="prev"></button>
+      <button id="frTxt" title="Frames">1 / 12</button>
+      <button class="sbtn" id="bNext" title="Next frame (Right arrow)" data-i="next"></button>
+      <button class="sbtn" id="bOnion" title="Onion skin (O)" data-i="onion"></button>
+    </div>
+    <div id="zoomer" class="float">
+      <button class="sbtn" id="bZin" title="Zoom in (+)" data-i="plus"></button>
+      <button class="sbtn" id="bZfit" title="Fit (0)" data-i="fit"></button>
+      <button class="sbtn" id="bZout" title="Zoom out (-)" data-i="minus"></button>
+      <span id="zoomTxt">100%</span>
+    </div>
+    <div id="selbar" class="float">
+      <button id="sEcho">Echo</button>
+      <button id="sFill">Fill disc</button>
+      <button id="sFront">To front</button>
+      <button id="sBack">To back</button>
+      <button id="sDup">Copy</button>
+      <button id="sDel" class="warn">Delete</button>
+      <button id="sDone">Done</button>
+    </div>
+    <div id="toast"></div>
+    <div id="recdot" title="Recording"></div>
+  </main>
+
+  <nav id="dock">
+    <button class="tool" data-tool="pen" title="Pen (B)" data-i="pen"><span>Pen</span></button>
+    <button class="tool" data-tool="line" title="Line (L)" data-i="line"><span>Line</span></button>
+    <button class="tool" data-tool="erase" title="Eraser (E)" data-i="erase"><span>Eraser</span></button>
+    <button class="tool" data-tool="text" title="Text (T)" data-i="text"><span>Text</span></button>
+    <button class="tool" data-tool="move" title="Move (V)" data-i="move"><span>Move</span></button>
+    <button class="tool" data-tool="hand" title="Turn the record (H)" data-i="hand"><span>Turn</span></button>
+    <div class="sep"></div>
+    <button class="tool" id="bPhoto" title="Add photos" data-i="photo"><span>Photo</span></button>
+    <button class="tool" id="bInk" data-p="ink" title="Color and size"><i id="inkDot"></i><span>Ink</span></button>
+    <button class="tool" id="bEcho" data-p="echo" title="Echo" data-i="echo"><span id="echoLbl">Echo</span></button>
+    <button class="tool" id="bFrames" data-p="frames" title="Frames and guides" data-i="frames"><span>Frames</span></button>
+    <button class="tool" id="bDisc" data-p="disc" title="Disc color" data-i="disc"><span>Disc</span></button>
+    <button class="tool" id="bGuides" title="Frame lines (G)" data-i="guides"><span>Lines</span></button>
+  </nav>
+</div>
+
+<div id="sheet">
+  <div id="sheetHead"><h3 id="sheetTitle">Ink</h3><button class="sbtn" id="sheetClose" data-i="close" title="Close"></button></div>
+  <div id="sheetBody">
+
+    <section class="panel" id="p-ink" data-title="Ink">
+      <div class="row"><div class="lbl">Color</div><div class="swatches" id="swInk"></div></div>
+      <div class="row"><div class="lbl">Size <output data-o="size"></output></div>
+        <input type="range" data-k="size" min="1" max="160" step="1">
+        <div id="sizePrev"><i></i></div>
+      </div>
+      <div class="row"><div class="lbl">Text font</div>
+        <div class="chips" data-k="font">
+          <button data-v="sans">Sans</button><button data-v="serif" style="font-family:Georgia,serif">Serif</button><button data-v="mono" style="font-family:'Courier New',monospace">Mono</button><button data-v="marker" style="font-family:'Marker Felt','Comic Sans MS',cursive">Marker</button><button data-v="round" style="font-family:'Arial Rounded MT Bold','Trebuchet MS',sans-serif">Round</button>
+        </div>
+      </div>
+      <p class="hint">Size is measured on the record, so zoom in and turn it down for small details.</p>
+    </section>
+
+    <section class="panel" id="p-echo" data-title="Echo">
+      <button class="big-tog" data-k="echo.on" data-bool>Echo is off</button>
+      <p class="hint">With Echo on, anything you draw or place repeats in every frame around the record. Add some motion below and each copy moves a little more than the one before.</p>
+      <div class="row"><div class="lbl">Out <output data-o="echo.out"></output></div><input type="range" data-k="echo.out" min="-60" max="60" step="1"></div>
+      <div class="row"><div class="lbl">Twirl <output data-o="echo.twirl"></output></div><input type="range" data-k="echo.twirl" min="-45" max="45" step="1"></div>
+      <div class="row"><div class="lbl">Grow <output data-o="echo.grow"></output></div><input type="range" data-k="echo.grow" min="-15" max="15" step="0.5"></div>
+      <div class="row"><div class="lbl">Orbit <output data-o="echo.orbit"></output></div><input type="range" data-k="echo.orbit" min="-15" max="15" step="0.5"></div>
+      <div class="row"><div class="lbl">Shape of the motion</div>
+        <div class="seg" data-k="echo.curve"><button data-v="ramp">Ramp</button><button data-v="bounce">Bounce</button><button data-v="wave">Wave</button></div>
+      </div>
+      <p class="hint">Ramp keeps going, so it jumps where the loop starts over. Bounce and Wave go out and come back, so the loop is seamless.</p>
+      <div class="row"><button class="pill" id="echoReset">Reset motion</button></div>
+    </section>
+
+    <section class="panel" id="p-frames" data-title="Frames">
+      <div class="row"><div class="lbl">Frames on the record</div>
+        <div class="counter"><button id="nMinus">−</button><b id="nTxt">12</b><button id="nPlus">+</button></div>
+      </div>
+      <div class="chips" id="nChips"></div>
+      <p class="hint">Changing the count only moves the frame lines. Your drawing stays where it is.</p>
+      <div class="row">
+        <button class="tog" data-k="guides" data-bool><i></i>Frame lines</button>
+        <button class="tog" data-k="numbers" data-bool><i></i>Frame numbers</button>
+        <button class="tog" data-k="onion" data-bool><i></i>Onion skin (ghost of the frames next door)</button>
+      </div>
+      <div class="row"><div class="lbl">Rings</div>
+        <div class="seg" data-k="rings" data-num><button data-v="0">0</button><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="6">6</button></div>
+      </div>
+      <div class="row"><div class="lbl">Match a phone camera</div>
+        <div class="box">
+          <div class="seg" data-k="camFps" data-num><button data-v="24">24 fps</button><button data-v="30">30 fps</button><button data-v="60">60 fps</button></div>
+          <p class="hint" id="camTxt"></p>
+          <button class="pill go" id="camUse">Use it</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="p-spin" data-title="Spin">
+      <div class="row"><div class="lbl">Speed <output id="rpmOut"></output></div>
+        <input type="range" data-k="rpm" min="4" max="90" step="0.5">
+        <div class="chips" id="rpmChips"></div>
+      </div>
+      <p class="hint" id="spinTxt"></p>
+      <div class="row"><div class="lbl">Direction</div>
+        <div class="seg" data-k="dir" data-num><button data-v="1">Forward</button><button data-v="-1">Backward</button></div>
+      </div>
+      <div class="row">
+        <button class="tog" data-k="strobe" data-bool><i></i>Strobe (the zoetrope trick)</button>
+        <button class="tog" data-k="peep" data-bool><i></i>Peephole (watch one slot only)</button>
+        <button class="tog" data-k="crackle" data-bool><i></i>Record crackle</button>
+      </div>
+      <div class="row"><div class="lbl">Strobe drift <output data-o="creep"></output></div><input type="range" data-k="creep" min="-30" max="30" step="1"></div>
+      <p class="hint">Drift lets the whole picture creep around while it animates, like a camera that is slightly off speed.</p>
+      <div class="row"><div class="lbl">When you draw on a spinning record</div>
+        <div class="seg" data-k="spinDraw" data-bool2><button data-v="0">It stops</button><button data-v="1">Keep spinning</button></div>
+      </div>
+      <p class="hint">Keep spinning makes spin art: hold the pen still and you get a perfect circle.</p>
+    </section>
+
+    <section class="panel" id="p-disc" data-title="Disc">
+      <div class="row"><div class="lbl">Record color</div><div class="swatches" id="swDisc"></div></div>
+      <div class="row"><div class="lbl">Surface</div>
+        <div class="seg" data-k="bgStyle"><button data-v="vinyl">Vinyl grooves</button><button data-v="flat">Flat</button></div>
+      </div>
+      <div class="row"><button class="tog" data-k="label" data-bool><i></i>Center label</button></div>
+      <div class="row"><div class="lbl">Label color</div><div class="swatches" id="swLabel"></div></div>
+      <p class="hint">Want a photo across the whole record? Add a photo, then press Fill disc.</p>
+    </section>
+
+    <section class="panel" id="p-file" data-title="Zooparty">
+      <div class="list">
+        <button id="fNew">New record <small>Undo brings it back</small></button>
+        <button id="fSave">Save project <small>.zoo.json</small></button>
+        <button id="fOpen">Open project</button>
+        <button id="fPng">Picture of the record <small>PNG</small></button>
+        <button id="fGifDisc">Spinning GIF <small>whole record, strobed</small></button>
+        <button id="fGifSlot">Animation GIF <small>one slot, like a flipbook</small></button>
+        <button id="fVideo">Record a video <small>a few seconds</small></button>
+      </div>
+      <div class="row"><div class="lbl">Print a real one</div>
+        <div class="box">
+          <div class="seg" data-k="printIn" data-num><button data-v="7">7 in</button><button data-v="10">10 in</button><button data-v="12">12 in</button></div>
+          <button class="tog" data-k="printLines" data-bool><i></i>Print the frame lines</button>
+          <button class="pill go" id="fPrint">Make print template</button>
+          <p class="hint">300 dpi with a cut line and the spindle hole marked. Print at 100 percent. 10 and 12 inch need a big printer or a copy shop.</p>
+        </div>
+      </div>
+      <div class="row">
+        <button class="tog" data-k="penOnly" data-bool><i></i>Only the pencil draws (fingers move)</button>
+      </div>
+      <div class="list">
+        <button id="fHelp">How it works</button>
+        <button id="fKeys">Keyboard shortcuts</button>
+      </div>
+      <p class="hint">Everything stays on this device. It saves itself as you go.</p>
+    </section>
+
+  </div>
+</div>
+
+<div class="overlay" id="help">
+  <div class="card">
+    <div class="art" id="hArt"></div>
+    <h2 id="hTitle"></h2>
+    <p id="hBody"></p>
+    <div class="nav"><div class="dots" id="hDots"></div><button class="pill" id="hSkip">Skip</button><button class="pill go" id="hNext">Next</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="tbox">
+  <div class="card">
+    <h2>Add text</h2>
+    <input id="tInput" maxlength="60" placeholder="Type something" autocomplete="off" autocorrect="off" spellcheck="false">
+    <div class="chips" data-k="font">
+      <button data-v="sans">Sans</button><button data-v="serif" style="font-family:Georgia,serif">Serif</button><button data-v="mono" style="font-family:'Courier New',monospace">Mono</button><button data-v="marker" style="font-family:'Marker Felt','Comic Sans MS',cursive">Marker</button><button data-v="round" style="font-family:'Arial Rounded MT Bold','Trebuchet MS',sans-serif">Round</button>
+    </div>
+    <p class="hint">Size follows the Ink size. With Echo on, it lands in every frame.</p>
+    <div class="nav"><div class="dots"></div><button class="pill" id="tCancel">Cancel</button><button class="pill go" id="tOk">Add</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="keys">
+  <div class="card">
+    <h2>Keyboard</h2>
+    <p><kbd>Space</kbd> spin, hold and drag to pan &nbsp; <kbd>S</kbd> strobe<br>
+    <kbd>←</kbd> <kbd>→</kbd> step a frame &nbsp; <kbd>O</kbd> onion &nbsp; <kbd>G</kbd> frame lines<br>
+    <kbd>B</kbd> pen &nbsp; <kbd>L</kbd> line &nbsp; <kbd>E</kbd> eraser &nbsp; <kbd>T</kbd> text &nbsp; <kbd>V</kbd> move &nbsp; <kbd>H</kbd> turn<br>
+    <kbd>[</kbd> <kbd>]</kbd> size &nbsp; <kbd>+</kbd> <kbd>−</kbd> zoom &nbsp; <kbd>0</kbd> fit<br>
+    <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo &nbsp; <kbd>Shift</kbd>+<kbd>Ctrl</kbd>+<kbd>Z</kbd> redo &nbsp; <kbd>Delete</kbd> remove selection</p>
+    <p>Trackpad: pinch to zoom, two fingers to pan, Shift and scroll to turn the record. Mouse: Ctrl and scroll to zoom.</p>
+    <div class="nav"><div class="dots"></div><button class="pill go" id="kOk">Got it</button></div>
+  </div>
+</div>
+
+<input type="file" id="filePhoto" accept="image/*" multiple hidden>
+<input type="file" id="fileOpen" accept=".json,application/json" hidden>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const R = 1000, TAU = Math.PI * 2, D2R = Math.PI / 180;
+const COARSE = matchMedia('(pointer:coarse)').matches;
+const TEX = COARSE ? 2048 : 3072;
+const FONTS = { sans: '-apple-system,"Helvetica Neue",Arial,sans-serif', serif: 'Georgia,"Times New Roman",serif', mono: '"Courier New",Courier,monospace',
+  marker: '"Marker Felt","Chalkboard SE","Comic Sans MS",cursive', round: '"Arial Rounded MT Bold","Trebuchet MS",sans-serif' };
+const INK = ['#f6f1e7', '#141318', '#ff5d73', '#ff8a3d', '#ffc145', '#f9f871', '#5fd4a0', '#2ec4b6', '#4d9de0', '#7a5cff', '#c86bfa', '#ff9ecd', '#8d6e63', '#9b98a8'];
+const DISCS = ['#141318', '#2b2a33', '#f3ecdd', '#ffffff', '#c8102e', '#ff8a3d', '#f6c90e', '#2f6f4f', '#1d4ed8', '#6b3fa0', '#ff9ecd', '#7fd1c7'];
+const LABELS = ['#ff5d73', '#ffc145', '#5fd4a0', '#4d9de0', '#f6f1e7', '#141318', '#c86bfa', '#ff8a3d'];
+
+const ICONS = {
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  redo: '<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
+  strobe: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  play: '<path d="M8 5v14l11-7z"/>',
+  pause: '<path d="M7 5h3v14H7zM14 5h3v14h-3z"/>',
+  prev: '<path d="m15 5-7 7 7 7"/>', next: '<path d="m9 5 7 7-7 7"/>',
+  onion: '<circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>', minus: '<path d="M5 12h14"/>',
+  fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+  close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  pen: '<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="m14 7 3 3"/>',
+  line: '<path d="M6 18 18 6"/><circle cx="5" cy="19" r="1.6"/><circle cx="19" cy="5" r="1.6"/>',
+  erase: '<path d="m14 4 6 6-9 9H6l-3-3z"/><path d="m9 9 6 6M11 19h10"/>',
+  text: '<path d="M5 7V5h14v2M12 5v14M9 19h6"/>',
+  move: '<path d="M12 3v18M3 12h18M12 3 9.5 5.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5"/>',
+  hand: '<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/><circle cx="12" cy="12" r="1.5"/>',
+  photo: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 8"/>',
+  echo: '<circle cx="12" cy="12" r="2.5"/><circle cx="12" cy="12" r="6" stroke-dasharray="2 2.5"/><circle cx="12" cy="12" r="9.5" stroke-dasharray="2 3"/>',
+  frames: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/>',
+  disc: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2"/><path d="M7 8.5a6 6 0 0 1 3-2.2"/>',
+  guides: '<circle cx="12" cy="12" r="9" stroke-dasharray="2.5 2.5"/><path d="M12 3v18" stroke-dasharray="2.5 2.5"/>'
+};
+function icon(n) { return `<svg viewBox="0 0 24 24">${ICONS[n] || ''}</svg>`; }
+$$('[data-i]').forEach(b => b.insertAdjacentHTML('afterbegin', icon(b.dataset.i)));
+
+// ---------- state ----------
+const DEF = () => ({
+  N: 12, bg: '#141318', bgStyle: 'vinyl', label: true, labelColor: '#ff5d73',
+  items: [], assets: {},
+  color: '#ffc145', size: 14, tool: 'pen', font: 'sans',
+  echo: { on: false, out: 0, twirl: 0, grow: 0, orbit: 0, curve: 'wave' },
+  rpm: 33.3333, dir: 1, strobe: true, creep: 0, peep: false, spinDraw: false, crackle: false,
+  guides: true, numbers: true, onion: false, rings: 2, camFps: 30, printIn: 7, printLines: false,
+  penOnly: false, seenHelp: false
+});
+let S = DEF();
+const V = { z: 1, px: 0, py: 0, th: 0, w: 1, h: 1, dpr: 1, base: 1, anim: null };
+const spin = { on: false, vel: 0, phase: 0, creep: 0, held: false };
+const RT = { cv: 0, lift: null, liftItem: null, live: null, sel: null, hover: null, dirty: true, space: false, spaceUsed: false, wheelT: -1e9, tap: null, lastFrame: -1 };
+let act = null;
+const P = new Map();
+const H = { u: [], r: [] };
+const IM = {};
+
+// ---------- small helpers ----------
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const mk = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; };
+const wrapA = a => { while (a > Math.PI) a -= TAU; while (a < -Math.PI) a += TAU; return a; };
+const step = () => TAU / S.N;
+const LR = () => S.label ? 300 : 60;
+function lum(hex) { const n = parseInt(hex.slice(1), 16); const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; return (0.299 * r + 0.587 * g + 0.114 * b) / 255; }
+function rpmLabel(v = S.rpm) { return Math.abs(v - 33.3333) < 0.02 ? '33⅓' : Math.abs(v - 16.6667) < 0.02 ? '16⅔' : String(Math.round(v * 10) / 10); }
+function idle() { return new Promise(r => setTimeout(r, 0)); }
+
+// 2D affine matrices [a,b,c,d,e,f], same layout as canvas transform()
+const ID = [1, 0, 0, 1, 0, 0];
+const M = {
+  mul: (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]],
+  rot: a => { const c = Math.cos(a), s = Math.sin(a); return [c, s, -s, c, 0, 0]; },
+  tr: (x, y) => [1, 0, 0, 1, x, y],
+  sc: s => [s, 0, 0, s, 0, 0],
+  inv: m => { const d = m[0] * m[3] - m[1] * m[2]; return [m[3] / d, -m[1] / d, -m[2] / d, m[0] / d, (m[2] * m[5] - m[3] * m[4]) / d, (m[1] * m[4] - m[0] * m[5]) / d]; },
+  ap: (m, x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]],
+  scale: m => Math.sqrt(Math.abs(m[0] * m[3] - m[1] * m[2]))
+};
+const chain = (...ms) => ms.reduce((a, b) => M.mul(a, b));
+
+// ---------- canvases ----------
+const view = $('#view'), vg = view.getContext('2d');
+const tex = mk(TEX, TEX), tg = tex.getContext('2d');
+const scr = { c: mk(1, 1), key: '' }; const sg = scr.c.getContext('2d');
+const onion = mk(1, 1), og = onion.getContext('2d');
+const mctx = mk(4, 4).getContext('2d');
+
+function center() { return [V.w / 2 + V.px, V.h / 2 + V.py]; }
+function kk() { return V.z * V.base / R; }
+function screenM() { const k = kk(), c = Math.cos(V.th), s = Math.sin(V.th), [cx, cy] = center(); return [k * c, k * s, -k * s, k * c, cx, cy]; }
+function devM() { return screenM().map(v => v * V.dpr); }
+function texT() { const s = TEX / (2 * R); tg.setTransform(s, 0, 0, s, TEX / 2, TEX / 2); }
+function vkey() { return [V.th, V.z, V.px, V.py, V.w, V.h, RT.cv].join('|'); }
+function toDisc(x, y) { const k = kk(), [cx, cy] = center(), c = Math.cos(V.th), s = Math.sin(V.th), dx = x - cx, dy = y - cy; return [(dx * c + dy * s) / k, (-dx * s + dy * c) / k]; }
+function setCenterFor(p, sx, sy) { const k = kk(), c = Math.cos(V.th), s = Math.sin(V.th); V.px = sx - k * (c * p[0] - s * p[1]) - V.w / 2; V.py = sy - k * (s * p[0] + c * p[1]) - V.h / 2; }
+function dirty() { RT.dirty = true; }
+function isLive() {
+  return spin.vel !== 0 || !!V.anim || (act && (act.kind === 'gesture' || act.kind === 'pan' || act.kind === 'scratch')) || performance.now() - RT.wheelT < 160;
+}
+
+function resize() {
+  const r = $('#stage').getBoundingClientRect();
+  V.w = Math.max(1, r.width); V.h = Math.max(1, r.height); V.dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  view.width = Math.round(V.w * V.dpr); view.height = Math.round(V.h * V.dpr);
+  scr.c.width = onion.width = view.width; scr.c.height = onion.height = view.height;
+  V.base = Math.min(V.w, V.h) * 0.43;
+  scr.key = ''; dirty();
+}
+
+// ---------- items ----------
+// stroke: {id,type:'stroke',mode,color,pts:[x,y,w,...],anchor,echo,m?,bb}
+// photo:  {id,type:'photo',asset,w,h,m,echo}
+// text:   {id,type:'text',str,font,color,size,tw,m,echo}
+function echoSnap() { const e = S.echo; return e.on ? { n: S.N, out: e.out, twirl: e.twirl, grow: e.grow, orbit: e.orbit, curve: e.curve } : null; }
+function curveP(i, n, c) { return c === 'bounce' ? n / 2 - Math.abs(n / 2 - i) : c === 'wave' ? n / 4 * (1 - Math.cos(TAU * i / n)) : i; }
+function anchorOf(it) { const a = it.type === 'stroke' ? (it.anchor || [it.pts[0], it.pts[1]]) : [0, 0]; return M.ap(it.m || ID, a[0], a[1]); }
+function copyMats(it) {
+  if (it._cm) return it._cm;
+  const e = it.echo; if (!e) return (it._cm = [ID]);
+  const n = e.n, st = TAU / n, [ax, ay] = anchorOf(it), L = Math.hypot(ax, ay);
+  const ux = L > 1 ? ax / L : 0, uy = L > 1 ? ay / L : -1, out = [];
+  for (let i = 0; i < n; i++) {
+    const p = curveP(i, n, e.curve);
+    let m = M.mul(M.rot(-(i * st + p * e.orbit * D2R)), M.tr(ux * p * e.out, uy * p * e.out));
+    if (e.twirl || e.grow) m = chain(m, M.tr(ax, ay), M.rot(p * e.twirl * D2R), M.sc(Math.pow(1 + e.grow / 100, p)), M.tr(-ax, -ay));
+    out.push(m);
+  }
+  return (it._cm = out);
+}
+function img(id) {
+  if (!IM[id] && S.assets[id]) { const i = new Image(); i.onload = () => rebuildAll(); i.src = S.assets[id]; IM[id] = i; }
+  return IM[id];
+}
+const ready = im => im && (im instanceof HTMLCanvasElement || (im.complete && im.naturalWidth));
+
+function piece(g, p, c) {
+  const n = p.length / 3; if (c >= n - 1) return;
+  const i = c * 3, x0 = p[i], y0 = p[i + 1], x1 = p[i + 3], y1 = p[i + 4];
+  const sx = c === 0 ? x0 : (p[i - 3] + x0) / 2, sy = c === 0 ? y0 : (p[i - 2] + y0) / 2;
+  g.lineWidth = (p[i + 2] + p[i + 5]) / 2;
+  g.beginPath(); g.moveTo(sx, sy); g.quadraticCurveTo(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2); g.stroke();
+}
+function tail(g, p) {
+  const n = p.length / 3;
+  if (n === 1) { g.beginPath(); g.arc(p[0], p[1], p[2] / 2, 0, TAU); g.fill(); return; }
+  const i = (n - 1) * 3;
+  g.lineWidth = p[i + 2]; g.beginPath(); g.moveTo((p[i - 3] + p[i]) / 2, (p[i - 2] + p[i + 1]) / 2); g.lineTo(p[i], p[i + 1]); g.stroke();
+}
+function styleFor(g, it) {
+  g.globalCompositeOperation = it.mode === 'erase' ? 'destination-out' : 'source-over';
+  g.strokeStyle = g.fillStyle = it.mode === 'erase' ? '#000' : it.color; g.lineCap = g.lineJoin = 'round';
+}
+function drawBase(g, it) {
+  if (it.type === 'stroke') { const p = it.pts, n = p.length / 3; for (let c = 0; c < n - 1; c++) piece(g, p, c); tail(g, p); }
+  else if (it.type === 'photo') { const im = img(it.asset); if (ready(im)) g.drawImage(im, -it.w / 2, -it.h / 2, it.w, it.h); }
+  else if (it.type === 'text') { g.fillStyle = it.color; g.font = `${it.size}px ${FONTS[it.font] || FONTS.sans}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(it.str, 0, 0); }
+}
+function drawItem(g, it, force) {
+  if (!force && it.id === RT.lift) return;
+  const m = it.m || ID;
+  if (it.type === 'stroke') styleFor(g, it);
+  for (const c of copyMats(it)) { g.save(); g.transform(...c); g.transform(...m); drawBase(g, it); g.restore(); }
+  g.globalCompositeOperation = 'source-over';
+}
+// draw one new piece of a live stroke (all its echo copies) into tex and the screen cache
+function livePiece(it, c, isTail) {
+  const doit = g => { styleFor(g, it); for (const m of copyMats(it)) { g.save(); g.transform(...m); isTail ? tail(g, it.pts) : piece(g, it.pts, c); g.restore(); } g.globalCompositeOperation = 'source-over'; };
+  texT(); doit(tg);
+  if (scr.key === vkey()) { sg.setTransform(...devM()); doit(sg); }
+}
+function liveItem(it) {
+  texT(); drawItem(tg, it, true);
+  if (scr.key === vkey()) { sg.setTransform(...devM()); drawItem(sg, it, true); }
+}
+function rebuildAll() {
+  tg.setTransform(1, 0, 0, 1, 0, 0); tg.clearRect(0, 0, TEX, TEX); texT();
+  for (const it of S.items) drawItem(tg, it);
+  RT.cv++; scr.key = ''; dirty();
+}
+function rebuildScr() {
+  sg.setTransform(1, 0, 0, 1, 0, 0); sg.clearRect(0, 0, scr.c.width, scr.c.height);
+  sg.setTransform(...devM());
+  for (const it of S.items) drawItem(sg, it);
+  scr.key = vkey();
+}
+function localBB(it) {
+  if (it.type === 'photo') return [-it.w / 2, -it.h / 2, it.w / 2, it.h / 2];
+  if (it.type === 'text') return [-it.tw / 2, -it.size * 0.62, it.tw / 2, it.size * 0.62];
+  return it.bb || strokeBB(it.pts);
+}
+function strokeBB(p) {
+  let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+  for (let i = 0; i < p.length; i += 3) { const w = p[i + 2] / 2; a = Math.min(a, p[i] - w); b = Math.min(b, p[i + 1] - w); c = Math.max(c, p[i] + w); d = Math.max(d, p[i + 1] + w); }
+  return [a, b, c, d];
+}
+function measureText(str, font, size) { mctx.font = `${size}px ${FONTS[font] || FONTS.sans}`; return mctx.measureText(str).width; }
+
+// ---------- disc drawing ----------
+function drawBgDisc(g, px) {
+  const dark = lum(S.bg) < 0.45;
+  g.fillStyle = S.bg; g.beginPath(); g.arc(0, 0, R, 0, TAU); g.fill();
+  if (S.bgStyle === 'vinyl') {
+    const r0 = LR() + 34;
+    g.strokeStyle = dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.055)'; g.lineWidth = Math.max(px, 1.8);
+    for (let r = r0; r < R - 24; r += 13) { g.beginPath(); g.arc(0, 0, r, 0, TAU); g.stroke(); }
+    g.strokeStyle = dark ? 'rgba(255,255,255,.09)' : 'rgba(0,0,0,.09)'; g.lineWidth = Math.max(px, 4);
+    g.beginPath(); g.arc(0, 0, R - 10, 0, TAU); g.stroke();
+    g.beginPath(); g.arc(0, 0, r0 - 14, 0, TAU); g.stroke();
+  }
+  if (S.label) {
+    const lr = LR();
+    g.fillStyle = S.labelColor; g.beginPath(); g.arc(0, 0, lr, 0, TAU); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.14)'; g.lineWidth = 5; g.beginPath(); g.arc(0, 0, lr - 20, 0, TAU); g.stroke();
+    g.fillStyle = lum(S.labelColor) > 0.55 ? 'rgba(20,19,24,.78)' : 'rgba(255,255,255,.9)';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = `66px ${FONTS.round}`; g.fillText('zooparty', 0, -128);
+    g.font = `34px ${FONTS.sans}`; g.fillText(`${rpmLabel()} RPM  ·  ${S.N} frames`, 0, 132);
+    g.beginPath(); g.moveTo(-150, 84); g.lineTo(150, 84); g.lineWidth = 3; g.strokeStyle = g.fillStyle; g.stroke();
+  }
+}
+function guideColor() { return lum(S.bg) > 0.55 ? 'rgba(20,19,24,.42)' : 'rgba(255,255,255,.45)'; }
+function drawGuides(g, px, forExport) {
+  const st = step(), r0 = LR(), col = guideColor();
+  g.strokeStyle = col; g.lineWidth = forExport ? 3 : 1.3 * px; g.setLineDash(forExport ? [10, 12] : [4 * px, 5 * px]);
+  g.beginPath();
+  for (let k = 0; k < S.N; k++) { const a = -(k + 0.5) * st, s = Math.sin(a), c = -Math.cos(a); g.moveTo(r0 * s, r0 * c); g.lineTo(R * s, R * c); }
+  g.stroke();
+  for (let j = 1; j <= S.rings; j++) { const r = r0 + (R - r0) * j / (S.rings + 1); g.beginPath(); g.arc(0, 0, r, 0, TAU); g.stroke(); }
+  g.setLineDash([]);
+}
+function wedge(g, cx, cy, r0, r1, a0, a1) { // angles clockwise from top
+  g.moveTo(cx + r0 * Math.sin(a0), cy - r0 * Math.cos(a0));
+  g.arc(cx, cy, r1, a0 - Math.PI / 2, a1 - Math.PI / 2);
+  g.arc(cx, cy, r0, a1 - Math.PI / 2, a0 - Math.PI / 2, true);
+  g.closePath();
+}
+
+// ---------- render ----------
+function render() {
+  RT.dirty = false;
+  const g = vg, d = V.dpr, k = kk(), [cx, cy] = center(), rad = k * R, st = step(), live = isLive();
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, view.width, view.height);
+  g.setTransform(d, 0, 0, d, 0, 0);
+  // platter
+  g.fillStyle = '#25242d'; g.beginPath(); g.arc(cx, cy, rad * 1.1, 0, TAU); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1; g.stroke();
+  g.fillStyle = 'rgba(246,241,231,.5)';
+  const dotR = Math.max(1.3, Math.min(rad * 0.011, rad * 0.9 * st / 2));
+  g.beginPath();
+  for (let i = 0; i < S.N; i++) { const a = V.th - i * st, r = rad * 1.068; g.moveTo(cx + r * Math.sin(a) + dotR, cy - r * Math.cos(a)); g.arc(cx + r * Math.sin(a), cy - r * Math.cos(a), dotR, 0, TAU); }
+  g.fill();
+  // disc surface
+  g.save(); g.setTransform(...devM()); drawBgDisc(g, 1 / k); g.restore();
+  // content
+  g.save(); g.beginPath(); g.arc(cx, cy, rad, 0, TAU); g.clip();
+  if (!live) { if (scr.key !== vkey()) rebuildScr(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(scr.c, 0, 0); }
+  else { g.setTransform(...devM()); g.imageSmoothingQuality = 'high'; g.drawImage(tex, -R, -R, 2 * R, 2 * R); }
+  if (RT.lift && RT.liftItem) { g.setTransform(...devM()); drawItem(g, RT.liftItem, true); }
+  if (act && act.kind === 'line' && RT.live) { g.setTransform(...devM()); if (RT.live.mode === 'erase') g.globalAlpha = .5; const tmp = Object.assign({}, RT.live, { mode: 'pen', color: RT.live.mode === 'erase' ? '#888' : RT.live.color, _cm: null }); drawItem(g, tmp, true); g.globalAlpha = 1; }
+  g.restore();
+  // onion skin
+  if (S.onion && !live && scr.key === vkey()) { drawOnion(g, -st, '#ff5d73'); drawOnion(g, st, '#5fd4a0'); }
+  g.setTransform(d, 0, 0, d, 0, 0);
+  // guides
+  if (S.guides) { g.save(); g.setTransform(...devM()); drawGuides(g, 1 / k, false); g.restore(); }
+  // focus wedge: dim everything but the top slot
+  if (S.guides && !live && !S.peep) {
+    g.fillStyle = 'rgba(0,0,0,.16)'; g.beginPath(); g.arc(cx, cy, rad, 0, TAU); wedge(g, cx, cy, LR() * k, rad, -st / 2, st / 2); g.fill('evenodd');
+    g.strokeStyle = 'rgba(255,193,69,.85)'; g.lineWidth = 1.6; g.beginPath(); wedge(g, cx, cy, LR() * k, rad, -st / 2, st / 2); g.stroke();
+  }
+  // frame numbers
+  if (S.guides && S.numbers && !live) {
+    const gap = rad * st; const every = Math.max(1, Math.ceil(22 / gap));
+    g.fillStyle = 'rgba(246,241,231,.7)'; g.font = `${Math.max(9, Math.min(13, gap * 0.5))}px -apple-system,Arial,sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const f = curFrame();
+    for (let i = 0; i < S.N; i += every) { const a = V.th - i * st, r = rad * 1.035; g.fillStyle = i === f ? '#ffc145' : 'rgba(246,241,231,.6)'; g.fillText(String(i + 1), cx + r * Math.sin(a), cy - r * Math.cos(a)); }
+  }
+  // spindle
+  const hr = Math.max(3, rad * 0.024);
+  const sp = g.createRadialGradient(cx - hr * .3, cy - hr * .3, hr * .1, cx, cy, hr);
+  sp.addColorStop(0, '#f2f2f2'); sp.addColorStop(1, '#7c7a86');
+  g.fillStyle = sp; g.beginPath(); g.arc(cx, cy, hr, 0, TAU); g.fill();
+  // sheen
+  if (S.bgStyle === 'vinyl' && g.createConicGradient) {
+    const cg = g.createConicGradient(-0.6, cx, cy), a = lum(S.bg) < 0.45 ? 0.07 : 0.1;
+    cg.addColorStop(0, 'rgba(255,255,255,0)'); cg.addColorStop(0.08, `rgba(255,255,255,${a})`); cg.addColorStop(0.16, 'rgba(255,255,255,0)');
+    cg.addColorStop(0.5, 'rgba(255,255,255,0)'); cg.addColorStop(0.58, `rgba(255,255,255,${a})`); cg.addColorStop(0.66, 'rgba(255,255,255,0)'); cg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = cg; g.beginPath(); g.arc(cx, cy, rad, 0, TAU); g.arc(cx, cy, LR() * k, 0, TAU, true); g.fill('evenodd');
+  }
+  // peephole
+  if (S.peep) {
+    g.fillStyle = 'rgba(12,11,16,.9)'; g.beginPath(); g.rect(0, 0, V.w, V.h); wedge(g, cx, cy, LR() * k, rad * 1.0, -st / 2, st / 2); g.fill('evenodd');
+    g.strokeStyle = '#ffc145'; g.lineWidth = 2; g.beginPath(); wedge(g, cx, cy, LR() * k, rad, -st / 2, st / 2); g.stroke();
+  }
+  // pointer at the top: you draw here
+  g.fillStyle = '#ffc145'; g.beginPath(); const ty = cy - rad * 1.1 - 4; g.moveTo(cx - 7, ty - 9); g.lineTo(cx + 7, ty - 9); g.lineTo(cx, ty); g.fill();
+  // selection
+  drawSelection(g);
+  // brush cursor
+  if (RT.hover && (S.tool === 'pen' || S.tool === 'erase' || S.tool === 'line') && !act) {
+    const r = Math.max(1.5, brushW(0.5, S.tool === 'erase') * k / 2);
+    g.lineWidth = 1; g.strokeStyle = 'rgba(0,0,0,.6)'; g.beginPath(); g.arc(RT.hover[0], RT.hover[1], r + 1, 0, TAU); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(RT.hover[0], RT.hover[1], r, 0, TAU); g.stroke();
+  }
+  updateFrameText();
+}
+function drawOnion(g, rot, color) {
+  const d = V.dpr, [cx, cy] = center(), k = kk(), st = step();
+  og.setTransform(1, 0, 0, 1, 0, 0); og.globalCompositeOperation = 'source-over'; og.clearRect(0, 0, onion.width, onion.height);
+  og.translate(cx * d, cy * d); og.rotate(rot); og.translate(-cx * d, -cy * d); og.drawImage(scr.c, 0, 0);
+  og.setTransform(1, 0, 0, 1, 0, 0); og.globalCompositeOperation = 'source-in'; og.fillStyle = color; og.fillRect(0, 0, onion.width, onion.height);
+  og.globalCompositeOperation = 'source-over';
+  g.save(); g.setTransform(d, 0, 0, d, 0, 0); g.beginPath(); wedge(g, cx, cy, 0, k * R, -st / 2, st / 2); g.clip();
+  g.globalAlpha = 0.38; g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(onion, 0, 0); g.restore();
+}
+function selFull() {
+  if (!RT.sel) return null;
+  const it = RT.lift === RT.sel.id && RT.liftItem ? RT.liftItem : S.items.find(x => x.id === RT.sel.id);
+  if (!it) return null;
+  const C = copyMats(it)[RT.sel.copy] || ID;
+  return { it, C, full: M.mul(C, it.m || ID) };
+}
+function selCorners() {
+  const s = selFull(); if (!s) return null;
+  const bb = localBB(s.it), m = M.mul(screenM(), s.full);
+  return [[bb[0], bb[1]], [bb[2], bb[1]], [bb[2], bb[3]], [bb[0], bb[3]]].map(p => M.ap(m, p[0], p[1]));
+}
+function drawSelection(g) {
+  if (S.tool !== 'move') return;
+  const cs = selCorners(); if (!cs) return;
+  g.strokeStyle = '#ffc145'; g.lineWidth = 1.5; g.setLineDash([6, 4]);
+  g.beginPath(); cs.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); g.stroke(); g.setLineDash([]);
+  const h = cs[2]; g.fillStyle = '#ffc145'; g.beginPath(); g.arc(h[0], h[1], 10, 0, TAU); g.fill();
+  g.strokeStyle = '#17161c'; g.lineWidth = 2; g.beginPath(); g.arc(h[0], h[1], 5, -0.3, 4.2); g.stroke();
+}
+function curFrame() { const n = S.N; return ((Math.round(V.th / step()) % n) + n) % n; }
+function updateFrameText() {
+  const f = curFrame(), key = f + '/' + S.N;
+  if (RT.lastFrame !== key) { RT.lastFrame = key; $('#frTxt').textContent = `${f + 1} / ${S.N}`; }
+  const z = Math.round(V.z * 100) + '%'; if ($('#zoomTxt').textContent !== z) $('#zoomTxt').textContent = z;
+}
+
+// ---------- spin ----------
+function tickSpin(dt) {
+  const st = step(), was = spin.vel !== 0;
+  if (spin.held) spin.vel = 0;
+  else if (spin.on) { const target = S.dir * S.rpm / 60 * TAU; spin.vel += (target - spin.vel) * Math.min(1, dt * 2.2); if (Math.abs(target - spin.vel) < 0.002) spin.vel = target; }
+  else if (spin.vel) { spin.vel *= Math.exp(-dt * 0.8); if (Math.abs(spin.vel) < 0.05) spin.vel = 0; }
+  if (spin.vel) {
+    spin.phase += spin.vel * dt;
+    if (S.strobe) { spin.creep += S.creep * D2R * dt; V.th = Math.round(spin.phase / st) * st + spin.creep; }
+    else V.th = spin.phase;
+  } else if (was) { spin.phase = V.th; spin.creep = 0; dirty(); }
+  if (Math.abs(spin.phase) > TAU * 500 && !spin.vel) { const w = Math.round(spin.phase / TAU) * TAU; spin.phase -= w; V.th -= w; }
+}
+function setPlay(on) {
+  spin.on = on; spin.phase = V.th; spin.creep = 0;
+  if (on && S.crackle) audioOn();
+  syncUI();
+}
+function stepFrame(dir) {
+  if (spin.on) setPlay(false);
+  spin.vel = 0;
+  const st = step(), from = V.anim ? V.anim.to : V.th, cur = Math.round(from / st);
+  V.anim = { from: V.th, to: (cur + dir) * st, t0: performance.now(), dur: 170 };
+}
+function tickAnim(now) {
+  if (!V.anim) return;
+  const a = V.anim, t = Math.min(1, (now - a.t0) / a.dur), e = 1 - Math.pow(1 - t, 3);
+  V.th = a.from + (a.to - a.from) * e;
+  if (t >= 1) { V.th = a.to; V.anim = null; spin.phase = V.th; dirty(); }
+}
+
+// ---------- crackle ----------
+let AU = null;
+function audioOn() {
+  try {
+    if (!AU) {
+      const C = new (window.AudioContext || window.webkitAudioContext)();
+      const len = C.sampleRate * 3, b = C.createBuffer(1, len, C.sampleRate), dd = b.getChannelData(0);
+      for (let i = 0; i < len; i++) dd[i] = (Math.random() * 2 - 1) * 0.01;
+      for (let j = 0; j < 70; j++) { const p = Math.floor(Math.random() * len), a = (Math.random() * 0.45 + 0.1) * (Math.random() < .5 ? -1 : 1); for (let q = 0; q < 40 && p + q < len; q++) dd[p + q] += a * Math.exp(-q / 5); }
+      const src = C.createBufferSource(); src.buffer = b; src.loop = true;
+      const f = C.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 600;
+      const gn = C.createGain(); gn.gain.value = 0;
+      src.connect(f).connect(gn).connect(C.destination); src.start();
+      AU = { C, g: gn, on: -1 };
+    }
+    AU.C.resume();
+  } catch (e) { }
+}
+function updateAudio() {
+  if (!AU) return;
+  const want = S.crackle && Math.abs(spin.vel) > 0.3 ? 0.55 : 0;
+  if (want !== AU.on) { AU.on = want; AU.g.gain.setTargetAtTime(want, AU.C.currentTime, 0.12); }
+}
+
+// ---------- pointer input ----------
+function pos(e) { const r = view.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+function brushW(pr, erase) { return S.size * (erase ? 1.6 : (0.3 + 1.1 * pr)); }
+function widthFor(e) { const erase = S.tool === 'erase'; if (e.pointerType === 'pen') return brushW(e.pressure || 0.5, erase); return brushW(0.5, erase); }
+function touches() { return [...P.entries()].filter(([, p]) => p.t === 'touch'); }
+function sheetIsCovering() { return $('#sheet').classList.contains('show') && !matchMedia('(min-width:820px) and (min-height:520px)').matches; }
+
+view.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (sheetIsCovering()) { closeSheet(); return; }
+  try { view.setPointerCapture(e.pointerId); } catch (_) { }
+  if (e.pointerType === 'pen' && !S.penOnly) { S.penOnly = true; syncUI(); save(); toast('Apple Pencil found. The pencil draws and your fingers move the record. You can change this in the menu.', 3600); }
+  const [x, y] = pos(e);
+  P.set(e.pointerId, { x, y, x0: x, y0: y, t: e.pointerType });
+  if (e.pointerType === 'touch') {
+    if (!RT.tap || touches().length === 1) RT.tap = { t0: performance.now(), max: 0, moved: false };
+    RT.tap.max = Math.max(RT.tap.max, touches().length);
+  }
+  if (touches().length >= 2) { startGesture(); return; }
+  if (act) return;
+  const [cx, cy] = center(), rr = Math.hypot(x - cx, y - cy) / (kk() * R);
+  if (e.button === 1 || e.button === 2 || RT.space) { if (RT.space) RT.spaceUsed = true; act = { kind: 'pan', id: e.pointerId, x, y }; return; }
+  if (S.tool === 'hand' || (rr > 1.0 && rr < 1.16 && S.tool !== 'move')) { startScratch(e.pointerId, x, y); return; }
+  if (e.pointerType === 'touch' && S.penOnly) { act = { kind: 'pan', id: e.pointerId, x, y }; return; }
+  toolDown(e, x, y);
+});
+view.addEventListener('pointermove', e => {
+  const [x, y] = pos(e);
+  const p = P.get(e.pointerId);
+  if (!p) { if (e.pointerType !== 'touch') { RT.hover = [x, y]; dirty(); } return; }
+  p.x = x; p.y = y;
+  if (RT.tap && Math.hypot(x - p.x0, y - p.y0) > 10) RT.tap.moved = true;
+  if (e.pointerType !== 'touch') RT.hover = [x, y];
+  if (!act) return;
+  if (act.kind === 'gesture') { moveGesture(); return; }
+  if (act.id !== e.pointerId) return;
+  if (act.kind === 'pan') { V.px += x - act.x; V.py += y - act.y; act.x = x; act.y = y; dirty(); }
+  else if (act.kind === 'scratch') moveScratch(x, y);
+  else toolMove(e, x, y);
+});
+function pointerUp(e) {
+  const p = P.get(e.pointerId); if (!p) return;
+  P.delete(e.pointerId);
+  if (act) {
+    if (act.kind === 'gesture') { if (touches().length < 2) endGesture(); }
+    else if (act.id === e.pointerId) {
+      const [x, y] = pos(e);
+      if (act.kind === 'pan') { act = null; dirty(); }
+      else if (act.kind === 'scratch') endScratch();
+      else toolUp(e, x, y);
+    }
+  }
+  if (RT.tap && touches().length === 0 && ![...P.values()].length) {
+    const dt = performance.now() - RT.tap.t0;
+    if (!RT.tap.moved && dt < 350) { if (RT.tap.max === 2) undo(); else if (RT.tap.max === 3) redo(); }
+    RT.tap = null;
+  }
+}
+view.addEventListener('pointerup', pointerUp);
+view.addEventListener('pointercancel', pointerUp);
+view.addEventListener('pointerleave', e => { if (e.pointerType !== 'touch' && !P.has(e.pointerId)) { RT.hover = null; dirty(); } });
+view.addEventListener('contextmenu', e => e.preventDefault());
+
+function cancelAct() {
+  if (!act) return;
+  if (act.kind === 'draw') { RT.live = null; spin.held = false; rebuildAll(); }
+  else if (act.kind === 'line') { RT.live = null; dirty(); }
+  else if (act.kind === 'drag' || act.kind === 'handle') { if (RT.lift) { RT.lift = null; RT.liftItem = null; rebuildAll(); } }
+  else if (act.kind === 'scratch') spin.held = false;
+  act = null;
+}
+function startGesture() {
+  cancelAct();
+  const t = touches(); const a = t[0][1], b = t[1][1];
+  const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+  act = { kind: 'gesture', ids: [t[0][0], t[1][0]], d0: Math.max(10, Math.hypot(b.x - a.x, b.y - a.y)), a0: Math.atan2(b.y - a.y, b.x - a.x), z0: V.z, th0: V.th, p0: toDisc(cx, cy), rotOn: false };
+  if (V.anim) { V.th = V.anim.to; V.anim = null; }
+  spin.held = true;
+}
+function moveGesture() {
+  const a = P.get(act.ids[0]), b = P.get(act.ids[1]); if (!a || !b) return;
+  const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+  V.z = clamp(act.z0 * Math.hypot(b.x - a.x, b.y - a.y) / act.d0, 0.35, 16);
+  const da = wrapA(Math.atan2(b.y - a.y, b.x - a.x) - act.a0);
+  if (!act.rotOn && Math.abs(da) > 0.14) act.rotOn = true;
+  if (act.rotOn) V.th = act.th0 + da;
+  setCenterFor(act.p0, cx, cy);
+  dirty();
+}
+function endGesture() { act = null; spin.held = false; spin.phase = V.th; dirty(); }
+function startScratch(id, x, y) {
+  const [cx, cy] = center();
+  act = { kind: 'scratch', id, a: Math.atan2(x - cx, -(y - cy)), t: performance.now(), v: 0 };
+  if (V.anim) { V.th = V.anim.to; V.anim = null; }
+  spin.held = true; spin.vel = 0; view.classList.add('grab');
+}
+function moveScratch(x, y) {
+  const [cx, cy] = center(), a = Math.atan2(x - cx, -(y - cy)), d = wrapA(a - act.a), now = performance.now(), dt = Math.max(4, now - act.t) / 1000;
+  act.a = a; V.th += d; spin.phase = V.th; act.v = act.v * 0.5 + (d / dt) * 0.5; act.t = now; dirty();
+}
+function endScratch() {
+  spin.held = false;
+  if (!spin.on && performance.now() - act.t < 90 && Math.abs(act.v) > 0.8) spin.vel = clamp(act.v, -30, 30);
+  spin.phase = V.th; act = null; updateCursor(); dirty();
+}
+
+// ---------- tools ----------
+function toolDown(e, x, y) {
+  const [dx, dy] = toDisc(x, y), tool = S.tool;
+  if (tool === 'pen' || tool === 'erase') {
+    const it = { id: uid(), type: 'stroke', mode: tool === 'erase' ? 'erase' : 'pen', color: S.color, pts: [dx, dy, widthFor(e)], echo: echoSnap(), anchor: [dx, dy] };
+    act = { kind: 'draw', id: e.pointerId, it, lx: x, ly: y, lw: it.pts[2] };
+    RT.live = it;
+    if (!S.spinDraw) spin.held = true;
+  } else if (tool === 'line') {
+    const w = widthFor({ pointerType: 'mouse' });
+    const it = { id: uid(), type: 'stroke', mode: 'pen', color: S.color, pts: [dx, dy, w, dx, dy, w], echo: echoSnap(), anchor: [dx, dy] };
+    act = { kind: 'line', id: e.pointerId, it, start: [dx, dy] };
+    RT.live = it; spin.held = true;
+  } else if (tool === 'text') {
+    act = { kind: 'textTap', id: e.pointerId, x, y, p: [dx, dy] };
+  } else if (tool === 'move') {
+    const cs = selCorners();
+    if (cs && Math.hypot(x - cs[2][0], y - cs[2][1]) < 24) {
+      const s = selFull(), bb = localBB(s.it), q = M.ap(s.full, (bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2);
+      act = { kind: 'handle', id: e.pointerId, start: [dx, dy], q, C: s.C, m0: s.it.m || ID, it: s.it, moved: false };
+      return;
+    }
+    const hit = hitTest(dx, dy);
+    if (hit) {
+      RT.sel = { id: hit.it.id, copy: hit.i }; syncSel();
+      act = { kind: 'drag', id: e.pointerId, start: [dx, dy], C: hit.C, m0: hit.it.m || ID, it: hit.it, moved: false, sx: x, sy: y };
+    } else {
+      RT.sel = null; syncSel();
+      act = { kind: 'pan', id: e.pointerId, x, y };
+    }
+    dirty();
+  }
+}
+function addPoint(x, y, w) {
+  const it = act.it, p = it.pts, [dx, dy] = toDisc(x, y), n = p.length / 3;
+  const lx = p[(n - 1) * 3], ly = p[(n - 1) * 3 + 1];
+  if (Math.hypot(dx - lx, dy - ly) < 1.2 / kk()) return;
+  p.push(dx, dy, w);
+  livePiece(it, n - 1);
+  dirty();
+}
+function toolMove(e, x, y) {
+  if (act.kind === 'draw') {
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    for (const ce of (evs.length ? evs : [e])) { const [cx, cy] = pos(ce); const w = widthFor(ce); act.lx = cx; act.ly = cy; act.lw = w; addPoint(cx, cy, w); }
+  } else if (act.kind === 'line') {
+    let [dx, dy] = toDisc(x, y); const [sx, sy] = act.start;
+    // snap to the radius or the circle when close
+    const L = Math.hypot(sx, sy), vx = dx - sx, vy = dy - sy, vl = Math.hypot(vx, vy);
+    if (L > 1 && vl > 1) {
+      const ux = sx / L, uy = sy / L;
+      for (const [ax, ay] of [[ux, uy], [-uy, ux]]) {
+        const dot = (vx * ax + vy * ay) / vl;
+        if (Math.abs(dot) > Math.cos(4 * D2R)) { const pr = vx * ax + vy * ay; dx = sx + ax * pr; dy = sy + ay * pr; break; }
+      }
+    }
+    act.it.pts[3] = dx; act.it.pts[4] = dy; act.it._cm = null; dirty();
+  } else if (act.kind === 'drag' || act.kind === 'handle') {
+    const [dx, dy] = toDisc(x, y);
+    if (!act.moved) {
+      if (act.kind === 'drag' && Math.hypot(x - act.sx, y - act.sy) < 4) return;
+      act.moved = true; RT.lift = act.it.id; RT.liftItem = act.it; rebuildAll();
+    }
+    let T;
+    if (act.kind === 'drag') T = M.tr(dx - act.start[0], dy - act.start[1]);
+    else {
+      const [qx, qy] = act.q, v0x = act.start[0] - qx, v0y = act.start[1] - qy, v1x = dx - qx, v1y = dy - qy;
+      const s = clamp(Math.hypot(v1x, v1y) / Math.max(1, Math.hypot(v0x, v0y)), 0.05, 40), a = Math.atan2(v1y, v1x) - Math.atan2(v0y, v0x);
+      T = chain(M.tr(qx, qy), M.rot(a), M.sc(s), M.tr(-qx, -qy));
+    }
+    const m = chain(M.inv(act.C), T, act.C, act.m0);
+    RT.liftItem = Object.assign({}, act.it, { m, _cm: null });
+    dirty();
+  } else if (act.kind === 'textTap') {
+    if (Math.hypot(x - act.x, y - act.y) > 12) act.kind = 'none';
+  }
+}
+function toolUp(e, x, y) {
+  const a = act; act = null;
+  if (a.kind === 'draw') {
+    spin.held = false;
+    const it = a.it; livePiece(it, 0, true);
+    it.bb = strokeBB(it.pts);
+    RT.live = null;
+    pushHist(); S.items.push(it);
+    if (it.echo && (it.echo.twirl || it.echo.grow)) { it.anchor = [(it.bb[0] + it.bb[2]) / 2, (it.bb[1] + it.bb[3]) / 2]; it._cm = null; rebuildAll(); }
+    save(); dirty();
+  } else if (a.kind === 'line') {
+    spin.held = false; RT.live = null;
+    const it = a.it, p = it.pts;
+    if (Math.hypot(p[3] - p[0], p[4] - p[1]) * kk() < 3) { dirty(); return; }
+    it.mode = S.tool === 'erase' ? 'erase' : 'pen';
+    it.bb = strokeBB(p); it.anchor = [(p[0] + p[3]) / 2, (p[1] + p[4]) / 2]; it._cm = null;
+    pushHist(); S.items.push(it); liveItem(it); save(); dirty();
+  } else if (a.kind === 'textTap') {
+    openText(a.p);
+  } else if (a.kind === 'drag' || a.kind === 'handle') {
+    if (a.moved && RT.liftItem) {
+      pushHist();
+      const idx = S.items.findIndex(x => x.id === a.it.id);
+      if (idx >= 0) S.items[idx] = RT.liftItem;
+      save();
+    }
+    if (RT.lift) { RT.lift = null; RT.liftItem = null; rebuildAll(); }
+    dirty();
+  }
+}
+function hitTest(dx, dy) {
+  const k = kk();
+  for (let j = S.items.length - 1; j >= 0; j--) {
+    const it = S.items[j]; if (it.type === 'stroke' && it.mode === 'erase') continue;
+    const mats = copyMats(it), m = it.m || ID, bb = localBB(it);
+    for (let i = 0; i < mats.length; i++) {
+      const full = M.mul(mats[i], m), [lx, ly] = M.ap(M.inv(full), dx, dy), pad = 12 / k / M.scale(full);
+      if (lx < bb[0] - pad || lx > bb[2] + pad || ly < bb[1] - pad || ly > bb[3] + pad) continue;
+      if (it.type !== 'stroke') return { it, i, C: mats[i] };
+      const p = it.pts;
+      for (let q = 0; q < p.length; q += 3) if (Math.hypot(p[q] - lx, p[q + 1] - ly) < p[q + 2] / 2 + pad) return { it, i, C: mats[i] };
+    }
+  }
+  return null;
+}
+
+// ---------- selection bar ----------
+function syncSel() {
+  const s = S.tool === 'move' && RT.sel && S.items.find(x => x.id === RT.sel.id);
+  if (!s) RT.sel = null;
+  $('#selbar').classList.toggle('show', !!s);
+  if (s) { $('#sEcho').classList.toggle('on', !!s.echo); $('#sFill').style.display = s.type === 'photo' ? '' : 'none'; }
+  dirty();
+}
+function replaceSel(fn) {
+  const idx = S.items.findIndex(x => x.id === RT.sel?.id); if (idx < 0) return;
+  pushHist(); const it = Object.assign({}, S.items[idx], { _cm: null }); fn(it, idx); rebuildAll(); syncSel(); save();
+}
+$('#sEcho').onclick = () => replaceSel(it => {
+  if (it.echo) it.echo = null; else { it.echo = Object.assign(echoSnap() || { n: S.N, out: 0, twirl: 0, grow: 0, orbit: 0, curve: S.echo.curve }, { n: S.N }); if (!S.echo.on) Object.assign(it.echo, { out: S.echo.out, twirl: S.echo.twirl, grow: S.echo.grow, orbit: S.echo.orbit }); }
+  S.items[S.items.findIndex(x => x.id === it.id)] = it; RT.sel.copy = 0;
+  toast(it.echo ? `Echoed into all ${S.N} frames.` : 'Back to one copy.');
+});
+$('#sFill').onclick = () => replaceSel((it, idx) => {
+  const s = (2 * R) / Math.min(it.w, it.h);
+  it.m = M.sc(s); it.echo = null; S.items.splice(idx, 1); S.items.unshift(it); RT.sel.copy = 0;
+  toast('The photo now covers the record. Drag it to adjust.');
+});
+$('#sFront').onclick = () => replaceSel((it, idx) => { S.items.splice(idx, 1); S.items.push(it); });
+$('#sBack').onclick = () => replaceSel((it, idx) => { S.items.splice(idx, 1); S.items.unshift(it); });
+$('#sDup').onclick = () => replaceSel((it, idx) => {
+  S.items[idx] = it; const c = Object.assign({}, it, { id: uid(), _cm: null, m: M.mul(M.tr(40, 40), it.m || ID) });
+  if (c.pts) c.pts = c.pts.slice(); S.items.push(c); RT.sel = { id: c.id, copy: 0 };
+});
+$('#sDel').onclick = deleteSel;
+$('#sDone').onclick = () => { RT.sel = null; syncSel(); };
+function deleteSel() {
+  const idx = S.items.findIndex(x => x.id === RT.sel?.id); if (idx < 0) return;
+  pushHist(); S.items.splice(idx, 1); RT.sel = null; rebuildAll(); syncSel(); save();
+}
+
+// ---------- text ----------
+let textAt = null;
+function openText(p) { textAt = p; $('#tInput').value = ''; $('#tbox').classList.add('show'); setTimeout(() => $('#tInput').focus(), 50); }
+function commitText() {
+  const str = $('#tInput').value.trim(); $('#tbox').classList.remove('show'); $('#tInput').blur();
+  if (!str || !textAt) return;
+  const size = Math.max(16, S.size * 4);
+  const it = { id: uid(), type: 'text', str, font: S.font, color: S.color, size, tw: measureText(str, S.font, size), m: M.mul(M.tr(textAt[0], textAt[1]), M.rot(-V.th)), echo: echoSnap() };
+  pushHist(); S.items.push(it); liveItem(it); save(); dirty();
+}
+$('#tOk').onclick = commitText;
+$('#tCancel').onclick = () => { $('#tbox').classList.remove('show'); $('#tInput').blur(); };
+$('#tInput').addEventListener('keydown', e => { if (e.key === 'Enter') commitText(); if (e.key === 'Escape') $('#tCancel').click(); e.stopPropagation(); });
+
+// ---------- photos ----------
+$('#bPhoto').onclick = () => $('#filePhoto').click();
+function loadDown(f) {
+  return new Promise((res, rej) => {
+    const u = URL.createObjectURL(f), im = new Image();
+    im.onload = () => {
+      const s = Math.min(1, 1400 / Math.max(im.naturalWidth, im.naturalHeight)), c = mk(im.naturalWidth * s, im.naturalHeight * s);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u);
+      const keepAlpha = /png|gif|webp/.test(f.type);
+      res({ c, url: c.toDataURL(keepAlpha ? 'image/png' : 'image/jpeg', 0.86), w: c.width, h: c.height });
+    };
+    im.onerror = () => { URL.revokeObjectURL(u); rej(new Error('bad image')); };
+    im.src = u;
+  });
+}
+function placePhoto(asset, w, h, frame) {
+  const st = step(), a = frame == null ? -V.th : -frame * st, r0 = LR() + 20, r1 = R * 0.97;
+  const ext = r1 - r0, mid = (r0 + r1) / 2, wid = st >= Math.PI ? ext : 2 * mid * Math.sin(st / 2) * 0.92;
+  const s = Math.min(wid / w, ext * 0.92 / h), pw = w * s, ph = h * s, rc = r1 - ph / 2;
+  return { id: uid(), type: 'photo', asset, w: pw, h: ph, m: M.mul(M.rot(a), M.tr(0, -rc)), echo: frame == null ? echoSnap() : null };
+}
+$('#filePhoto').addEventListener('change', async e => {
+  const files = [...e.target.files].filter(f => /^image\//.test(f.type) || /\.(heic|jpe?g|png|gif|webp)$/i.test(f.name)); e.target.value = '';
+  if (!files.length) return;
+  toast(files.length > 1 ? `Dealing ${files.length} photos into frames…` : 'Placing the photo…', 1500);
+  const f0 = curFrame(), many = files.length > 1, added = [];
+  for (let i = 0; i < files.length; i++) {
+    try {
+      const r = await loadDown(files[i]), id = uid();
+      S.assets[id] = r.url; IM[id] = r.c;
+      added.push(placePhoto(id, r.w, r.h, many ? (f0 + i) % S.N : null));
+    } catch (err) { }
+  }
+  if (!added.length) { toast('That photo would not open here. Try a JPG or PNG.'); return; }
+  pushHist(); S.items.push(...added); rebuildAll(); save();
+  if (many) toast(`${added.length} photos, one per frame, starting at frame ${f0 + 1}.` + (added.length > S.N ? ' There were more photos than frames, so some share a frame.' : ''), 3600);
+  else { setTool('move'); RT.sel = { id: added[0].id, copy: 0 }; syncSel(); toast('Photo placed in the top slot. Drag it, use the corner dot to size and turn it, or tap Echo or Fill disc.', 3600); }
+});
+
+// ---------- history ----------
+function pushHist() { H.u.push(S.items.slice()); if (H.u.length > 150) H.u.shift(); H.r.length = 0; syncHist(); }
+function undo() { if (act) cancelAct(); if (!H.u.length) return; H.r.push(S.items); S.items = H.u.pop(); RT.sel = null; syncSel(); rebuildAll(); syncHist(); save(); }
+function redo() { if (!H.r.length) return; H.u.push(S.items); S.items = H.r.pop(); RT.sel = null; syncSel(); rebuildAll(); syncHist(); save(); }
+function syncHist() { $('#bUndo').disabled = !H.u.length; $('#bRedo').disabled = !H.r.length; }
+$('#bUndo').onclick = undo; $('#bRedo').onclick = redo;
+
+// ---------- view controls ----------
+function zoomAt(x, y, f) { const p = toDisc(x, y); V.z = clamp(V.z * f, 0.35, 16); setCenterFor(p, x, y); RT.wheelT = performance.now(); setTimeout(dirty, 180); dirty(); }
+function zoomBtn(f) {
+  const [cx, cy] = center(), rad = kk() * R;
+  const x = clamp(cx, 0, V.w), y = clamp(cy - rad * 0.62, 0, V.h);
+  zoomAt(x, y, f);
+}
+function fit() { V.z = 1; V.px = 0; V.py = 0; dirty(); }
+$('#bZin').onclick = () => zoomBtn(1.5); $('#bZout').onclick = () => zoomBtn(1 / 1.5); $('#bZfit').onclick = fit;
+view.addEventListener('wheel', e => {
+  e.preventDefault(); const [x, y] = pos(e);
+  if (e.ctrlKey || e.metaKey) zoomAt(x, y, Math.exp(-e.deltaY * 0.01));
+  else if (e.shiftKey || e.altKey) { V.th += (e.deltaY || e.deltaX) * 0.003; spin.phase = V.th; RT.wheelT = performance.now(); setTimeout(dirty, 180); dirty(); }
+  else if (e.deltaMode === 1) zoomAt(x, y, Math.exp(-e.deltaY * 0.12));
+  else { V.px -= e.deltaX; V.py -= e.deltaY; RT.wheelT = performance.now(); setTimeout(dirty, 180); dirty(); }
+}, { passive: false });
+let gs0 = null; // Safari trackpad pinch
+view.addEventListener('gesturestart', e => { e.preventDefault(); if (P.size) return; gs0 = { z: V.z, x: e.clientX, y: e.clientY }; });
+view.addEventListener('gesturechange', e => {
+  e.preventDefault(); if (!gs0 || P.size) return;
+  const r = view.getBoundingClientRect(), x = gs0.x - r.left, y = gs0.y - r.top, p = toDisc(x, y);
+  V.z = clamp(gs0.z * e.scale, 0.35, 16); setCenterFor(p, x, y); RT.wheelT = performance.now(); setTimeout(dirty, 180); dirty();
+});
+view.addEventListener('gestureend', e => { e.preventDefault(); gs0 = null; });
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+$('#bPlay').onclick = () => setPlay(!spin.on);
+$('#bStrobe').onclick = () => { S.strobe = !S.strobe; changed('strobe'); toast(S.strobe ? 'Strobe on. Press play and the frames come alive.' : 'Strobe off. It spins like a plain record.'); };
+$('#bPrev').onclick = () => stepFrame(-1); $('#bNext').onclick = () => stepFrame(1);
+$('#bOnion').onclick = () => { S.onion = !S.onion; changed('onion'); };
+$('#bGuides').onclick = () => { S.guides = !S.guides; changed('guides'); };
+$('#frTxt').onclick = () => openSheet('frames');
+$('#chip').onclick = () => openSheet('spin');
+
+function setTool(t) { S.tool = t; if (t !== 'move') RT.sel = null; syncSel(); syncUI(); updateCursor(); save(); }
+function updateCursor() { view.classList.toggle('grab', S.tool === 'hand'); view.classList.toggle('pointer', S.tool === 'move'); }
+$$('[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+
+// ---------- sheet + generic controls ----------
+let sheetName = null;
+function openSheet(name) {
+  if (sheetName === name && $('#sheet').classList.contains('show')) { closeSheet(); return; }
+  sheetName = name;
+  $$('.panel').forEach(p => p.classList.toggle('show', p.id === 'p-' + name));
+  $('#sheetTitle').textContent = $('#p-' + name).dataset.title;
+  $('#sheet').classList.add('show'); syncUI();
+}
+function closeSheet() { $('#sheet').classList.remove('show'); sheetName = null; syncUI(); }
+$('#sheetClose').onclick = closeSheet;
+$$('[data-p]').forEach(b => b.onclick = () => openSheet(b.dataset.p));
+$('#bFile').onclick = () => openSheet('file');
+
+function getK(k) { return k.split('.').reduce((o, p) => o[p], S); }
+function setK(k, v) { const ps = k.split('.'), last = ps.pop(); ps.reduce((o, p) => o[p], S)[last] = v; changed(k); }
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-k] [data-v]');
+  if (b) { const box = b.closest('[data-k]'); let v = b.dataset.v; if (box.hasAttribute('data-num')) v = +v; if (box.hasAttribute('data-bool2')) v = v === '1'; setK(box.dataset.k, v); return; }
+  const t = e.target.closest('[data-bool]');
+  if (t) setK(t.dataset.k, !getK(t.dataset.k));
+});
+$$('input[type=range][data-k]').forEach(r => r.addEventListener('input', () => setK(r.dataset.k, +r.value)));
+
+function buildSwatches(el, list, key, extra) {
+  el.innerHTML = list.map(c => `<button data-c="${c}" style="background:${c}" title="${c}"></button>`).join('') + `<input type="color" title="Pick any color">`;
+  el.addEventListener('click', e => { const b = e.target.closest('[data-c]'); if (b) setK(key, b.dataset.c); });
+  el.querySelector('input').addEventListener('input', e => setK(key, e.target.value));
+}
+buildSwatches($('#swInk'), INK, 'color'); buildSwatches($('#swDisc'), DISCS, 'bg'); buildSwatches($('#swLabel'), LABELS, 'labelColor');
+$('#nChips').innerHTML = [6, 8, 10, 12, 16, 20, 24, 30, 36, 48].map(n => `<button data-n="${n}">${n}</button>`).join('');
+$('#nChips').addEventListener('click', e => { const b = e.target.closest('[data-n]'); if (b) setK('N', +b.dataset.n); });
+$('#nMinus').onclick = () => setK('N', S.N - 1); $('#nPlus').onclick = () => setK('N', S.N + 1);
+$('#rpmChips').innerHTML = [[16.6667, '16⅔'], [33.3333, '33⅓'], [45, '45'], [78, '78']].map(([v, l]) => `<button data-r="${v}">${l}</button>`).join('');
+$('#rpmChips').addEventListener('click', e => { const b = e.target.closest('[data-r]'); if (b) setK('rpm', +b.dataset.r); });
+$('#echoReset').onclick = () => { Object.assign(S.echo, { out: 0, twirl: 0, grow: 0, orbit: 0 }); changed('echo.out'); };
+function camN() { return S.camFps * 60 / S.rpm; }
+$('#camUse').onclick = () => { setK('N', Math.round(camN())); toast(`Set to ${S.N} frames.`); };
+
+function changed(k) {
+  if (k === 'N') { S.N = clamp(Math.round(S.N), 2, 120); RT.lastFrame = -1; }
+  if (k === 'crackle' && S.crackle) audioOn();
+  if (k === 'penOnly') toast(S.penOnly ? 'Only the pencil draws now. One finger pans, two fingers zoom and turn.' : 'Fingers draw too now.');
+  if (k === 'spinDraw' || k === 'strobe') { spin.phase = V.th; spin.creep = 0; }
+  if (k === 'echo.on' && S.echo.on) toast(`Echo on. What you draw now repeats in all ${S.N} frames.`);
+  syncUI(); save(); dirty();
+}
+
+function syncUI() {
+  $$('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === S.tool));
+  $$('[data-p]').forEach(b => b.classList.toggle('on', $('#sheet').classList.contains('show') && sheetName === b.dataset.p));
+  $('#bFile').classList.toggle('on', sheetName === 'file' && $('#sheet').classList.contains('show'));
+  $('#inkDot').style.background = S.color;
+  $('#bEcho').classList.toggle('lit', S.echo.on); $('#echoLbl').textContent = S.echo.on ? `Echo ×${S.N}` : 'Echo';
+  $('#bGuides').classList.toggle('lit', S.guides);
+  $('#bOnion').classList.toggle('on', S.onion);
+  $('#bStrobe').classList.toggle('on', S.strobe);
+  const pb = $('#bPlay'); pb.classList.toggle('on', spin.on); pb.innerHTML = icon(spin.on ? 'pause' : 'play');
+  const fps = S.rpm / 60 * S.N;
+  $('#rpmTxt').textContent = rpmLabel(); $('#fpsTxt').textContent = S.strobe ? `RPM · ${fps < 10 ? fps.toFixed(1) : Math.round(fps)} fps` : 'RPM';
+  $('#rpmOut').textContent = rpmLabel() + ' RPM';
+  $('#spinTxt').textContent = `With ${S.N} frames at ${rpmLabel()} RPM the strobe shows ${fps.toFixed(1)} frames a second. ` +
+    (fps > 60 ? 'That is faster than most screens can show, so it may stutter. Slow it down or use fewer frames.' : fps < 6 ? 'That is slow and choppy, which can look great.' : 'Around 8 to 15 feels like hand-drawn animation.');
+  const cn = camN(), cr = Math.round(cn);
+  $('#camTxt').textContent = `A phone filming at ${S.camFps} fps sees a ${rpmLabel()} RPM record move ${cn.toFixed(1)} slots per turn. ` +
+    (cr >= 2 && cr <= 120 ? `Use ${cr} frames${Math.abs(cn - cr) > 0.05 ? ' (close, so it will drift a little)' : ''} and each shot lands on the next frame. Bright light helps the camera use a fast shutter.` : 'That is outside the 2 to 120 frame range. Try another speed.');
+  $('#camUse').style.display = cr >= 2 && cr <= 120 ? '' : 'none';
+  $('#nTxt').textContent = S.N;
+  $$('#nChips [data-n]').forEach(b => b.classList.toggle('on', +b.dataset.n === S.N));
+  $$('#rpmChips [data-r]').forEach(b => b.classList.toggle('on', Math.abs(+b.dataset.r - S.rpm) < 0.02));
+  $$('[data-k]').forEach(el => {
+    const k = el.dataset.k; let v; try { v = getK(k); } catch (_) { return; }
+    if (el.matches('input[type=range]')) el.value = v;
+    else if (el.hasAttribute('data-bool')) { el.classList.toggle('on', !!v); if (el.classList.contains('big-tog')) el.textContent = v ? `Echo is on: ${S.N} frames` : 'Echo is off'; }
+    else el.querySelectorAll('[data-v]').forEach(b => { let bv = b.dataset.v; if (el.hasAttribute('data-num')) bv = +bv; if (el.hasAttribute('data-bool2')) bv = bv === '1'; b.classList.toggle('on', bv === v); });
+  });
+  const fmt = { size: v => v, 'echo.out': v => (v > 0 ? '+' : '') + v, 'echo.twirl': v => v + '° a frame', 'echo.grow': v => (v > 0 ? '+' : '') + v + '% a frame', 'echo.orbit': v => v + '° a frame', creep: v => v + '° a second' };
+  $$('[data-o]').forEach(o => { const k = o.dataset.o; o.textContent = fmt[k] ? fmt[k](getK(k)) : getK(k); });
+  $$('.swatches [data-c]').forEach(b => { const box = b.parentElement.id, key = box === 'swInk' ? 'color' : box === 'swDisc' ? 'bg' : 'labelColor'; b.classList.toggle('on', b.dataset.c.toLowerCase() === String(S[key]).toLowerCase()); });
+  const sz = clamp(S.size * kk() * 0.85, 2, 52); const sp = $('#sizePrev i'); sp.style.width = sp.style.height = sz + 'px'; sp.style.background = S.color;
+  syncHist();
+}
+
+// ---------- keyboard ----------
+addEventListener('keydown', e => {
+  if (e.target.matches('input,textarea')) return;
+  const mod = e.metaKey || e.ctrlKey, key = e.key.toLowerCase();
+  if (mod && key === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && key === 'y') { e.preventDefault(); redo(); return; }
+  if (mod && key === 's') { e.preventDefault(); saveFile(); return; }
+  if (mod) return;
+  if (e.key === ' ') { e.preventDefault(); if (!e.repeat) { RT.space = true; RT.spaceUsed = false; } return; }
+  const map = { b: 'pen', p: 'pen', l: 'line', e: 'erase', t: 'text', v: 'move', h: 'hand' };
+  if (map[key]) { setTool(map[key]); return; }
+  switch (e.key) {
+    case 'ArrowRight': case '.': stepFrame(1); break;
+    case 'ArrowLeft': case ',': stepFrame(-1); break;
+    case 's': case 'S': $('#bStrobe').click(); break;
+    case 'g': case 'G': $('#bGuides').click(); break;
+    case 'o': case 'O': $('#bOnion').click(); break;
+    case '[': setK('size', clamp(S.size - (S.size > 20 ? 4 : 1), 1, 160)); break;
+    case ']': setK('size', clamp(S.size + (S.size >= 20 ? 4 : 1), 1, 160)); break;
+    case '=': case '+': zoomBtn(1.4); break;
+    case '-': case '_': zoomBtn(1 / 1.4); break;
+    case '0': fit(); break;
+    case 'Delete': case 'Backspace': if (RT.sel) { e.preventDefault(); deleteSel(); } break;
+    case 'Escape': if (RT.sel) { RT.sel = null; syncSel(); } else closeSheet(); break;
+    case '?': showHelp(0); break;
+  }
+});
+addEventListener('keyup', e => {
+  if (e.key === ' ') { if (RT.space && !RT.spaceUsed && !e.target.matches('input,textarea')) setPlay(!spin.on); RT.space = false; }
+});
+
+// ---------- export ----------
+async function deliver(blob, name) {
+  try {
+    const file = new File([blob], name, { type: blob.type });
+    if (COARSE && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Zooparty' }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+}
+function renderDisc(size, o = {}) {
+  const c = mk(size, size), g = c.getContext('2d'), s = size / (2 * R);
+  const cc = mk(size, size), cg = cc.getContext('2d'); cg.setTransform(s, 0, 0, s, size / 2, size / 2);
+  for (const it of S.items) drawItem(cg, it, true);
+  g.setTransform(s, 0, 0, s, size / 2, size / 2);
+  g.save(); g.beginPath(); g.arc(0, 0, R, 0, TAU); g.clip();
+  drawBgDisc(g, 1 / s);
+  g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(cc, 0, 0); g.setTransform(s, 0, 0, s, size / 2, size / 2);
+  if (o.guides) drawGuides(g, 1 / s, true);
+  g.restore();
+  const hr = R * 0.02375;
+  if (o.cut) {
+    g.strokeStyle = '#000'; g.lineWidth = 1.2 / s; g.beginPath(); g.arc(0, 0, R - 0.6 / s, 0, TAU); g.stroke();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(0, 0, hr, 0, TAU); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(-hr * 2, 0); g.lineTo(hr * 2, 0); g.moveTo(0, -hr * 2); g.lineTo(0, hr * 2); g.stroke();
+  } else { g.globalCompositeOperation = 'destination-out'; g.beginPath(); g.arc(0, 0, hr, 0, TAU); g.fill(); g.globalCompositeOperation = 'source-over'; }
+  return c;
+}
+const toBlob = (c, type = 'image/png', q) => new Promise(r => c.toBlob(r, type, q));
+$('#fPng').onclick = async () => { closeSheet(); toast('Rendering…', 1200); await idle(); deliver(await toBlob(renderDisc(2400)), 'zooparty.png'); };
+$('#fPrint').onclick = async () => {
+  closeSheet(); toast('Rendering the print template…', 1500); await idle();
+  const inch = S.printIn, px = Math.min(3600, inch * 300), size = Math.round(px);
+  const disc = renderDisc(size, { cut: true, guides: S.printLines });
+  const page = mk(size + 120, size + 120), pg = page.getContext('2d');
+  pg.fillStyle = '#fff'; pg.fillRect(0, 0, page.width, page.height); pg.drawImage(disc, 60, 60);
+  pg.fillStyle = '#555'; pg.font = '22px Arial'; pg.fillText(`Zooparty · ${inch} inch disc · ${S.N} frames · ${rpmLabel()} RPM · print at 100% (300 dpi) · cut on the outer line`, 60, 40);
+  deliver(await toBlob(page), `zooparty-${inch}in-print.png`);
+  toast(`Print it at 100 percent so it measures ${inch} inches across.`, 3500);
+};
+let gifLib = null;
+async function loadGif() {
+  if (gifLib) return gifLib;
+  await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  const txt = await (await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js')).text();
+  gifLib = { worker: URL.createObjectURL(new Blob([txt], { type: 'text/javascript' })) }; return gifLib;
+}
+async function exportGif(kind) {
+  closeSheet();
+  toast('Building the GIF…', 5000);
+  let lib; try { lib = await loadGif(); } catch (e) { toast('Could not load the GIF maker (offline?). Try Record a video instead.', 3500); return; }
+  const n = S.N, st = TAU / n, fps = S.rpm / 60 * n, delay = clamp(Math.round(1000 / fps / 10) * 10, 20, 2000);
+  const slot = kind === 'slot', out = slot ? 480 : 600, D = renderDisc(slot ? 2400 : 1200);
+  const c = mk(out, out), g = c.getContext('2d');
+  const gif = new GIF({ workers: 2, quality: 8, workerScript: lib.worker, width: out, height: out });
+  const r0 = LR(), side = clamp(Math.max(2 * R * Math.sin(Math.min(st / 2, Math.PI / 2)) * 0.8, R - r0) * 1.04, 240, 2 * R), rc = Math.min((R + r0) / 2, R - side / 2 + 20);
+  for (let i = 0; i < n; i++) {
+    const th = S.dir * i * st;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#17161c'; g.fillRect(0, 0, out, out);
+    if (slot) { const sc = out / side; g.setTransform(sc, 0, 0, sc, out / 2, out / 2 + rc * sc); }
+    else { const sc = out / (2 * R * 1.04); g.setTransform(sc, 0, 0, sc, out / 2, out / 2); }
+    g.rotate(th); g.drawImage(D, -R, -R, 2 * R, 2 * R);
+    gif.addFrame(c, { delay, copy: true });
+    if (i % 4 === 0) await idle();
+  }
+  gif.on('finished', b => { toast('GIF ready'); deliver(b, `zooparty-${slot ? 'animation' : 'spin'}.gif`); });
+  gif.render();
+}
+$('#fGifDisc').onclick = () => exportGif('disc');
+$('#fGifSlot').onclick = () => exportGif('slot');
+let recording = null;
+$('#fVideo').onclick = () => {
+  closeSheet();
+  if (recording) return;
+  const size = 1080, c = mk(size, size), g = c.getContext('2d');
+  if (!c.captureStream || !window.MediaRecorder) { toast('Video recording is not supported in this browser. Try the GIF.'); return; }
+  const D = renderDisc(1440), stream = c.captureStream(60);
+  const mime = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+  let rec; try { rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 8e6 } : undefined); } catch (e) { toast('Could not start recording.'); return; }
+  const chunks = []; rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  rec.onstop = () => { recording = null; $('#recdot').classList.remove('show'); const b = new Blob(chunks, { type: rec.mimeType || mime || 'video/webm' }); deliver(b, 'zooparty.' + (b.type.includes('mp4') ? 'mp4' : 'webm')); };
+  const st = step(), w = S.dir * S.rpm / 60 * TAU, dur = clamp(2 * 60 / S.rpm, 4, 12), t0 = performance.now(), sc = size / (2 * R * 1.04);
+  recording = rec; $('#recdot').classList.add('show'); rec.start(250);
+  toast(`Recording ${Math.round(dur)} seconds of spin${S.strobe ? ' with the strobe' : ''}.`, 2500);
+  (function frame() {
+    const t = (performance.now() - t0) / 1000; let th = w * t;
+    if (S.strobe) th = Math.round(th / st) * st + S.creep * D2R * t;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#17161c'; g.fillRect(0, 0, size, size);
+    g.setTransform(sc, 0, 0, sc, size / 2, size / 2); g.rotate(th); g.drawImage(D, -R, -R, 2 * R, 2 * R);
+    if (t < dur) requestAnimationFrame(frame); else rec.stop();
+  })();
+};
+
+// ---------- save / load ----------
+function docData() {
+  const used = new Set(S.items.filter(i => i.type === 'photo').map(i => i.asset)), assets = {};
+  for (const id of used) if (S.assets[id]) assets[id] = S.assets[id];
+  const items = S.items.map(({ _cm, ...rest }) => rest);
+  return Object.assign({}, S, { items, assets, app: 'zooparty', v: 1 });
+}
+const DB = {
+  open() { return new Promise((res, rej) => { const r = indexedDB.open('zooparty', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+  async put(v) { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, 'doc'); t.oncomplete = res; t.onerror = () => rej(t.error); }); },
+  async get() { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('kv'); const r = t.objectStore('kv').get('doc'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+};
+let saveT = 0;
+function save() { clearTimeout(saveT); saveT = setTimeout(() => { DB.put(docData()).catch(() => { }); }, 700); }
+function applyDoc(d) {
+  const base = DEF();
+  S = Object.assign(base, d); S.echo = Object.assign(DEF().echo, d.echo || {});
+  S.items = (d.items || []).filter(i => i && i.type); S.assets = d.assets || {};
+  delete S.app; delete S.v;
+  for (const k in IM) delete IM[k];
+  H.u.length = 0; H.r.length = 0; RT.sel = null;
+}
+function saveFile() {
+  const blob = new Blob([JSON.stringify(docData())], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'my-record.zoo.json'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+  toast('Saved a project file. Open it here any time to keep working.');
+}
+$('#fSave').onclick = () => { closeSheet(); saveFile(); };
+$('#fOpen').onclick = () => $('#fileOpen').click();
+$('#fileOpen').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text()); if (d.app !== 'zooparty') throw new Error('not ours');
+    const keep = { penOnly: S.penOnly, seenHelp: true }; applyDoc(d); Object.assign(S, keep);
+    closeSheet(); rebuildAll(); syncUI(); syncSel(); save(); toast('Opened.');
+  } catch (err) { toast('That file is not a Zooparty project.'); }
+});
+$('#fNew').onclick = () => { closeSheet(); pushHist(); S.items = []; RT.sel = null; syncSel(); rebuildAll(); save(); toast('Fresh record. Undo brings the old one back.'); };
+$('#fHelp').onclick = () => { closeSheet(); showHelp(0); };
+$('#fKeys').onclick = () => { closeSheet(); $('#keys').classList.add('show'); };
+$('#kOk').onclick = () => $('#keys').classList.remove('show');
+
+// ---------- toast ----------
+let toastT = 0;
+function toast(msg, ms = 2400) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
+
+// ---------- help ----------
+const HELP = [
+  ['Draw in the slot at the top.', 'The lit slot is one frame. Press the arrow to turn the record one frame, then draw the next step. The eye button ghosts the frames next door in red and green.', 'slot'],
+  ['Press play. Then press the lightning.', 'Play spins the record like a turntable. The lightning is the strobe: it shows the record once per frame, and your drawings start to move. That is the zoetrope trick.', 'strobe'],
+  ['Echo: draw once, land in every frame.', 'Turn on Echo and every mark repeats all the way around. Give it some Out, Twirl or Grow and each copy moves a little more than the last. Instant animation.', 'echo'],
+  ['Zoom in for the small stuff.', 'Pinch to zoom. Twist two fingers to turn the record, or grab the rim and spin it by hand. With an Apple Pencil, the pencil draws and your fingers move things. Tap with two fingers to undo.', 'zoom'],
+  ['Bring photos.', 'Pick one photo to place it in the top slot. Pick a handful and they deal out one per frame, so a burst of shots becomes a loop.', 'photo'],
+  ['Make a real one.', 'The menu prints a template with a cut line and a spindle hole. Glue it to card, put it on a record player, and film it with your phone. The Frames panel tells you how many frames match your camera.', 'real']
+];
+let hI = 0;
+function helpArt(kind) {
+  const c = mk(240, 240), g = c.getContext('2d'); g.translate(120, 120);
+  g.fillStyle = '#141318'; g.beginPath(); g.arc(0, 0, 100, 0, TAU); g.fill();
+  g.fillStyle = '#ff5d73'; g.beginPath(); g.arc(0, 0, 30, 0, TAU); g.fill();
+  const n = 8, st = TAU / n; g.strokeStyle = 'rgba(255,255,255,.4)'; g.setLineDash([3, 4]); g.lineWidth = 1.2;
+  for (let k = 0; k < n; k++) { const a = -(k + 0.5) * st; g.beginPath(); g.moveTo(30 * Math.sin(a), -30 * Math.cos(a)); g.lineTo(100 * Math.sin(a), -100 * Math.cos(a)); g.stroke(); }
+  g.setLineDash([]);
+  const cols = ['#ffc145', '#5fd4a0', '#4d9de0', '#ff9ecd'];
+  for (let k = 0; k < n; k++) {
+    g.save(); g.rotate(-k * st);
+    if (kind === 'echo' || kind === 'strobe' || kind === 'real') { g.fillStyle = cols[0]; g.beginPath(); g.arc(0, -55 - 18 * Math.sin(k / n * Math.PI), 9 + (kind === 'echo' ? k * 0.6 : 0), 0, TAU); g.fill(); }
+    else if (kind === 'photo') { g.fillStyle = cols[k % 4]; g.fillRect(-14, -92, 28, 34); }
+    else if (k === 0) { g.strokeStyle = cols[0]; g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); g.moveTo(-10, -70); g.quadraticCurveTo(0, -95, 12, -66); g.stroke(); }
+    g.restore();
+  }
+  if (kind === 'slot' || kind === 'zoom') { g.strokeStyle = '#ffc145'; g.lineWidth = 2; g.beginPath(); wedge(g, 0, 0, 30, 100, -st / 2, st / 2); g.stroke(); }
+  if (kind === 'zoom') { g.strokeStyle = '#f6f1e7'; g.lineWidth = 3; g.beginPath(); g.arc(0, -70, 34, 0, TAU); g.stroke(); g.beginPath(); g.moveTo(24, -46); g.lineTo(46, -24); g.stroke(); }
+  if (kind === 'strobe') { g.fillStyle = '#ffc145'; g.beginPath(); g.moveTo(8, -10); g.lineTo(-10, 6); g.lineTo(0, 6); g.lineTo(-4, 18); g.lineTo(12, 0); g.lineTo(2, 0); g.closePath(); g.fill(); }
+  c.style.width = c.style.height = '120px'; return c;
+}
+function showHelp(i) {
+  hI = i; const h = HELP[i];
+  $('#hTitle').textContent = h[0]; $('#hBody').textContent = h[1];
+  $('#hArt').innerHTML = ''; $('#hArt').appendChild(helpArt(h[2]));
+  $('#hDots').innerHTML = HELP.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('');
+  $('#hNext').textContent = i === HELP.length - 1 ? "Let's go" : 'Next';
+  $('#help').classList.add('show');
+}
+function closeHelp() { $('#help').classList.remove('show'); if (!S.seenHelp) { S.seenHelp = true; save(); } }
+$('#hNext').onclick = () => hI < HELP.length - 1 ? showHelp(hI + 1) : closeHelp();
+$('#hSkip').onclick = closeHelp;
+
+// ---------- starter record ----------
+function starter() {
+  S = DEF();
+  const e = o => Object.assign({ n: 12, out: 0, twirl: 0, grow: 0, orbit: 0, curve: 'ramp' }, o);
+  const dot = (x, y, w, color, echo) => ({ id: uid(), type: 'stroke', mode: 'pen', color, pts: [x, y, w], anchor: [x, y], echo, bb: [x - w / 2, y - w / 2, x + w / 2, y + w / 2] });
+  const line = (x0, y0, x1, y1, w, color, echo, anchor) => ({ id: uid(), type: 'stroke', mode: 'pen', color, pts: [x0, y0, w, x1, y1, w], anchor, echo, bb: strokeBB([x0, y0, w, x1, y1, w]) });
+  S.items = [
+    dot(0, -945, 22, '#f6f1e7', e({})),
+    dot(0, -420, 120, '#ffc145', e({ out: 34, curve: 'wave' })),
+    line(-62, -800, 62, -800, 22, '#5fd4a0', e({ twirl: 15 }), [0, -800]),
+    line(0, -862, 0, -738, 22, '#5fd4a0', e({ twirl: 15 }), [0, -800]),
+    dot(0, -660, 40, '#ff9ecd', e({ orbit: 30 }))
+  ];
+}
+
+// ---------- loop + boot ----------
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  tickSpin(dt); tickAnim(now);
+  if (act && act.kind === 'draw' && spin.vel !== 0) addPoint(act.lx, act.ly, act.lw);
+  updateAudio();
+  if (RT.dirty || spin.vel !== 0 || V.anim) render();
+  requestAnimationFrame(loop);
+}
+addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe($('#stage'));
+document.addEventListener('visibilitychange', () => { if (document.hidden) { if (act) cancelAct(); P.clear(); DB.put(docData()).catch(() => { }); } });
+
+(async function boot() {
+  let d = null; try { d = await DB.get(); } catch (e) { }
+  if (d && d.app === 'zooparty') applyDoc(d); else starter();
+  const q = new URLSearchParams(location.search);
+  if (q.has('fresh')) { const pen = S.penOnly; starter(); S.penOnly = pen; S.seenHelp = true; }
+  resize(); rebuildAll(); updateCursor(); syncUI(); syncSel(); syncHist();
+  requestAnimationFrame(loop);
+  if (!S.seenHelp) showHelp(0);
+})();
+</script>
+</body>
+</html>
