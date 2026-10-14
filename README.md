@@ -9,8 +9,6 @@ lens101-site/
   index.html                      landing page
   assets/css/site.css             shared styles
   gallery/
-    belafonte.html                framing page for the Three.js piece
-    belafonte-aquatic/            the piece itself (its own index.html + vendor/)
   guides/
     procreate-stop-motion.html    Animation Assist guide, three embedded YouTube tutorials
 ```
@@ -25,7 +23,7 @@ Any static server works. From this folder:
 python3 -m http.server 8000
 ```
 
-Then open <http://localhost:8000>. (Plain `file://` works for most of it but the Belafonte iframe loads cleaner over HTTP.)
+Then open <http://localhost:8000>.
 
 ## Deploy to GitHub Pages
 
