@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LoopGrid Help</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --fg: #22211f; --muted: #6b6862; --line: #e3e0d8;
+    --card: #f2efe8; --key-bg: #ffffff; --key-line: #cfcabf; --accent: #2f7f78;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161617; --fg: #e9e7e3; --muted: #9a968f; --line: #2c2b29;
+      --card: #201f1e; --key-bg: #2a2928; --key-line: #45433f; --accent: #5cc3b8;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  }
+  .wrap { display: grid; grid-template-columns: 210px minmax(0, 1fr); max-width: 1080px; margin: 0 auto; }
+  nav {
+    position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+    padding: 28px 16px 28px 24px; border-right: 1px solid var(--line); font-size: 13px;
+  }
+  nav .title { font-size: 17px; font-weight: 700; margin-bottom: 14px; }
+  nav a { display: block; color: var(--muted); text-decoration: none; padding: 3px 0; }
+  nav a:hover { color: var(--accent); }
+  main { padding: 28px 40px 80px; min-width: 0; }
+  h1 { font-size: 30px; margin: 0 0 6px; }
+  h2 { font-size: 21px; margin: 44px 0 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 24px 0 6px; }
+  p, li { max-width: 68ch; }
+  .lede { color: var(--muted); font-size: 16px; margin-top: 0; }
+  kbd {
+    display: inline-block; min-width: 1.6em; padding: 1px 6px; text-align: center;
+    font: 12px/1.5 ui-monospace, Menlo, monospace; background: var(--key-bg);
+    border: 1px solid var(--key-line); border-bottom-width: 2px; border-radius: 5px;
+  }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0 4px; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  td:first-child { white-space: nowrap; }
+  .card { background: var(--card); border-radius: 10px; padding: 14px 18px; margin: 14px 0; }
+  .card p:first-child { margin-top: 0; } .card p:last-child { margin-bottom: 0; }
+  ol.steps li { margin-bottom: 6px; }
+  .tag { color: var(--accent); font-weight: 600; }
+  @media (max-width: 760px) {
+    .wrap { grid-template-columns: 1fr; }
+    nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+    main { padding: 20px 16px 60px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <div class="title">LoopGrid</div>
+  <a href="#start">Your first loop</a>
+  <a href="#screen">The screen</a>
+  <a href="#keys">All keys</a>
+  <a href="#recording">Recording loops</a>
+  <a href="#sync">Loop sync and snapping</a>
+  <a href="#tempo">Tempo, click and count-in</a>
+  <a href="#tiles">Mute, delete, select</a>
+  <a href="#effects">Effects: octave and reverb</a>
+  <a href="#reverse">Reverse</a>
+  <a href="#repeat">Beat repeat</a>
+  <a href="#speed">Half speed</a>
+  <a href="#overlay">Overlay (onion skin)</a>
+  <a href="#vfx">Video effects</a>
+  <a href="#inputs">RC-505, interfaces, iPhone camera</a>
+  <a href="#export">Recording a performance file</a>
+  <a href="#calibrate">Lining up picture and sound</a>
+  <a href="#settings">Settings</a>
+  <a href="#limits">Limits</a>
+  <a href="#trouble">Troubleshooting</a>
+  <a href="#later">Coming later</a>
+</nav>
+<main>
+
+<h1>LoopGrid</h1>
+<p class="lede">A video looper. You record a take of yourself, it loops right away with its sound, and each loop gets its own tile on screen. It plays like an RC-505: one key to record, the same key to close the loop, and every loop locked to the same clock.</p>
+
+<h2 id="start">Your first loop</h2>
+<ol class="steps">
+  <li>Plug in headphones, or use your interface's direct monitoring. The Mac speakers will feed back into the mic.</li>
+  <li>Open LoopGrid from the dashboard's LoopGrid button. The first time, allow the camera and the microphone.</li>
+  <li>Press <kbd>Space</kbd>. The live tile turns red: you're recording.</li>
+  <li>Play a phrase, then press <kbd>Space</kbd> again right where it should repeat. It starts looping at once.</li>
+  <li>Press <kbd>Space</kbd> to record the next layer. It locks to the length of the first loop, so it lands in time even if your press was a little off.</li>
+</ol>
+<div class="card"><p>The first loop sets the length for everything after it. Take your time with that one.</p></div>
+
+<h2 id="screen">The screen</h2>
+<h3>Tiles</h3>
+<p>Each loop is a tile, filling left to right, oldest first. The grid resizes itself as you add loops: one tile fills the screen, two sit side by side, then 2 by 2, 3 by 2, and 3 by 3.</p>
+<p>The live tile is your camera, sitting in the next open spot. A grey border means waiting, red means recording, orange means counting in. Once all 9 loops are full, the live tile goes away.</p>
+<p>Every loop tile carries its own controls:</p>
+<table>
+  <tr><th>On the tile</th><th>What it does</th></tr>
+  <tr><td>The number, top left</td><td>Click to mute or unmute. A muted loop goes dim and silent.</td></tr>
+  <tr><td>8vb</td><td>Adds a copy one octave below. Teal when on.</td></tr>
+  <tr><td>REV</td><td>Sends the loop to the reverb. Teal when on.</td></tr>
+  <tr><td>x, top right</td><td>Deletes the loop.</td></tr>
+  <tr><td>Teal outline</td><td>The selected loop, the one <kbd>O</kbd> and <kbd>V</kbd> act on.</td></tr>
+</table>
+<h3>Controls bar</h3>
+<p>Every function is a button with its key printed on it. Click it or press the key, whichever is closer. The Space button tells you what Space will do next: Record, Close loop, or Next take. A dot on a button shows whether that setting is on. <kbd>H</kbd> hides the bar and brings it back.</p>
+<h3>Status bar</h3>
+<p>Along the bottom, left to right: what the looper is doing (IDLE, COUNT, REC, ARMED), the tempo or FREE, four beat dots with beat 1 in orange, which settings are on, how many loops you have, a red FILE timer while a performance is recording, the camera offset, memory used out of 3 GB, and the input level meter.</p>
+
+<h2 id="keys">All keys</h2>
+<table>
+  <tr><th>Key</th><th>What it does</th></tr>
+  <tr><td><kbd>Space</kbd></td><td>Record, close the loop, start the next take</td></tr>
+  <tr><td><kbd>Esc</kbd></td><td>Throw away the take in progress (or cancel a count-in)</td></tr>
+  <tr><td><kbd>⌫</kbd></td><td>Delete the newest loop (during a take, throws the take away)</td></tr>
+  <tr><td><kbd>1</kbd> to <kbd>9</kbd></td><td>Mute or unmute that loop</td></tr>
+  <tr><td><kbd>⇧</kbd> + <kbd>1</kbd> to <kbd>9</kbd></td><td>Delete that loop</td></tr>
+  <tr><td><kbd>⇧</kbd> + <kbd>⌫</kbd></td><td>Clear every loop and start over</td></tr>
+  <tr><td><kbd>Tab</kbd></td><td>Select the next loop</td></tr>
+  <tr><td><kbd>O</kbd></td><td>Octave down on the selected loop</td></tr>
+  <tr><td><kbd>V</kbd></td><td>Reverb on the selected loop</td></tr>
+  <tr><td><kbd>⇧</kbd> + <kbd>O</kbd></td><td>Octave down on the live sound</td></tr>
+  <tr><td><kbd>⇧</kbd> + <kbd>V</kbd></td><td>Reverb on the live sound</td></tr>
+  <tr><td><kbd>-</kbd></td><td>Half speed on the selected loop, on or off</td></tr>
+  <tr><td><kbd>G</kbd></td><td>Overlay: every loop layered in one tile, or back to the grid</td></tr>
+  <tr><td><kbd>Z</kbd></td><td>Bring back the last deleted loop, or every loop after Clear all</td></tr>
+  <tr><td><kbd>↑</kbd> and <kbd>↓</kbd></td><td>Volume of the selected loop, 10 percent a step; the tile dims with it</td></tr>
+  <tr><td><kbd>B</kbd></td><td>Play the selected loop backwards, sound and picture</td></tr>
+  <tr><td>Hold <kbd>X</kbd></td><td>Beat repeat: every loop stutters on an eighth note (<kbd>⇧</kbd> for a sixteenth) until you let go</td></tr>
+  <tr><td><kbd>E</kbd></td><td>Next video effect on the selected loop: Paint, Comic, Ink, none</td></tr>
+  <tr><td><kbd>⇧</kbd> + <kbd>E</kbd></td><td>Next video effect on the camera; the next take keeps it</td></tr>
+  <tr><td><kbd>T</kbd></td><td>Tap tempo (before the first loop)</td></tr>
+  <tr><td><kbd>F</kbd></td><td>Back to free mode, no tempo (no loops only)</td></tr>
+  <tr><td><kbd>M</kbd></td><td>Click on or off</td></tr>
+  <tr><td><kbd>C</kbd></td><td>Count-in on or off</td></tr>
+  <tr><td><kbd>Q</kbd></td><td>Quantize on or off (starts off)</td></tr>
+  <tr><td><kbd>S</kbd></td><td>Loop sync on or off (starts on)</td></tr>
+  <tr><td><kbd>R</kbd></td><td>Start or stop recording a performance file</td></tr>
+  <tr><td><kbd>[</kbd> and <kbd>]</kbd></td><td>Nudge the camera offset 5 ms earlier or later</td></tr>
+  <tr><td><kbd>H</kbd></td><td>Hide or show the controls bar</td></tr>
+  <tr><td><kbd>?</kbd> or <kbd>⌘</kbd> + <kbd>?</kbd></td><td>This help</td></tr>
+  <tr><td><kbd>⌘</kbd> + <kbd>,</kbd></td><td>Settings</td></tr>
+  <tr><td><kbd>⌃</kbd> + <kbd>⌘</kbd> + <kbd>F</kbd></td><td>Full screen</td></tr>
+</table>
+
+<h2 id="recording">Recording loops</h2>
+<p>Space moves the looper through three states:</p>
+<table>
+  <tr><th>State</th><th>What's happening</th><th>Space does</th></tr>
+  <tr><td>IDLE</td><td>No loops yet</td><td>Starts the first take</td></tr>
+  <tr><td>REC</td><td>Recording a take</td><td>Closes it; it loops right away</td></tr>
+  <tr><td>ARMED</td><td>Loops playing, waiting for you</td><td>Starts the next take, loops keep playing</td></tr>
+</table>
+<p>A new loop starts playing in the right place against the others, as if it had always been there. You never wait for the top of the cycle.</p>
+<p>Sometimes the status reads CLOSING for a moment. That happens when your press came a little early: the take keeps recording until the length it snapped to, then closes on its own.</p>
+
+<h2 id="sync">Loop sync and snapping</h2>
+<p>With loop sync on (the default), the first loop sets the master length. Every later take snaps to the nearest of a quarter, half, 1, 2, 3 or 4 times that length. A take that runs a bit long or short still loops cleanly against the rest.</p>
+<p>Press <kbd>S</kbd> to turn sync off. Takes then keep the exact length you played, which suits free-floating textures that drift against each other.</p>
+<p>Quantize (<kbd>Q</kbd>, off at first) also snaps where a take starts and ends: to the nearest beat in tempo mode, or to the nearest quarter of the first loop in free mode. LoopGrid keeps the last few seconds of camera and sound in a buffer, so a press that comes slightly late can still snap back to the beat you meant.</p>
+
+<h2 id="tempo">Tempo, click and count-in</h2>
+<h3>Free mode and tempo mode</h3>
+<p>LoopGrid starts in free mode: no tempo, and the first loop is exactly as long as you play it. Tap <kbd>T</kbd> at least twice before the first loop to set a tempo. You're then in tempo mode, and every loop snaps to whole bars of 4. <kbd>F</kbd> takes you back to free mode, but only while there are no loops.</p>
+<h3>Click</h3>
+<p><kbd>M</kbd> turns the click on and off. It starts off. Beat 1 is higher, and the click is never recorded into loops or into a performance file.</p>
+<h3>The first loop sets the tempo</h3>
+<p>In free mode you don't need to tap anything. When the first loop closes, LoopGrid reads it as 1, 2, 4 or 8 bars of 4/4, whichever gives a tempo between 80 and 160 BPM, and the status bar shows it with "auto". The beat is exactly the loop length divided by the beats, so the click stays locked to the loop forever. Press <kbd>M</kbd> any time after that to hear it.</p>
+<p>A detected tempo only drives the click and the beat dots. Snapping keeps the free-mode rules, so nothing about how your loops line up changes. Deleting every loop forgets it. If the guess is twice or half what you feel, the click still lands on your beats, just at double or half time.</p>
+<h3>Count-in</h3>
+<p>With count-in on (<kbd>C</kbd>) and a tempo set, pressing <kbd>Space</kbd> for the first loop plays one bar of click while a big 1, 2, 3, 4 counts down on screen. Recording starts exactly on the next downbeat, and that downbeat becomes beat 1 of the piece.</p>
+<ul>
+  <li>Space or Esc during the count cancels it.</li>
+  <li>The count-in clicks even if the click itself is off.</li>
+  <li>Count-in only applies to the first loop; after that, the loops keep time for you.</li>
+  <li>Without a tempo there is nothing to count, so LoopGrid reminds you to tap <kbd>T</kbd> first.</li>
+</ul>
+
+<h2 id="tiles">Mute, delete, select</h2>
+<table>
+  <tr><th>To</th><th>Key</th><th>Or click</th></tr>
+  <tr><td>Mute a loop</td><td><kbd>1</kbd> to <kbd>9</kbd></td><td>The tile's number</td></tr>
+  <tr><td>Delete the newest loop</td><td><kbd>⌫</kbd></td><td>Delete last loop, in the controls bar</td></tr>
+  <tr><td>Delete any loop</td><td><kbd>⇧</kbd> + its number</td><td>The tile's x</td></tr>
+  <tr><td>Clear everything</td><td><kbd>⇧</kbd> + <kbd>⌫</kbd></td><td>Clear all, in the controls bar</td></tr>
+  <tr><td>Select a loop</td><td><kbd>Tab</kbd></td><td>Its 8vb or REV button</td></tr>
+</table>
+<p>When a loop is deleted, the grid closes the gap and the loops after it move up one number. Deleting every loop resets the master length, so your next take sets a new one.</p>
+
+<h2 id="effects">Effects: octave and reverb</h2>
+<p>Effects belong to each loop, so you can put reverb on the vocal loop and the octave on the bass line. A new loop is selected automatically, so the quick way is: record, then press <kbd>O</kbd> or <kbd>V</kbd>.</p>
+<h3>Octave down (8vb, <kbd>O</kbd>)</h3>
+<p>Keeps your original and adds a copy one octave below, the way an octaver pedal thickens a part. The copy is made from the stored loop with Apple's pitch shifter, which gives it better quality than a live pedal. A long loop takes a moment, and the button reads 8vb… until the copy is ready. Set how loud the low octave sits with Octave level in Settings.</p>
+<h3>Reverb (REV, <kbd>V</kbd>)</h3>
+<p>A stereo reverb that every loop can send into. Turning a loop's REV off lets its tail fade out naturally instead of cutting it. Reverb size and Reverb mix are in Settings. With the mix all the way up, sustained parts can get loud enough to distort; around a third is a good start.</p>
+<p>Both effects are part of what you hear and are included in a performance file. Neither changes the stored loop, so switching off always gets you the original back.</p>
+<h3>Effects on the live sound</h3>
+<p>The live tile has its own 8vb and REV buttons (<kbd>⇧</kbd> + <kbd>O</kbd> and <kbd>⇧</kbd> + <kbd>V</kbd>). Turn one on and you hear it on what you're playing right now, before you record anything. Every take you record while it's on keeps that effect, already switched on, so the loop sounds the way it did while you played it. The effect is still a switch on the loop afterwards, so you can take it off.</p>
+<ul>
+  <li>LoopGrid plays only the effect. The dry sound comes from your interface's direct monitoring, or from "Monitor live input" in Settings.</li>
+  <li>The live octave is a fast real-time shifter with about 25 ms of delay. It's best on single notes, voice and bass. The loop gets the higher-quality octave once it's recorded.</li>
+</ul>
+
+<h3>Bringing a loop back</h3>
+<p>Deleted the wrong loop? Press <kbd>Z</kbd> and it comes back in its old place, in time, with all its settings. After Clear all, <kbd>Z</kbd> brings back the whole set, tempo included. Press it again to go further back. Undo lasts until you record a new loop, which frees that memory.</p>
+<h3>Volume</h3>
+<p><kbd>↑</kbd> and <kbd>↓</kbd> set the selected loop's volume in 10 percent steps, from silent to 150 percent. The tile's number shows the value whenever it isn't 100. The picture follows the sound: a quieter loop is a dimmer tile, and in overlay mode it's a fainter layer.</p>
+<h3>How mutes land</h3>
+<p>Settings has three choices for the number keys. Instant cuts straight away, with a tiny ramp so it doesn't click. Fade takes half a second. On the next bar waits for the bar line, or a quarter of the loop in free mode, so you can hit the key early and the loop drops out exactly in time. The tile dims along with the sound. In a performance file a muted tile fades all the way to black.</p>
+
+<h2 id="reverse">Reverse</h2>
+<p>Press <kbd>B</kbd>, or the ◀ button on a tile, to play the selected loop backwards. The sound and picture both reverse. The change lands on the next beat, and a reversed loop keeps its beats on the same beats as the others, so it stays in time. Press it again to play forwards. It works together with half speed.</p>
+
+<h2 id="repeat">Beat repeat</h2>
+<p>Hold <kbd>X</kbd> and every loop catches the next eighth note and repeats it, sound and picture, like a DJ stutter. Hold <kbd>⇧</kbd> as well for sixteenths. Let go and the loops drop back in exactly where they would have been, on the next slice boundary, so nothing drifts. Your live playing and the click carry on through it. The status bar shows REPEAT while it's held. In free mode the slice is an eighth of the first loop.</p>
+
+<h2 id="speed">Half speed</h2>
+<p>Press <kbd>-</kbd>, or the ½× button on a tile, to play the selected loop at half speed. Press it again to go back. The picture slows down with the sound.</p>
+<ul>
+  <li>The change lands on the loop's next start, so the beat stays where it was. The button reads ½×… until it lands, and a long loop can take a few seconds.</li>
+  <li>A half-speed loop is twice as long, so it still fits the loop sync.</li>
+  <li>By default the pitch stays the same, the way the RC-505 does it. Switch off "Half speed keeps the pitch" in Settings for tape style, where the loop drops an octave like slowed-down tape.</li>
+  <li>The recorded take is never changed, so normal speed always comes back exactly.</li>
+</ul>
+
+<h2 id="overlay">Overlay (onion skin)</h2>
+<p>Press <kbd>G</kbd> to stack every loop in one big tile instead of the grid, like onion skin in animation. Each layer gets equal weight, and the live camera is the top layer, so you can line yourself up with your earlier takes. Muted loops drop out of the stack. The loop numbers along the top still mute and unmute. A performance file records whichever view is on screen. Press <kbd>G</kbd> again for the grid.</p>
+<p>To work on one layer, press <kbd>Tab</kbd>. The selected layer jumps to full strength for a moment and then fades back into the stack, and its number turns teal in the row along the top. Under that row, that loop's own buttons appear: ½×, 8vb, REV and its video effect. Click them, or use <kbd>-</kbd>, <kbd>O</kbd>, <kbd>V</kbd> and <kbd>E</kbd>, which always act on the selected loop.</p>
+
+<h2 id="vfx">Video effects</h2>
+<p>Each tile can wear one cartoon look. Press <kbd>E</kbd>, or click the FX button on a tile, to step the selected loop through them. <kbd>⇧</kbd> + <kbd>E</kbd> does the same for the camera, and every take you record with a camera effect on keeps it.</p>
+<table>
+  <tr><th>Effect</th><th>Looks like</th></tr>
+  <tr><td>Paint</td><td>A black-and-white painting: the picture melts into smooth blobs of tone with crisp edges, like brush strokes</td></tr>
+  <tr><td>Comic</td><td>A cel cartoon: flat bands of colour with black ink outlines</td></tr>
+  <tr><td>Ink</td><td>A pen drawing on cream paper: outlines, solid black in the darkest areas, and diagonal hatching in the shadows</td></tr>
+</table>
+<p>Effects change only how a tile looks, never the stored take, and they show up in performance files and in overlay mode too. They work best with good light on you; in a dim room, Comic and Ink lose detail first. Nothing flashes or strobes.</p>
+
+<h2 id="inputs">RC-505, interfaces, iPhone camera</h2>
+<h3>Audio input</h3>
+<p>In Settings, Audio input picks the device: the Mac microphone, an audio interface, or the RC-505mkII over USB. "System input" follows System Settings, Sound, Input. If the device is unplugged or the system input changes mid-set, LoopGrid reconnects by itself and your loops keep playing. A take in progress is discarded.</p>
+<p>Loops are mono. For a stereo source like the RC-505's main mix, set Audio input channel to "Inputs 1+2 mixed". In this setup the RC-505 is just a sound source going into LoopGrid. Having the RC-505 drive LoopGrid's tracks and tempo is planned as Linked mode.</p>
+<h3>iPhone as the camera</h3>
+<p>macOS Continuity Camera turns an iPhone into a camera for LoopGrid without any app on the phone. The iPhone needs iOS 16 or later and the same Apple ID as the Mac, with Wi-Fi and Bluetooth on. Lock it, mount it in landscape, and keep it close to the Mac. It appears in the Camera list, and LoopGrid tells you when it shows up. The iPhone's picture arrives later than a webcam's, so clap-test the camera offset for it. The offset is saved for each camera separately.</p>
+
+<h2 id="export">Recording a performance file</h2>
+<p>Press <kbd>R</kbd> to start, and <kbd>R</kbd> again to stop. While it runs, the status bar shows a red FILE timer.</p>
+<ul>
+  <li>The file is an MP4 at 1080p, 30 frames a second, saved to <span class="tag">~/Movies/LoopGrid/</span> with the date and time in its name. Finder opens with it selected when you stop.</li>
+  <li>The video is the grid exactly as it plays, without the numbers, buttons or borders.</li>
+  <li>The sound is every loop with its effects, plus whatever you're playing live. The click is never in it. To leave your live playing out, switch off "Include live input" in Settings.</li>
+  <li>The file runs half a second behind what you hear. That gives late camera frames and audio time to arrive, which is what keeps picture and sound together in the file.</li>
+  <li>If you quit while recording, LoopGrid finishes the file first.</li>
+</ul>
+
+<h2 id="calibrate">Lining up picture and sound</h2>
+<p>Webcam pictures arrive a little after the sound that goes with them, usually 50 to 150 ms. The camera offset corrects this. It starts at 80 ms and is saved separately for each camera.</p>
+<ol class="steps">
+  <li>Record a loop of yourself clapping a few times, hands clearly in shot.</li>
+  <li>Watch the tile and listen. If you hear the clap before you see it, press <kbd>]</kbd>. If you see it first, press <kbd>[</kbd>.</li>
+  <li>Each press moves every existing loop 5 ms, live, so keep nudging until the clap looks and sounds like one event.</li>
+</ol>
+<p>The same number is in Settings as the Camera offset slider.</p>
+
+<h2 id="settings">Settings</h2>
+<p>Open with <kbd>⌘</kbd> + <kbd>,</kbd>.</p>
+<table>
+  <tr><th>Setting</th><th>What it's for</th></tr>
+  <tr><td>Camera</td><td>Built-in, USB, or iPhone Continuity Camera</td></tr>
+  <tr><td>Camera offset</td><td>Lines up picture and sound (see above)</td></tr>
+  <tr><td>Audio input</td><td>The device to record from, or the system input</td></tr>
+  <tr><td>Audio input channel</td><td>Which input to record, or inputs 1+2 mixed for a stereo source</td></tr>
+  <tr><td>Mute and unmute</td><td>Instant, a half-second fade, or on the next bar</td></tr>
+  <tr><td>Half speed keeps the pitch</td><td>On: RC-505 style. Off: tape style, an octave down.</td></tr>
+  <tr><td>Monitor live input</td><td>Plays your input through LoopGrid. Off by default; headphones only.</td></tr>
+  <tr><td>Mirror video</td><td>Shows you as a mirror, the way a selfie camera does. On by default.</td></tr>
+  <tr><td>Reverb size, Reverb mix, Octave level</td><td>The effect settings, shared by all loops</td></tr>
+  <tr><td>Count in</td><td>Same as <kbd>C</kbd></td></tr>
+  <tr><td>Include live input in recordings</td><td>Whether a performance file includes what you're playing live, or only the loops</td></tr>
+</table>
+
+<h2 id="limits">Limits</h2>
+<ul>
+  <li>9 loops at a time.</li>
+  <li>A single take can run up to 2 minutes.</li>
+  <li>Loops are held in memory, about 23 MB per second of video. At 3 GB LoopGrid stops taking new loops until you delete one; the memory figure turns red.</li>
+  <li>Video is stored at 960 by 540, which is sharper than any tile on a 3 by 3 grid needs.</li>
+</ul>
+
+<h2 id="trouble">Troubleshooting</h2>
+<h3>The live tile is black</h3>
+<p>The camera can take a few seconds to start. If it stays black, check System Settings, Privacy and Security, Camera, and make sure LoopGrid is on. After an update, macOS may ask again; allow it. Also check that no other app (FaceTime, Zoom, Photo Booth) is holding the camera.</p>
+<h3>No sound in loops, or the meter doesn't move</h3>
+<p>Check System Settings, Privacy and Security, Microphone. Then check System Settings, Sound, Input: LoopGrid records whatever device is selected there. On an interface, pick the right channel in LoopGrid's Settings.</p>
+<h3>Howling or feedback</h3>
+<p>Use headphones, or turn the speakers down. Monitor live input should normally stay off.</p>
+<h3>Picture and sound don't line up</h3>
+<p>Set the camera offset with the clap test above. If a performance file is off but the screen looks right, tell Claude: the file is built from the same clock, so that would be a bug.</p>
+<h3>A loop has a gap or click at the loop point</h3>
+<p>That shouldn't happen. Note what you did right before (length, quantize on or off) and report it.</p>
+
+<h2 id="later">Coming later</h2>
+<p>Planned but not built yet: RC-505 linked mode (the looper drives the tiles and the tempo), arrow-key video effects, a clean second-screen projector output, saving sessions, and overdubbing inside a tile.</p>
+
+</main>
+</div>
+</body>
+</html>
