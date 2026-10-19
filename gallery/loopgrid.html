@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>LoopGrid · LENS 101 Gallery</title>
-<meta name="description" content="A video looper for the Mac. Record yourself with the spacebar, and each take loops right away with its sound, in time with the others, in a grid of tiles. Free download. By Kramer Gibson." />
+<meta name="description" content="A video looper that runs in your browser. Record yourself with the spacebar, and each take loops right away with its sound, in time with the others, in a grid of tiles. By Kramer Gibson." />
 <link rel="stylesheet" href="../assets/css/site.css" />
 </head>
 <body>
@@ -21,15 +21,15 @@
 
 <article class="piece">
   <div class="crumb"><a href="../index.html">LENS 101</a> &nbsp;/&nbsp; Gallery &nbsp;/&nbsp; LoopGrid</div>
-  <h1>LoopGrid, a video looper for your Mac.</h1>
-  <div class="meta">Mac app · Camera + microphone · 2026 · Kramer Gibson</div>
+  <h1>LoopGrid, a video looper in your browser.</h1>
+  <div class="meta">Camera + microphone · Browser · Laptop · 2026 · Kramer Gibson</div>
 
-  <div style="margin:18px 0 10px;">
-    <a class="card" href="loopgrid/LoopGrid-0.4.zip" download style="display:inline-block;padding:18px 26px;">
-      <h3 style="margin:0;">Download LoopGrid 0.4 &rsaquo;</h3>
-      <span style="display:block;margin:6px 0 0;">It runs on macOS 14 Sonoma or newer, on Apple silicon or Intel, and the file is about 1 MB.</span>
+  <p style="margin:18px 0 10px;">
+    <a class="card" href="loopgrid/index.html" target="_blank" rel="noopener" style="display:inline-block;padding:18px 26px;">
+      <h3 style="margin:0;">Open LoopGrid &rsaquo;</h3>
+      <p style="margin:6px 0 0;">Made for a laptop with a keyboard. Chrome or Edge runs it best; Firefox and Safari work too.</p>
     </a>
-  </div>
+  </p>
 
   <div class="notes">
     <h2>What it is</h2>
@@ -40,47 +40,36 @@
       playing it.
     </p>
 
-    <h2>Install it</h2>
-    <ol style="padding-left:22px;margin:0 0 18px;color:var(--ink-soft);font-size:15px;line-height:1.7;">
-      <li>Download the zip file and double-click it to unpack the LoopGrid app.</li>
-      <li>Drag LoopGrid into your Applications folder.</li>
-      <li>Double-click LoopGrid to open it. Your Mac will say it can't check the app for malicious software. That's because this is a free class tool, not one sold through Apple. Click Done.</li>
-      <li>In System Settings, open Privacy &amp; Security and scroll down to the line that says LoopGrid was blocked. Click Open Anyway and enter your password.</li>
-      <li>Open LoopGrid again. Allow the camera and the microphone when it asks.</li>
-    </ol>
-    <p>You only do steps 3 and 4 once. On macOS 14 you can instead right-click the app, choose Open, and click Open in the box that appears.</p>
-
     <h2>Start here</h2>
     <ul class="plain">
+      <li>Allow the camera and the microphone when the browser asks.</li>
       <li>Wear headphones. Then the loops don't feed back into the microphone.</li>
       <li>Press Space to record. Clap, sing, or tap a beat. Press Space again to close the loop.</li>
       <li>Press Space again to record the next layer over the top. It snaps to the length of the first loop.</li>
-      <li>The number keys mute a loop. Delete removes the newest one, and Z brings it back.</li>
-      <li>Press G to stack every loop in one picture, like onion skin in animation.</li>
-      <li>Press E for a cartoon look on a loop: a black-and-white painting, a comic, or an ink drawing.</li>
-      <li>Hold X for a stutter. Press B to play a loop backwards, with the picture reversed too.</li>
-      <li>Press R to record the whole performance as a video file in your Movies folder.</li>
+      <li>Press T a few times to tap a tempo before the first loop, then C for a count-in and M for a click.</li>
+      <li>Press I for instant loop mode: one press closes a take and starts the next one.</li>
+      <li>Press R to record the whole performance. The video downloads when you press R again.</li>
+      <li>The ? key shows every key, and the comma key opens Settings.</li>
     </ul>
-    <p>Every key is on the bar at the bottom of the window, and the ? key opens the full guide. You can also <a href="loopgrid/help.html">read the guide here</a>.</p>
 
     <h2>Lining up picture and sound</h2>
     <p>
       Webcams send the picture a little after the sound. Record a loop of yourself clapping, then press the
-      [ and ] keys until each clap looks and sounds like one moment. Your iPhone can be the camera too, through
-      Continuity Camera. Pick it in Settings, which opens with Command and comma.
+      [ and ] keys until each clap looks and sounds like one moment.
     </p>
 
     <h2>Your files</h2>
     <p>
-      LoopGrid never goes online. Your loops live in memory while it runs, and the only files it writes are the
-      performance videos you record with R.
+      Nothing leaves your computer. There is no account and no server; your loops live in the browser's memory while
+      the tab is open. Keep the tab in front while you play, since a hidden tab stops drawing. If long loops slow things
+      down, pick a smaller frame size in Settings.
     </p>
 
     <h2>Tools used</h2>
     <ul class="plain">
-      <li>Swift and SwiftUI for the app</li>
-      <li>AVFoundation for the camera and AVAudioEngine for sound, with every loop timed by the audio clock</li>
-      <li>Metal on the graphics chip for the grid, the overlay and the cartoon effects</li>
+      <li>JavaScript and HTML, with no libraries</li>
+      <li>An AudioWorklet for sound, with every loop timed by the audio clock</li>
+      <li>Canvas for the grid, and MediaRecorder for the performance video</li>
     </ul>
   </div>
 </article>
