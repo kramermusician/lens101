@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chord Drop</title>
+<meta name="description" content="Type a song's chords, tap the changes along with a drum groove, and print a chart that shows your band exactly when each chord lands." />
+<link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="logo">Chord Drop</div>
+    <div class="tagline">Show your band when the chords change.</div>
+  </div>
+  <div class="top-actions">
+    <label class="song-pick">
+      <span class="sr">My songs</span>
+      <select id="songPick" title="My songs"></select>
+    </label>
+    <button id="btnNew" type="button">New song</button>
+    <div class="menu-wrap">
+      <button id="btnFile" type="button" aria-haspopup="true" aria-expanded="false">Song file &#9662;</button>
+      <div class="menu" id="fileMenu" hidden>
+        <button type="button" data-act="save">Save song file to my computer</button>
+        <button type="button" data-act="open">Open a song file</button>
+        <button type="button" data-act="share">Copy a link to this song</button>
+        <button type="button" data-act="example">Load the example song</button>
+        <button type="button" data-act="delete" class="danger">Delete this song</button>
+      </div>
+    </div>
+    <button id="btnPrint" class="primary" type="button">Save PDF</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <section class="steps">
+
+    <div class="step" id="step1">
+      <h2><span class="num">1</span>Type your chords</h2>
+      <div class="row two">
+        <input id="title" type="text" placeholder="Song title" autocomplete="off" />
+        <input id="composer" type="text" placeholder="Written by" autocomplete="off" />
+      </div>
+      <textarea id="chordText" rows="13" spellcheck="false" autocomplete="off" placeholder="[Verse]&#10;G C D G&#10;&#10;[Chorus]&#10;C G D D"></textarea>
+      <details class="help">
+        <summary>How to type a song</summary>
+        <ul>
+          <li>Put each section name in square brackets, like <code>[Verse]</code> or <code>[Chorus]</code>.</li>
+          <li>Under it, type the chords in the order they come, with spaces: <code>G C D G</code>. No timing needed. You tap that in next.</li>
+          <li>Want a section again? Write its name again with nothing under it. The chart reuses it.</li>
+          <li><code>x2</code> after a line plays that line twice. <code>[Chorus x2]</code> plays the whole section twice.</li>
+          <li><code>N.C.</code> means no chord, the band stops.</li>
+          <li>Just chords here. The words go in step 4, after you tap.</li>
+          <li>Pasting a chord sheet that has words in it? That's fine. A button shows up to move the words into step 4.</li>
+          <li>Already know the bars? Use <code>|</code> between bars and <code>/</code> for extra beats: <code>| G / C / | D |</code>. That section comes out ready, no tapping.</li>
+        </ul>
+      </details>
+      <div id="warnings" class="warnings"></div>
+      <div id="wordImport2" class="word-import" hidden>
+        <span>There are words in your chords.</span>
+        <button type="button" class="small primary" id="btnImportWords2">Move the words to step 4</button>
+      </div>
+    </div>
+
+    <div class="step" id="step2">
+      <h2><span class="num">2</span>Set the feel</h2>
+      <div class="field">
+        <div class="label">Tempo</div>
+        <div class="tempo">
+          <button type="button" class="small" data-tempo="-5" aria-label="Slower">&minus;</button>
+          <input id="tempo" type="number" min="40" max="240" step="1" aria-label="Tempo in beats per minute" />
+          <button type="button" class="small" data-tempo="5" aria-label="Faster">+</button>
+          <span class="unit">beats per minute</span>
+          <button type="button" id="btnTapTempo">Tap tempo</button>
+        </div>
+        <input id="tempoRange" type="range" min="40" max="240" step="1" aria-label="Tempo slider" />
+      </div>
+      <div class="field">
+        <div class="label">Time signature</div>
+        <div class="seg" id="meterSeg"></div>
+      </div>
+      <div class="field">
+        <div class="label">Beat</div>
+        <div class="grooves" id="grooveCards"></div>
+      </div>
+      <div class="row">
+        <div class="field grow">
+          <div class="label">Snap my taps to</div>
+          <select id="grid"></select>
+        </div>
+        <div class="field">
+          <div class="label">Count-in</div>
+          <select id="countIn">
+            <option value="1">1 bar</option>
+            <option value="2">2 bars</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <button type="button" id="btnTry">&#9654; Hear the beat</button>
+        <button type="button" class="link" id="btnCalib">Taps landing late? Fix timing</button>
+      </div>
+    </div>
+
+    <div class="step" id="step3">
+      <h2><span class="num">3</span>Tap the chord changes</h2>
+      <p class="hint">Pick a section and press Record. After the count-in, the first chord starts on beat 1 by itself. Press <kbd>Space</kbd> each time the next chord comes in. After the last chord, press <kbd>Space</kbd> once more where the section ends.</p>
+      <div id="secList" class="sec-list"></div>
+      <div class="rec" id="recPanel">
+        <div class="rec-top">
+          <div class="beats" id="beatLights"></div>
+          <div class="bar-count" id="barCount"></div>
+        </div>
+        <div class="rec-now" id="recNow">Ready</div>
+        <div class="rec-next" id="recNext"></div>
+        <button type="button" id="tapPad" class="tap-pad" aria-label="Tap the next chord">
+          <span class="tap-key">SPACE</span>
+          <span class="tap-sub">or tap here</span>
+        </button>
+        <div class="rec-actions">
+          <button type="button" id="btnRecord" class="record">&#9679; Record</button>
+          <button type="button" id="btnStop">&#9632; Stop</button>
+          <button type="button" id="btnUndoTap">Undo last tap</button>
+        </div>
+        <div class="rec-tools">
+          <span class="len">Length: <span id="secLen"></span></span>
+          <button type="button" class="small" id="btnBarMinus" aria-label="One bar shorter">&minus; bar</button>
+          <button type="button" class="small" id="btnBarPlus" aria-label="One bar longer">+ bar</button>
+          <button type="button" class="small" id="btnEven">One chord per bar</button>
+          <button type="button" class="small" id="btnCopySec" title="Same chords and rhythm under a new name, for a verse with its own words">Copy section</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step4">
+      <h2><span class="num">4</span>Add the words</h2>
+      <p class="hint">Under each chord, type what you sing while it plays. Enter goes to the next chord. To split a word across two chords, end the first box with a dash: <code>mor-</code> then <code>ning</code>.</p>
+      <div id="wordImport" class="word-import" hidden>
+        <span>There are words in your chords in step 1.</span>
+        <button type="button" class="small primary" id="btnImportWords">Move them here</button>
+      </div>
+      <div class="seg wrap" id="wordSecs"></div>
+      <div class="verse-tabs" id="verseTabs"></div>
+      <div class="word-grid" id="wordGrid"></div>
+    </div>
+
+  </section>
+
+  <section class="chart-side">
+    <div class="chart-bar">
+      <div class="group">
+        <button type="button" id="btnPlaySec">&#9654; Play section</button>
+        <button type="button" id="btnPlaySong">&#9654; Play whole song</button>
+        <label class="check"><input type="checkbox" id="hearChords" /> Hear chords</label>
+      </div>
+      <div class="group">
+        <div class="seg" id="modeSeg">
+          <button type="button" data-mode="rhythm">Rhythm notes</button>
+          <button type="button" data-mode="slash">Slashes</button>
+        </div>
+        <label class="check"><input type="checkbox" id="showWords" /> Show words</label>
+        <label class="check"><input type="checkbox" id="writeOut" /> Write out every repeat</label>
+      </div>
+    </div>
+    <div class="edit-bar" id="editBar" hidden>
+      <span id="editWhat"></span>
+      <button type="button" class="small" id="btnEarlier">&#9664; Earlier</button>
+      <button type="button" class="small" id="btnLater">Later &#9654;</button>
+      <button type="button" class="small" id="btnWordReset" hidden>Back under its chord</button>
+      <span class="edit-hint">Arrow keys move it a 16th note, Shift a whole beat. Up and down pick the next one.</span>
+      <button type="button" class="small link" id="btnDeselect">Done</button>
+    </div>
+    <div class="sheet" id="sheet"></div>
+    <div class="sheet-tip">Click a chord or a word on the chart, then use the arrow keys to move it earlier or later.</div>
+  </section>
+
+</main>
+
+<div class="modal" id="calib" hidden>
+  <div class="modal-card">
+    <h3>Fix tap timing</h3>
+    <p>Speakers and Bluetooth headphones add a delay, so taps can land late. Press Start, listen to four clicks, then tap <kbd>Space</kbd> (or the pad) right on each of the next twelve clicks.</p>
+    <button type="button" id="calibPad" class="tap-pad small-pad"><span class="tap-key">TAP</span></button>
+    <div class="calib-status" id="calibStatus"></div>
+    <div class="field">
+      <div class="label">Timing nudge: <span id="offsetVal"></span></div>
+      <input type="range" id="offsetRange" min="-200" max="200" step="5" />
+    </div>
+    <div class="row">
+      <button type="button" class="primary" id="calibStart">Start</button>
+      <button type="button" id="calibClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="fileInput" accept=".json,application/json" hidden />
+
+<script src="js/model.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/notation.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
