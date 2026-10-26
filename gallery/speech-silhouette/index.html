@@ -80,7 +80,7 @@
 <div id="caption"></div>
 <div id="hud">
   <b>Languages</b> E English · F French · S Spanish · P Portuguese · I Italian · J Japanese · C Chinese · K Korean · T Thai · L next<br>
-  <b>R</b> record · <b>⌘,</b> settings · <b>G</b> target sentence · <b>X</b> reset target · <b>⇧T</b> type text<br>
+  <b>R</b> record · <b>⌘,</b> settings · <b>G</b> target sentence · <b>X</b> explode · <b>⇧X</b> reset target · <b>⇧T</b> type text<br>
   <b>⇧C</b> caption · <b>V</b> camera · <b>⇧S</b> strings · <b>↑↓</b> text size (double tap = big jump) · <b>←→</b> text effect · <b>[ ]</b> silhouette threshold<br>
   <b>⇧P</b> save snapshot · <b>⇧F</b> fullscreen · <b>H</b> this help
 </div>
@@ -538,6 +538,7 @@ function draw(t) {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, W, H);
   if (!mask) return;
+  if (boomPending) beginCapture();
 
   const vw = video.videoWidth, vh = video.videoHeight;
   const sc = Math.max(W / vw, H / vh), ox = (W - vw * sc) / 2, oy = (H - vh * sc) / 2;
@@ -589,6 +590,7 @@ function draw(t) {
   }
 
   if (showStrings) drawStrings(t, vw, vh, sc, ox, oy, src);
+  endCapture();
   if (recorder && recCaption && showCaption) drawCaption();
 }
 
@@ -696,12 +698,102 @@ function curveText(p, q, src, startIdx, t, seed) {
   }
 }
 
+// ---------- explode (X) ----------
+// one frame of the normal drawing is captured letter by letter, then the letters fly, bounce and fly home
+const BOOM_MS = 3000, BACK_MS = 900, MAX_PARTS = 12000;
+let boomPending = false, boom = null, captured = null, origFill = null;
+function beginCapture() {
+  captured = [];
+  origFill = ctx.fillText;
+  const dpr = devicePixelRatio || 1;
+  ctx.fillText = function (text, x, y) {
+    origFill.call(this, text, x, y);
+    const m = this.getTransform(), ang = Math.atan2(m.b, m.a);
+    const centered = this.textAlign === "center";
+    const style = this.fillStyle, alpha = this.globalAlpha;
+    // split runs into single letters, keeping combining marks with their letter
+    const glyphs = [];
+    for (const ch of text) { if (MARK.test(ch) && glyphs.length) glyphs[glyphs.length - 1] += ch; else glyphs.push(ch); }
+    let gx = centered ? x - (glyphs.length - 1) * charW / 2 : x + charW / 2;
+    const gy = this.textBaseline === "top" ? y + fontSize * 0.55 : y;
+    for (const g of glyphs) {
+      if (g !== " ") captured.push({ g, style, alpha, ang,
+        x: (m.a * gx + m.c * gy + m.e) / dpr, y: (m.b * gx + m.d * gy + m.f) / dpr });
+      gx += charW;
+    }
+  };
+}
+function endCapture() {
+  if (!captured) return;
+  ctx.fillText = origFill;
+  const parts = captured; captured = null; boomPending = false;
+  if (!parts.length) { toast("Step into the frame first"); return; }
+  while (parts.length > MAX_PARTS) parts.splice(Math.random() * parts.length | 0, 1);
+  let cx = 0, cy = 0;
+  for (const p of parts) { cx += p.x; cy += p.y; }
+  cx /= parts.length; cy /= parts.length;
+  for (const p of parts) {
+    const dx = p.x - cx, dy = p.y - cy, d = Math.hypot(dx, dy) || 1;
+    const sp = 350 + Math.random() * 900;
+    p.x0 = p.x; p.y0 = p.y; p.a0 = p.ang;
+    p.vx = dx / d * sp + (Math.random() - 0.5) * 300;
+    p.vy = dy / d * sp - 250 - Math.random() * 450;   // a bit of upward kick
+    p.vr = (Math.random() - 0.5) * 14;
+  }
+  boom = { t0: performance.now(), parts, home: false };
+}
+function stepBoom(dt) {
+  const g = 1500, floor = H - fontSize * 0.6, right = W - charW / 2, left = charW / 2, top = fontSize * 0.6;
+  for (const p of boom.parts) {
+    p.vy += g * dt;
+    p.x += p.vx * dt; p.y += p.vy * dt; p.ang += p.vr * dt;
+    if (p.y > floor) { p.y = floor; p.vy *= -0.72; p.vx *= 0.88; p.vr *= 0.8; if (Math.abs(p.vy) < 60) p.vy = 0; }
+    if (p.y < top) { p.y = top; p.vy = Math.abs(p.vy) * 0.6; }
+    if (p.x < left) { p.x = left; p.vx = Math.abs(p.vx) * 0.8; }
+    if (p.x > right) { p.x = right; p.vx = -Math.abs(p.vx) * 0.8; }
+  }
+}
+function drawParticles(fade, homeK) {
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const e = homeK * homeK * (3 - 2 * homeK);   // smoothstep back to where each letter came from
+  const dpr = devicePixelRatio || 1;
+  for (const p of boom.parts) {
+    const x = homeK ? p.bx + (p.x0 - p.bx) * e : p.x, y = homeK ? p.by + (p.y0 - p.by) * e : p.y;
+    const a = homeK ? p.ba + (p.a0 - p.ba) * e : p.ang;
+    const cs = Math.cos(a) * dpr, sn = Math.sin(a) * dpr;
+    ctx.globalAlpha = p.alpha * fade;
+    ctx.fillStyle = p.style;
+    ctx.setTransform(cs, sn, -sn, cs, x * dpr, y * dpr);   // cheaper than save/translate/rotate/restore
+    ctx.fillText(p.g, 0, 0);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.globalAlpha = 1;
+}
+function renderBoom(t, dt) {
+  const age = t - boom.t0;
+  if (age < BOOM_MS) {
+    stepBoom(Math.min(dt, 0.05));
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+    drawParticles(1, 0);
+  } else if (age < BOOM_MS + BACK_MS) {
+    if (!boom.home) { boom.home = true; for (const p of boom.parts) { p.bx = p.x; p.by = p.y; p.ba = p.ang; } }
+    const k = (age - BOOM_MS) / BACK_MS;
+    draw(t);                                      // live silhouette fades in underneath
+    ctx.fillStyle = `rgba(0,0,0,${1 - k})`; ctx.fillRect(0, 0, W, H);
+    drawParticles(1 - k, k);
+  } else { boom = null; draw(t); }
+}
+function explode() {
+  if (boom) return;
+  boomPending = true;
+}
+
 function loop(t) {
   requestAnimationFrame(loop);
   const dt = (t - lastT) / 1000; lastT = t;
   crawl += dt * 5;                               // slow drift of the text through the body
   try { processFrame(); } catch (e) { console.warn(e); }
-  draw(t);
+  if (boom) renderBoom(t, dt); else draw(t);
   meter();
   if (recorder) {
     const s = Math.floor((Date.now() - recStartT) / 1000);
@@ -869,6 +961,7 @@ addEventListener("keydown", e => {
   else if (k === "t") { e.preventDefault(); openEntry("text"); }
   else if (k === "g") { e.preventDefault(); openEntry("target"); }
   else if (k === "r") toggleRecord();
+  else if (k === "x" && !e.shiftKey) explode();
   else if (k === "x") { if (target) { setCurrent(""); setTarget(target); toast("Target reset, try again"); } }
   else if (k === "p") snapshot();
   else if (k === "h") { const h = $("#hud"); h.style.opacity = h.style.opacity === "0" ? 1 : 0; }
