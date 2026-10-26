@@ -108,6 +108,9 @@
   <div class="row"><input type="checkbox" id="setCaption"> <span>Caption</span></div>
   <div class="row"><input type="checkbox" id="setPip"> <span>Camera preview</span></div>
   <div class="row"><input type="checkbox" id="setStrings"> <span>Fingertip strings</span></div>
+  <label for="setBig">Big words <span id="bigVal"></span></label>
+  <input type="range" id="setBig" min="0" max="40" step="1">
+  <small>Share of the text drawn at 2x and 3x size. Readable words on top of tiny camera-color text.</small>
   <hr>
   <label>Recording</label>
   <div class="row"><input type="checkbox" id="setRecAudio"> <span>Record sound from the sound source</span></div>
@@ -214,7 +217,7 @@ const EFFECTS = [
 ];
 let effect = 0;
 let lastArrow = { key: "", t: 0 };
-let micId = "", camId = "", speechFollows = true, recAudio = true, recCaption = true;
+let micId = "", camId = "", speechFollows = true, recAudio = true, recCaption = true, bigShare = 15;
 try {
   const saved = JSON.parse(localStorage.getItem("speech-silhouette") || "{}");
   if (saved.fontSize) fontSize = saved.fontSize;
@@ -224,11 +227,12 @@ try {
   if (saved.speechFollows === false) speechFollows = false;
   if (saved.recAudio === false) recAudio = false;
   if (saved.recCaption === false) recCaption = false;
+  if (saved.bigShare >= 0 && saved.bigShare <= 40) bigShare = saved.bigShare;
 } catch {}
 function savePrefs() {
   try {
     localStorage.setItem("speech-silhouette",
-      JSON.stringify({ fontSize, effect, micId, camId, speechFollows, recAudio, recCaption }));
+      JSON.stringify({ fontSize, effect, micId, camId, speechFollows, recAudio, recCaption, bigShare }));
   } catch {}
 }
 
@@ -549,7 +553,7 @@ function draw(t) {
   const LO = Math.max(0.05, HI - 0.3);
 
   ctx.textBaseline = "top"; ctx.textAlign = "left";
-  let k = Math.floor(crawl);
+  let k = Math.floor(crawl), inside = 0;
   const fx = EFFECTS[effect];
   if (fx.cam) sampleCamera(cols, rows, cw, ch, vw, vh, sc, ox, oy);
   if (fx.glow) { ctx.shadowColor = "rgba(0,240,255,.8)"; ctx.shadowBlur = fontSize * 0.6; }
@@ -570,7 +574,7 @@ function draw(t) {
           cls = p > HI ? 2 : p > LO ? 1 : 0;
         }
       }
-      if (cls === 2) { if (runStart < 0) runStart = c; continue; }
+      if (cls === 2) { inside++; if (runStart < 0) runStart = c; continue; }
       if (runStart >= 0) {
         const n = c - runStart;
         drawRun(src, k, n, runStart, r, runStart * cw, y, t);
@@ -580,6 +584,7 @@ function draw(t) {
     }
   }
 
+  if (bigShare > 0 && inside > 0) drawBigWords(t, inside, cw, ch, cols, rows, vw, vh, sc, ox, oy, LO);
   ctx.shadowBlur = 0;
   if (coverage < 0.01) {
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -637,6 +642,76 @@ function drawCaption() {
   }
   ctx.shadowBlur = 0;
   setFont();
+}
+
+// ---------- big words ----------
+// A fixed, seeded set of anchor spots; each frame the ones that sit fully inside the body are filled with
+// whole words at 2x or 3x until they cover bigShare% of the silhouette. Stable anchors keep it from flickering.
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const ANCHORS = (() => { const r = mulberry(404), out = [];
+  for (let i = 0; i < 900; i++) out.push({ x: r(), y: r(), s: r() < 0.6 ? 2 : 3, w: r() * 1e6 | 0 });
+  return out; })();
+let wordCache = { text: null, words: [] };
+function wordsOf(text) {
+  if (wordCache.text === text) return wordCache.words;
+  const words = [];
+  if (WIDE.test(text) && !/\s/.test(text.trim())) {
+    // no spaces (Chinese, Japanese): use 2-character chunks
+    const chars = [...text];
+    for (let i = 0, at = 0; i < chars.length; i += 2) { const w = chars.slice(i, i + 2).join(""); words.push({ w, at }); at += w.length; }
+  } else {
+    const re = /\S+/g; let m;
+    while ((m = re.exec(text))) words.push({ w: m[0], at: m.index });
+  }
+  wordCache = { text, words };
+  return words;
+}
+function maskAt(x, y, vw, vh, sc, ox, oy) {
+  const mx = Math.floor((1 - (x - ox) / sc / vw) * mw), my = Math.floor((y - oy) / sc / vh * mh);
+  return mx < 0 || my < 0 || mx >= mw || my >= mh ? 0 : mask[my * mw + mx];
+}
+function drawBigWords(t, inside, cw, ch, cols, rows, vw, vh, sc, ox, oy, LO) {
+  const words = wordsOf(shownText());
+  if (!words.length) return;
+  const fx = EFFECTS[effect];
+  const budget = inside * bigShare / 100;
+  const shift = Math.floor(crawl / 8);             // words rotate through the anchors slowly
+  const placed = [];
+  let used = 0;
+  const base = ctx.font;
+  for (let i = 0; i < ANCHORS.length && used < budget; i++) {
+    const a = ANCHORS[i], wd = words[(a.w + shift) % words.length];
+    const glyphs = [...wd.w];
+    const s = a.s, gw = cw * s, w = glyphs.length * gw, h = ch * s;
+    // snap to the grid so the box covers whole cells
+    const c0 = Math.floor(a.x * (cols - glyphs.length * s)), r0 = Math.floor(a.y * (rows - s));
+    if (c0 < 0 || r0 < 0) continue;
+    const x = c0 * cw, y = r0 * ch;
+    // every corner and the middle must be inside the body
+    if (maskAt(x + 1, y + 1, vw, vh, sc, ox, oy) < LO || maskAt(x + w - 1, y + 1, vw, vh, sc, ox, oy) < LO ||
+        maskAt(x + 1, y + h - 1, vw, vh, sc, ox, oy) < LO || maskAt(x + w - 1, y + h - 1, vw, vh, sc, ox, oy) < LO ||
+        maskAt(x + w / 2, y + h / 2, vw, vh, sc, ox, oy) < HI) continue;
+    if (placed.some(p => x < p.x + p.w && x + w > p.x && y < p.y + p.h && y + h > p.y)) continue;
+    placed.push({ x, y, w, h });
+    used += glyphs.length * s * s;
+    const blur = ctx.shadowBlur; ctx.shadowBlur = 0;
+    ctx.fillStyle = "#000"; ctx.fillRect(x, y, w, h);   // clear the small text underneath
+    ctx.shadowBlur = blur;
+    ctx.font = `${fontSize * s}px Menlo, ui-monospace, "SF Mono", "Apple SD Gothic Neo", "PingFang SC", monospace`;
+    let at = wd.at;
+    for (let j = 0; j < glyphs.length; j++) {
+      const st = styleAt(at, t), cc = Math.min(cols - 1, c0 + j * s + (s >> 1)), rr = Math.min(rows - 1, r0 + (s >> 1));
+      const [R, G, B] = fx.cam ? camAt(cc, rr) : [0, 0, 0];
+      ctx.globalAlpha = st === "miss" || st === "sep" ? 0.45 : 1;
+      ctx.fillStyle = st === "fresh" ? COL.fresh : st === "hit" && !fx.cam ? COL.hit
+        : fx.cell ? fx.cell(R, G, B, cc, rr, t) : COL[st] || COL.base;
+      ctx.fillText(glyphs[j], x + j * gw, y + ch * s * 0.04);
+      at += glyphs[j].length;
+    }
+    ctx.globalAlpha = 1;
+  }
+  ctx.font = base;
 }
 
 function toCanvas(p, vw, vh, sc, ox, oy) {
@@ -714,12 +789,13 @@ function beginCapture() {
     // split runs into single letters, keeping combining marks with their letter
     const glyphs = [];
     for (const ch of text) { if (MARK.test(ch) && glyphs.length) glyphs[glyphs.length - 1] += ch; else glyphs.push(ch); }
-    let gx = centered ? x - (glyphs.length - 1) * charW / 2 : x + charW / 2;
-    const gy = this.textBaseline === "top" ? y + fontSize * 0.55 : y;
+    const fs = parseFloat(/([\d.]+)px/.exec(this.font)?.[1]) || fontSize, adv = charW * fs / fontSize;
+    let gx = centered ? x - (glyphs.length - 1) * adv / 2 : x + adv / 2;
+    const gy = this.textBaseline === "top" ? y + fs * 0.55 : y;
     for (const g of glyphs) {
-      if (g !== " ") captured.push({ g, style, alpha, ang,
+      if (g !== " ") captured.push({ g, style, alpha, ang, fs,
         x: (m.a * gx + m.c * gy + m.e) / dpr, y: (m.b * gx + m.d * gy + m.f) / dpr });
-      gx += charW;
+      gx += adv;
     }
   };
 }
@@ -756,8 +832,10 @@ function stepBoom(dt) {
 function drawParticles(fade, homeK) {
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   const e = homeK * homeK * (3 - 2 * homeK);   // smoothstep back to where each letter came from
-  const dpr = devicePixelRatio || 1;
+  const dpr = devicePixelRatio || 1, base = ctx.font;
+  let cur = fontSize;
   for (const p of boom.parts) {
+    if (p.fs !== cur) { cur = p.fs; ctx.font = `${cur}px Menlo, ui-monospace, "SF Mono", "Apple SD Gothic Neo", "PingFang SC", monospace`; }
     const x = homeK ? p.bx + (p.x0 - p.bx) * e : p.x, y = homeK ? p.by + (p.y0 - p.by) * e : p.y;
     const a = homeK ? p.ba + (p.a0 - p.ba) * e : p.ang;
     const cs = Math.cos(a) * dpr, sn = Math.sin(a) * dpr;
@@ -768,6 +846,7 @@ function drawParticles(fade, homeK) {
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.globalAlpha = 1;
+  ctx.font = base;
 }
 function renderBoom(t, dt) {
   const age = t - boom.t0;
@@ -864,6 +943,7 @@ function syncSettings() {
   $("#setSpeechFollows").checked = speechFollows;
   $("#setRecAudio").checked = recAudio;
   $("#setRecCaption").checked = recCaption;
+  $("#setBig").value = bigShare; $("#bigVal").textContent = bigShare + "%";
   const m = pickMime();
   $("#recFormat").textContent = `Saves to Downloads as ${m.includes("mp4") ? "MP4" : "WebM"}. Snapshots (P) save as PNG.`;
 }
@@ -896,6 +976,7 @@ $("#setStrings").onchange = e => { showStrings = e.target.checked; };
 $("#setSpeechFollows").onchange = e => { speechFollows = e.target.checked; savePrefs(); restartSpeech(); };
 $("#setRecAudio").onchange = e => { recAudio = e.target.checked; savePrefs(); };
 $("#setRecCaption").onchange = e => { recCaption = e.target.checked; savePrefs(); updateCaption(); };
+$("#setBig").oninput = e => { bigShare = +e.target.value; $("#bigVal").textContent = bigShare + "%"; savePrefs(); };
 
 // ---------- text entry (replaces prompt(), which freezes the camera loop) ----------
 let entryMode = null;
