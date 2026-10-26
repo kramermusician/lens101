@@ -50,8 +50,17 @@
   #meterBar { height:100%; width:0; background:#7ee0a4; transition:width .08s; }
   #settings button { margin-top:18px; width:100%; padding:10px; font-size:14px; }
   #settings hr { border:0; border-top:1px solid #262626; margin:18px 0 4px; }
-  #mic { position:fixed; left:16px; bottom:14px; font-size:12px; color:#666; pointer-events:none; }
-  #mic i { display:inline-block; width:8px; height:8px; border-radius:50%; background:#444; margin-right:6px; vertical-align:middle; }
+  #mic { position:fixed; left:14px; bottom:14px; pointer-events:none; padding:7px 14px 7px 12px; border-radius:999px;
+    background:rgba(0,0,0,.6); border:1px solid #333; font:600 17px -apple-system, Helvetica, sans-serif; color:#eee; }
+  #mic small { font-weight:400; color:#888; font-size:13px; margin-left:6px; }
+  #mic i { display:inline-block; width:10px; height:10px; border-radius:50%; background:#444; margin-right:8px; vertical-align:1px; }
+  #langFlash { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    pointer-events:none; z-index:4; opacity:0; transform:scale(.94); transition:opacity .35s, transform .5s; }
+  #langFlash.show { opacity:1; transform:scale(1); }
+  #langFlash b { font:800 clamp(56px,11vw,170px)/1 -apple-system, "Apple SD Gothic Neo", "PingFang SC", "Hiragino Sans", Thonburi, Helvetica, sans-serif;
+    color:#fff; text-shadow:0 0 50px rgba(0,0,0,.95), 0 0 14px #000; }
+  #langFlash span { margin-top:14px; padding:6px 16px; border-radius:999px; background:rgba(0,0,0,.7);
+    font:600 clamp(16px,2vw,24px) -apple-system, Helvetica, sans-serif; color:#ccc; letter-spacing:.08em; }
   #mic.on i { background:#e5484d; box-shadow:0 0 8px #e5484d; }
   #entry { position:fixed; left:50%; top:40%; transform:translate(-50%,-50%); z-index:6; display:none;
     flex-direction:column; gap:8px; width:min(640px,90vw); background:rgba(17,17,17,.95); padding:18px;
@@ -70,9 +79,10 @@
 <video id="pip" autoplay playsinline muted></video>
 <div id="caption"></div>
 <div id="hud">
-  <b>R</b> record · <b>⌘,</b> settings · <b>L</b> language · <b>T</b> type text · <b>G</b> target sentence · <b>X</b> reset target<br>
-  <b>C</b> caption · <b>V</b> camera · <b>S</b> strings · <b>↑↓</b> text size (double tap = big jump) · <b>←→</b> text effect · <b>[ ]</b> silhouette threshold<br>
-  <b>P</b> save snapshot · <b>F</b> fullscreen · <b>H</b> this help
+  <b>Languages</b> E English · F French · S Spanish · P Portuguese · I Italian · J Japanese · C Chinese · K Korean · T Thai · L next<br>
+  <b>R</b> record · <b>⌘,</b> settings · <b>G</b> target sentence · <b>X</b> reset target · <b>⇧T</b> type text<br>
+  <b>⇧C</b> caption · <b>V</b> camera · <b>⇧S</b> strings · <b>↑↓</b> text size (double tap = big jump) · <b>←→</b> text effect · <b>[ ]</b> silhouette threshold<br>
+  <b>⇧P</b> save snapshot · <b>⇧F</b> fullscreen · <b>H</b> this help
 </div>
 <div id="toast"></div>
 <button id="gear" title="Settings (⌘,)">⚙</button>
@@ -106,6 +116,7 @@
   <button id="setClose">Done</button>
 </div>
 <div id="mic"><i></i><span>mic off</span></div>
+<div id="langFlash"><b></b><span></span></div>
 <div id="nailed">Nailed it</div>
 <div id="entry">
   <label id="entryLabel"></label>
@@ -130,6 +141,7 @@
     <option value="ja-JP">日本語</option>
     <option value="zh-CN">中文</option>
     <option value="ar-SA">العربية</option>
+    <option value="th-TH">ไทย</option>
   </select>
   <button id="go">Start camera + mic</button>
   <div id="status"></div>
@@ -142,10 +154,16 @@ import { FilesetResolver, ImageSegmenter, HandLandmarker }
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 const SEG_MODEL = "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite";
 const HAND_MODEL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
-const LANGS = ["en-US","fr-FR","es-ES","pt-BR","it-IT","de-DE","ru-RU","ko-KR","ja-JP","zh-CN","ar-SA"];
+const LANGS = ["en-US","fr-FR","es-ES","pt-BR","it-IT","de-DE","ru-RU","ko-KR","ja-JP","zh-CN","ar-SA","th-TH"];
+const LANG_NAMES = { "en-US": ["English", "English"], "fr-FR": ["Français", "French"], "es-ES": ["Español", "Spanish"],
+  "pt-BR": ["Português", "Portuguese"], "it-IT": ["Italiano", "Italian"], "de-DE": ["Deutsch", "German"],
+  "ru-RU": ["Русский", "Russian"], "ko-KR": ["한국어", "Korean"], "ja-JP": ["日本語", "Japanese"],
+  "zh-CN": ["中文", "Chinese"], "ar-SA": ["العربية", "Arabic"], "th-TH": ["ไทย", "Thai"] };
+const LANG_KEYS = { e: "en-US", f: "fr-FR", s: "es-ES", p: "pt-BR", i: "it-IT", j: "ja-JP", c: "zh-CN", k: "ko-KR", t: "th-TH" };
 const TIPS = [4, 8, 12, 16, 20];
 const WIDE = /[ᄀ-ᇿ　-鿿가-힯＀-￯]/;   // full-width scripts
 const FRESH_MS = 1400;
+const MARK = /\p{M}/u;
 const COL = { base: "rgba(242,242,242,.92)", fresh: "#ffd27a", hit: "#7ee0a4", miss: "rgba(242,242,242,.28)", sep: "rgba(242,242,242,.4)" };
 
 const $ = s => document.querySelector(s);
@@ -259,7 +277,7 @@ function sentence(s) {
 }
 
 // ---------- target sentence (pronunciation mirror) ----------
-const charLevel = () => /^(zh|ja)/.test(lang);   // no spaces between words: match by character
+const charLevel = () => /^(zh|ja|th)/.test(lang);   // no spaces between words: match by character
 function tokens(s) {
   const clean = s.toLowerCase().normalize("NFKC").replace(/[^\p{L}\p{N}\s']/gu, " ");
   return charLevel() ? [...clean.replace(/\s+/g, "")] : clean.split(/\s+/).filter(Boolean);
@@ -325,15 +343,30 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, listening = false;
 function micState(on, label) {
   $("#mic").classList.toggle("on", on);
-  $("#mic span").textContent = label;
+  const [native, en] = LANG_NAMES[lang] || [lang, ""];
+  $("#mic span").innerHTML = label ? esc(label)
+    : `${esc(native)}<small>${native === en ? "listening" : esc(en) + " · listening"}</small>`;
+}
+let flashTimer;
+function setLang(code) {
+  if (!LANG_NAMES[code]) return;
+  lang = code;
+  const [native, en] = LANG_NAMES[code];
+  $("#langFlash b").textContent = native;
+  $("#langFlash span").textContent = native === en ? "LISTENING" : `${en.toUpperCase()} · LISTENING`;
+  $("#langFlash").classList.add("show");
+  clearTimeout(flashTimer); flashTimer = setTimeout(() => $("#langFlash").classList.remove("show"), 1500);
+  if ($("#setLang")) $("#setLang").value = code;
+  if (target) setTarget(target);                 // re-tokenise for the new language
+  if (rec && listening) { rec.lang = lang; micState(true); rec.stop(); }   // onend restarts with the new language
 }
 function startSpeech() {
-  if (!SR) { micState(false, "no speech recognition here, press T to type"); return; }
+  if (!SR) { micState(false, "no speech recognition here, press Shift+T to type"); return; }
   rec = new SR();
   rec.continuous = true;
   rec.interimResults = true;
   rec.lang = lang;
-  rec.onstart = () => micState(true, `listening · ${lang}`);
+  rec.onstart = () => micState(true);
   rec.onresult = e => {
     let fin = "", interim = "";
     for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -347,7 +380,7 @@ function startSpeech() {
   };
   rec.onerror = e => {
     if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-      listening = false; micState(false, "mic blocked, press T to type");
+      listening = false; micState(false, "mic blocked, press Shift+T to type");
     } else if (e.error === "network") micState(false, "speech needs internet");
   };
   rec.onend = () => {
@@ -483,7 +516,9 @@ function drawRun(src, k, n, c0, row, x, y, now) {
       const [r, g, b] = fx.cam ? camAt(c, row) : [0, 0, 0];
       ctx.globalAlpha = s === "miss" || s === "sep" ? 0.35 : 1;
       ctx.fillStyle = s === "fresh" ? COL.fresh : s === "hit" && !fx.cam ? COL.hit : fx.cell(r, g, b, c, row, now);
-      ctx.fillText(src[idx], c * charW, y);
+      let glyph = src[idx];
+      while (MARK.test(src[(idx + 1) % L]) && glyph.length < 6) { idx = (idx + 1) % L; glyph += src[idx]; }
+      ctx.fillText(glyph, c * charW, y);
       idx = (idx + 1) % L;
     }
     ctx.globalAlpha = 1;
@@ -651,7 +686,9 @@ function curveText(p, q, src, startIdx, t, seed) {
         ctx.fillStyle = fx.cell(R, G, B, c, r, t);
       } else ctx.fillStyle = st === "base" || st === "sep" ? "#fff" : COL[st];
       ctx.save(); ctx.translate(pt.x, pt.y); ctx.rotate(ang);
-      ctx.fillText(src[ci], 0, 0);
+      let g = src[ci];
+      while (MARK.test(src[(ci + g.length) % L]) && g.length < 6) { g += src[(ci + g.length) % L]; idx++; }
+      ctx.fillText(g, 0, 0);
       ctx.restore();
       idx++; next += charW;
     }
@@ -757,11 +794,7 @@ $("#setCam").onchange = async e => {
   camId = e.target.value; savePrefs();
   try { await openCamera(camId); toast("Camera changed"); } catch (err) { toast("Couldn't open that camera"); }
 };
-$("#setLang").onchange = e => {
-  lang = e.target.value; toast(`Listening in ${lang}`);
-  if (target) setTarget(target);
-  if (rec && listening) { rec.lang = lang; rec.stop(); }
-};
+$("#setLang").onchange = e => setLang(e.target.value);
 $("#setFx").onchange = e => { effect = +e.target.value; savePrefs(); };
 $("#setSize").oninput = e => { fontSize = +e.target.value; $("#sizeVal").textContent = fontSize; setFont(); savePrefs(); };
 $("#setHi").oninput = e => { HI = +e.target.value; $("#hiVal").textContent = HI; };
@@ -812,6 +845,7 @@ addEventListener("keydown", e => {
   if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;   // let the panel's controls use the keys
   const k = e.key.toLowerCase();
   if (k === ",") { toggleSettings(); return; }
+  if (!e.shiftKey && LANG_KEYS[k]) { setLang(LANG_KEYS[k]); return; }
   if (k === "c") { showCaption = !showCaption; updateCaption(); }
   else if (k === "v") { video.style.display = video.style.display === "none" ? "" : "none"; }
   else if (k === "s") { showStrings = !showStrings; toast(showStrings ? "Strings on" : "Strings off"); }
@@ -838,16 +872,11 @@ addEventListener("keydown", e => {
   else if (k === "x") { if (target) { setCurrent(""); setTarget(target); toast("Target reset, try again"); } }
   else if (k === "p") snapshot();
   else if (k === "h") { const h = $("#hud"); h.style.opacity = h.style.opacity === "0" ? 1 : 0; }
-  else if (k === "l") {
-    lang = LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length];
-    toast(`Listening in ${lang}`);
-    if (target) setTarget(target);                 // re-tokenise for the new language
-    if (rec && listening) { rec.lang = lang; rec.stop(); }   // onend restarts with the new language
-  }
+  else if (k === "l") setLang(LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length]);
 });
 
 $("#go").onclick = async () => {
-  lang = $("#lang").value;
+  setLang($("#lang").value);
   $("#go").disabled = true;
   try {
     await startVision();
