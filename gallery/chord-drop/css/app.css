@@ -317,6 +317,7 @@ body.recording .tap-pad { border-style: solid; border-color: var(--red); }
   letter-spacing: 0.04em;
 }
 .sec-info { font-size: 13px; color: var(--muted); }
+.sec-rep { font-size: 14px; font-style: italic; }
 .sec-note { font-size: 13px; color: #a2401f; font-style: italic; }
 .sec-note.rec-note { color: var(--red); font-style: normal; letter-spacing: 0.1em; text-transform: uppercase; }
 .sec.untapped svg.sys { opacity: 0.5; }
@@ -325,6 +326,8 @@ svg.sys { display: block; width: 100%; height: auto; overflow: visible; }
 svg .staff { stroke: #a9b8bf; stroke-width: 0.9; }
 svg .bar { stroke: var(--ink); stroke-width: 1.2; }
 svg .bar.thick { stroke-width: 3.2; }
+svg .rdot { fill: var(--ink); }
+svg .rlabel { font-size: 15px; font-style: italic; text-anchor: end; fill: var(--ink); }
 svg .ts { font-family: Georgia, "Times New Roman", serif; font-size: 19px; text-anchor: middle; fill: var(--ink); }
 svg .head { fill: var(--ink); }
 svg .head.hollow { fill: var(--paper); stroke: var(--ink); stroke-width: 1.6; }

@@ -181,7 +181,29 @@
         return blockFor(sec, override, v >= 0 ? [lineOf(sec, v)] : []);
       });
     }
-    return parsed.sections.map((sec) => blockFor(sec, override, lyricSets(sec)));
+    const runs = repeatRuns();
+    return parsed.sections.map((sec, i) => Object.assign(blockFor(sec, override, lyricSets(sec)), { repeat: repeatMark(runs[i]) }));
+  }
+
+  // How many times in a row a section plays each time it comes around: Verse, Chorus x2, Verse, Chorus x2 gives Chorus [2, 2].
+  function repeatRuns() {
+    const runs = {};
+    parsed.form.forEach((f, k) => {
+      const r = (runs[f] = runs[f] || []);
+      if (k > 0 && parsed.form[k - 1] === f) r[r.length - 1]++;
+      else r.push(1);
+    });
+    return runs;
+  }
+
+  const ORD = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
+  // Repeat signs when a section plays again right away. Twice needs no label; more says how many;
+  // when it repeats only some of the times it comes around, the label says which.
+  function repeatMark(runs) {
+    if (!runs || Math.max(...runs) < 2) return null;
+    if (runs.every((n) => n === runs[0])) return { label: runs[0] > 2 ? `${runs[0]}×` : '' };
+    const parts = runs.map((n, i) => (n > 1 ? `${n > 2 ? `${n}× ` : ''}the ${ORD[i] || `${i + 1}th`} time` : null)).filter(Boolean);
+    return { label: '', note: `Repeat ${parts.join(' and ')} only` };
   }
 
   // The words each chord comes in on, from the first verse. Shown while tapping.

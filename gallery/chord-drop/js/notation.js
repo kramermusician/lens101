@@ -208,12 +208,14 @@
     if (opts.screen && !b.tapped) {
       head.appendChild(div('sec-note', b.source === 'stale' ? 'chords changed since you tapped, so this is one chord per bar again' : 'not tapped yet, shown one chord per bar'));
     }
+    if (b.repeat && b.repeat.note) head.appendChild(div('sec-rep', b.repeat.note));
     if (opts.screen && b.recording) head.appendChild(div('sec-note rec-note', 'recording'));
     wrap.appendChild(head);
 
     const notes = opts.mode === 'slash' ? null : spell(b, mi);
     const showTS = idx === 0;
-    const x0 = 6, tsW = 34, padL = 12, padR = 16;
+    const rpt = b.repeat || null;
+    const x0 = 6, tsW = 34, padL = rpt ? 19 : 12, padR = rpt ? 20 : 16;
     const barW = (W - x0 - tsW - 6) / bpl;
     const inner = barW - padL - padR;
     const barX = (col) => x0 + tsW + col * barW;
@@ -232,6 +234,14 @@
       const xEnd = barX(last % bpl) + barW;
       for (let l = -2; l <= 2; l++) el('line', { x1: xStart, x2: xEnd, y1: MID + l * S, y2: MID + l * S, class: 'staff' }, svg);
       el('line', { x1: xStart, x2: xStart, y1: STAFF_TOP, y2: STAFF_BOT, class: 'bar' }, svg);
+      // start repeat: thick, thin, two dots
+      if (s === 0 && rpt) {
+        const rx = barX(0);
+        el('line', { x1: rx + 1.6, x2: rx + 1.6, y1: STAFF_TOP, y2: STAFF_BOT, class: 'bar thick' }, svg);
+        el('line', { x1: rx + 6, x2: rx + 6, y1: STAFF_TOP, y2: STAFF_BOT, class: 'bar' }, svg);
+        el('circle', { cx: rx + 10.5, cy: MID - S / 2, r: 1.9, class: 'rdot' }, svg);
+        el('circle', { cx: rx + 10.5, cy: MID + S / 2, r: 1.9, class: 'rdot' }, svg);
+      }
       if (s === 0 && showTS) {
         const tx = x0 + 15;
         el('text', { x: tx, y: MID - 1, class: 'ts' }, svg).textContent = mi.num;
@@ -239,7 +249,14 @@
       }
       for (let bar = first; bar <= last; bar++) {
         const bx = barX(bar % bpl) + barW;
-        if (bar === nBars - 1) {
+        if (bar === nBars - 1 && rpt) {
+          // end repeat: two dots, thin, thick, and how many times when it isn't just twice
+          el('circle', { cx: bx - 10.5, cy: MID - S / 2, r: 1.9, class: 'rdot' }, svg);
+          el('circle', { cx: bx - 10.5, cy: MID + S / 2, r: 1.9, class: 'rdot' }, svg);
+          el('line', { x1: bx - 6, x2: bx - 6, y1: STAFF_TOP, y2: STAFF_BOT, class: 'bar' }, svg);
+          el('line', { x1: bx - 1.6, x2: bx - 1.6, y1: STAFF_TOP, y2: STAFF_BOT, class: 'bar thick' }, svg);
+          if (rpt.label) el('text', { x: bx - 1, y: LABEL_Y2, class: 'rlabel' }, svg).textContent = rpt.label;
+        } else if (bar === nBars - 1) {
           const final = idx === model.blocks.length - 1;
           el('line', { x1: bx - 5, x2: bx - 5, y1: STAFF_TOP, y2: STAFF_BOT, class: 'bar' }, svg);
           el('line', { x1: bx - (final ? 1.6 : 1), x2: bx - (final ? 1.6 : 1), y1: STAFF_TOP, y2: STAFF_BOT, class: final ? 'bar thick' : 'bar' }, svg);
