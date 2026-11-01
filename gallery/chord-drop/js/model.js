@@ -106,7 +106,7 @@
   const pcOf = (l, acc) => (PC[l] + (acc === '#' ? 1 : acc === 'b' ? -1 : 0) + 12) % 12;
   const wrap = (n, lo) => lo + (((n - lo) % 12) + 12) % 12;
 
-  // A plain voicing for playback: a bass note around E2 and close chord tones above G3.
+  // A plain voicing for playback: a bass note around E2 and close chord tones above B3, where laptop speakers still sound.
   CD.chordNotes = function (sym) {
     const m = normTok(sym).match(CHORD_RE);
     if (!m) return null;
@@ -142,7 +142,7 @@
     if (third !== null) iv.push(third);
     iv.push(fifth, ...ext);
     const bassPc = m[4] ? pcOf(m[4][0], m[4].slice(1)) : root;
-    const upper = [...new Set(iv.map((i) => wrap(root + i, 55)))].sort((a, b) => a - b);
+    const upper = [...new Set(iv.map((i) => wrap(root + i, 59)))].sort((a, b) => a - b);
     return { bass: wrap(bassPc, 40), upper };
   };
 

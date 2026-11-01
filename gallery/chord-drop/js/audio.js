@@ -65,23 +65,39 @@
 
   /* ---------- the synth ---------- */
 
+  // iPhone and iPad: play through the silent switch, like a music app does.
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+
   class Engine {
     constructor() { this.ctx = null; }
 
     ensure() {
       if (!this.ctx) {
         const AC = window.AudioContext || window.webkitAudioContext;
-        const ctx = (this.ctx = new AC({ latencyHint: 'interactive' }));
-        this.out = ctx.createDynamicsCompressor();
-        this.out.threshold.value = -10;
-        this.out.connect(ctx.destination);
-        const len = ctx.sampleRate;
-        this.noise = ctx.createBuffer(1, len, ctx.sampleRate);
-        const d = this.noise.getChannelData(0);
-        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        this.build(new AC({ latencyHint: 'interactive' }));
       }
-      if (this.ctx.state === 'suspended') this.ctx.resume();
+      // Safari can leave the sound "interrupted" (another tab, headphones, sleep), not just "suspended": wake it either way
+      if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {});
       return this.ctx;
+    }
+
+    // the output chain, on a live context or an offline one (for measuring)
+    build(ctx) {
+      this.ctx = ctx;
+      // a safety limiter only: it catches peaks and leaves everything else alone (a lower threshold
+      // let every kick pull the whole mix down, and laptop speakers lost what was left)
+      this.out = ctx.createDynamicsCompressor();
+      this.out.threshold.value = -4;
+      this.out.knee.value = 0;
+      this.out.ratio.value = 20;
+      this.out.attack.value = 0.002;
+      this.out.release.value = 0.1;
+      this.out.connect(ctx.destination);
+      const len = ctx.sampleRate;
+      this.noise = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = this.noise.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      return ctx;
     }
 
     // how long after a sound is scheduled it reaches the ear
@@ -114,33 +130,44 @@
       src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.05);
     }
 
+    _tone(type, freq, t, peak, decay, out) {
+      const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+      o.type = type; o.frequency.value = freq;
+      this._env(g, t, peak, decay);
+      o.connect(g); g.connect(out);
+      o.start(t); o.stop(t + decay + 0.02);
+      return o;
+    }
+
+    // Every drum carries some sound above 300 Hz: MacBook speakers play almost nothing below that,
+    // so a kick that is only a low thump comes out as silence there.
     hit(inst, t, v, out) {
       const ctx = this.ctx;
       out = out || this.out;
       if (inst === 'click' || inst === 'tick') {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = 'sine';
-        o.frequency.value = inst === 'tick' ? 1000 : v >= 1 ? 1760 : 1320;
-        this._env(g, t, 0.55 * v, 0.06);
-        o.connect(g); g.connect(out);
-        o.start(t); o.stop(t + 0.08);
+        const f = inst === 'tick' ? 1000 : v >= 1 ? 1760 : 1320;
+        this._tone('triangle', f, t, (inst === 'tick' ? 0.45 : 0.8) * v, 0.09, out);
+        this._tone('sine', f * 2, t, 0.2 * v, 0.03, out);
       } else if (inst === 'kick') {
         const o = ctx.createOscillator(), g = ctx.createGain();
         o.type = 'sine';
-        o.frequency.setValueAtTime(150, t);
-        o.frequency.exponentialRampToValueAtTime(46, t + 0.13);
-        this._env(g, t, 0.95 * v, 0.34);
+        o.frequency.setValueAtTime(170, t);
+        o.frequency.exponentialRampToValueAtTime(50, t + 0.12);
+        this._env(g, t, 0.75 * v, 0.3);
         o.connect(g); g.connect(out);
-        o.start(t); o.stop(t + 0.4);
+        o.start(t); o.stop(t + 0.35);
+        // the beater: a short knock you can hear on small speakers
+        const k = this._tone('triangle', 900, t, 0.45 * v, 0.035, out);
+        k.frequency.setValueAtTime(900, t);
+        k.frequency.exponentialRampToValueAtTime(260, t + 0.03);
+        this._noise(t, 0.02, 'bandpass', 2500, 0.25 * v, out);
       } else if (inst === 'snare') {
-        this._noise(t, 0.17, 'highpass', 900, 0.5 * v, out);
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = 'triangle'; o.frequency.value = 185;
-        this._env(g, t, 0.35 * v, 0.08);
-        o.connect(g); g.connect(out);
-        o.start(t); o.stop(t + 0.1);
+        this._noise(t, 0.2, 'highpass', 1200, 0.85 * v, out);
+        this._noise(t, 0.08, 'bandpass', 2600, 0.5 * v, out);
+        this._tone('triangle', 240, t, 0.4 * v, 0.09, out);
+        this._tone('triangle', 410, t, 0.25 * v, 0.06, out);
       } else if (inst === 'hat') {
-        this._noise(t, 0.045, 'highpass', 7000, 0.22 * v, out);
+        this._noise(t, 0.06, 'highpass', 6000, 0.45 * v, out);
       }
     }
 
@@ -150,13 +177,14 @@
       if (!n) return null;
       const ctx = this.ctx;
       const f = ctx.createBiquadFilter();
-      f.type = 'lowpass'; f.frequency.value = 1900; f.Q.value = 0.4;
+      f.type = 'lowpass'; f.frequency.value = 3200; f.Q.value = 0.4;
       const g = ctx.createGain();
       f.connect(g); g.connect(out || this.out);
-      const peak = 0.17;
+      // holds near full while the chord rings: a pad that fades fast is gone on laptop speakers
+      const peak = 0.3;
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(peak, t + 0.012);
-      g.gain.exponentialRampToValueAtTime(peak * 0.42, t + 0.7);
+      g.gain.exponentialRampToValueAtTime(peak * 0.75, t + 0.5);
       const end = Math.max(tEnd, t + 0.12);
       g.gain.setTargetAtTime(0.0001, end, 0.06);
       const oscs = [];
@@ -170,8 +198,9 @@
         o.start(t); o.stop(end + 0.5);
         oscs.push(o);
       };
-      n.upper.forEach((m) => { voice(m, 'triangle', 0.45, -4); voice(m, 'sawtooth', 0.06, 5); });
-      voice(n.bass, 'triangle', 0.95, 0);
+      n.upper.forEach((m) => { voice(m, 'triangle', 0.45, -4); voice(m, 'sawtooth', 0.12, 5); });
+      voice(n.bass, 'triangle', 0.7, 0);
+      voice(n.bass + 12, 'sawtooth', 0.22, 0); // the bass note an octave up, so small speakers still hear the root
       return {
         release(rt) {
           if (g.gain.cancelAndHoldAtTime) g.gain.cancelAndHoldAtTime(rt);

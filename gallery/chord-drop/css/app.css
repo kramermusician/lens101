@@ -411,3 +411,55 @@ svg .lyric:hover { fill: var(--blue-deep); }
   svg .chord.sel, svg .chord:hover { fill: var(--ink); text-decoration: none; }
   svg .on, svg .lyric.on, svg .lyric.sel, svg .lyric:hover { fill: var(--ink); text-decoration: none; }
 }
+
+/* ---------- song order (step 1) ---------- */
+.order { margin-top: 16px; }
+.order[hidden] { display: none; }
+.order-hint { font-size: 13px; color: var(--muted); margin: 0 0 8px; }
+.order-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.order-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+  padding: 4px 6px 4px 4px;
+  transition: transform 0.15s ease;
+}
+.order-row.dragging { transition: none; position: relative; z-index: 2; box-shadow: var(--shadow); border-color: var(--ink); }
+.order-row .grip {
+  border: none; background: none; padding: 6px 8px; cursor: grab; color: var(--muted);
+  font-size: 16px; line-height: 1; letter-spacing: -2px; touch-action: none;
+}
+.order-row.dragging .grip { cursor: grabbing; }
+.order-row .grip:focus-visible { outline: 2px solid var(--blue-deep); border-radius: 4px; }
+.order-row .or-num { font-size: 13px; color: var(--muted); min-width: 1.4em; text-align: right; }
+.order-row .or-name { font-size: 15px; white-space: nowrap; }
+.order-row .or-chords { flex: 1; min-width: 0; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.order-row .or-again { font-style: italic; }
+.order-row button.small { padding: 3px 9px; font-size: 13px; }
+.order-row button.link { padding: 3px 4px; font-size: 13px; }
+.order-row button.link.danger { color: var(--red); }
+body.recording .order { opacity: 0.45; pointer-events: none; }
+
+/* ---------- notes on the chart ---------- */
+.sheet-head, .sheet > .sec { position: relative; container-type: inline-size; }
+.txt-note {
+  position: absolute; z-index: 3; max-width: 60%;
+  font-size: 15px; font-style: italic; line-height: 1.3; color: var(--ink);
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.txt-note-text { white-space: pre-wrap; padding: 2px 5px; border: 1px dashed transparent; border-radius: 4px; outline: none; min-width: 2em; }
+.txt-note:hover .txt-note-text { border-color: rgba(29, 127, 176, 0.5); background: rgba(255, 255, 255, 0.85); }
+.txt-note.editing { cursor: text; user-select: text; -webkit-user-select: text; }
+.txt-note.editing .txt-note-text { border-color: var(--blue-deep); background: #fff; cursor: text; }
+.txt-note.dragging { cursor: grabbing; opacity: 0.85; }
+.txt-note-x {
+  position: absolute; top: -10px; right: -12px; display: none;
+  width: 20px; height: 20px; padding: 0; border-radius: 50%; font-size: 13px; line-height: 18px; text-align: center;
+  font-style: normal; color: var(--red); background: #fff;
+}
+.txt-note:hover .txt-note-x, .txt-note.editing .txt-note-x { display: block; }
+
+@media print {
+  .txt-note { font-size: 11pt; }
+  .txt-note-text { border: none !important; background: none !important; padding: 0 2px; }
+  .txt-note-x { display: none !important; }
+}

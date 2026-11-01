@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Chord Drop</title>
 <meta name="description" content="Type a song's chords, tap the changes along with a drum groove, and print a chart that shows your band exactly when each chord lands." />
-<link rel="stylesheet" href="css/app.css" />
+<link rel="stylesheet" href="css/app.css?v=20261101a" />
 </head>
 <body>
 
@@ -62,6 +62,11 @@
       <div id="wordImport2" class="word-import" hidden>
         <span>There are words in your chords.</span>
         <button type="button" class="small primary" id="btnImportWords2">Move the words to step 4</button>
+      </div>
+      <div class="order" id="orderBox" hidden>
+        <div class="label">Song order</div>
+        <p class="order-hint">Drag a section by its handle to move it. Repeat plays it again right after; drag that copy wherever it goes.</p>
+        <ol class="order-list" id="orderList"></ol>
       </div>
     </div>
 
@@ -163,6 +168,7 @@
         </div>
         <label class="check"><input type="checkbox" id="showWords" /> Show words</label>
         <label class="check"><input type="checkbox" id="writeOut" /> Write out every repeat</label>
+        <button type="button" class="small" id="btnAddNote" title="Add your own words anywhere on the chart">+ Text</button>
       </div>
     </div>
     <div class="edit-bar" id="editBar" hidden>
@@ -174,7 +180,7 @@
       <button type="button" class="small link" id="btnDeselect">Done</button>
     </div>
     <div class="sheet" id="sheet"></div>
-    <div class="sheet-tip">Click a chord or a word on the chart, then use the arrow keys to move it earlier or later.</div>
+    <div class="sheet-tip">Click a chord or a word on the chart, then use the arrow keys to move it earlier or later. Double-click any empty spot to write a note there; drag a note to move it.</div>
   </section>
 
 </main>
@@ -199,9 +205,9 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="fileInput" accept=".json,application/json" hidden />
 
-<script src="js/model.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/notation.js"></script>
-<script src="js/app.js"></script>
+<script src="js/model.js?v=20261101a"></script>
+<script src="js/audio.js?v=20261101a"></script>
+<script src="js/notation.js?v=20261101a"></script>
+<script src="js/app.js?v=20261101a"></script>
 </body>
 </html>

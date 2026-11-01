@@ -34,7 +34,7 @@
     return {
       id: uid(), title: '', composer: '', text: '',
       tempo: 100, meter: '4/4', groove: 'rock', grid: '8', countIn: 1,
-      notation: 'rhythm', writeOut: false, hearChords: true, showLyrics: true, rhythms: {}, lyrics: {}, own: [], updated: Date.now(),
+      notation: 'rhythm', writeOut: false, hearChords: true, showLyrics: true, rhythms: {}, lyrics: {}, own: [], notes: [], updated: Date.now(),
     };
   }
 
@@ -54,6 +54,8 @@
     if (!n.lyrics || typeof n.lyrics !== 'object') n.lyrics = {};
     if (!n.rhythms || typeof n.rhythms !== 'object') n.rhythms = {};
     if (!Array.isArray(n.own)) n.own = [];
+    if (!Array.isArray(n.notes)) n.notes = [];
+    n.notes = n.notes.filter((x) => x && typeof x === 'object').map((x) => ({ id: String(x.id || uid()), text: String(x.text || ''), at: String(x.at || 'top'), n: +x.n || 0, x: +x.x || 0, y: +x.y || 0 }));
     return n;
   }
 
@@ -193,6 +195,7 @@
     return s ? s[0].toUpperCase() + s.slice(1) : '';
   }
 
+  let lastBlocks = [];
   function renderChart(override) {
     const model = {
       title: song.title, composer: song.composer, tempo: song.tempo, mi,
@@ -200,9 +203,178 @@
       formText: parsed.form.length > 1 ? CD.formText(parsed) : '',
       blocks: chartBlocks(override),
     };
+    lastBlocks = model.blocks;
     CD.renderChart($('#sheet'), model, { mode: song.notation, screen: true, selected: ui.sel, selWord: ui.wsel, lyrics: song.showLyrics });
+    renderNotes();
     lastHL = null;
   }
+
+  /* ---------- notes: your own words anywhere on the chart ---------- */
+
+  // A note sits on the part of the chart it was dropped on (the title area or a section), so it stays put when
+  // sections above it grow or move. x and y are fractions of that part's width, so print scaling keeps it in place.
+  function noteAnchors() {
+    const out = [{ key: 'top', n: 0, el: $('#sheet .sheet-head') }];
+    const count = {};
+    $$('#sheet > .sec').forEach((el, i) => {
+      const b = lastBlocks[i];
+      if (!b) return;
+      const n = (count[b.key] = (count[b.key] || 0) + 1) - 1;
+      out.push({ key: b.key, n, el });
+    });
+    return out.filter((a) => a.el);
+  }
+
+  function anchorFor(note, anchors) {
+    const same = anchors.filter((a) => a.key === note.at);
+    return same[Math.min(note.n || 0, same.length - 1)] || anchors[0];
+  }
+
+  function renderNotes() {
+    if (!song.notes.length) return;
+    const anchors = noteAnchors();
+    if (!anchors.length) return;
+    song.notes.forEach((note) => {
+      const a = anchorFor(note, anchors);
+      const d = document.createElement('div');
+      d.className = 'txt-note';
+      d.dataset.id = note.id;
+      d.style.left = `${(note.x * 100).toFixed(2)}%`;
+      d.style.top = `${(note.y * 100).toFixed(2)}cqw`;
+      d.innerHTML = '<div class="txt-note-text"></div><button type="button" class="txt-note-x" aria-label="Delete this note" title="Delete this note">&times;</button>';
+      d.querySelector('.txt-note-text').textContent = note.text;
+      a.el.appendChild(d);
+    });
+  }
+
+  const noteById = (id) => song.notes.find((n) => n.id === id);
+
+  function editNote(el) {
+    const t = el.querySelector('.txt-note-text');
+    el.classList.add('editing');
+    t.contentEditable = 'plaintext-only';
+    if (t.contentEditable !== 'plaintext-only') t.contentEditable = 'true';
+    t.focus();
+    const r = document.createRange();
+    r.selectNodeContents(t);
+    r.collapse(false);
+    const s = getSelection();
+    s.removeAllRanges();
+    s.addRange(r);
+  }
+
+  function addNote(anchor, x, y) {
+    if (ui.rec) return;
+    const note = { id: uid(), text: '', at: anchor.key, n: anchor.n, x: Math.max(0, Math.min(0.9, x)), y };
+    song.notes.push(note);
+    save();
+    renderChart();
+    const el = $(`#sheet .txt-note[data-id="${note.id}"]`);
+    if (el) { el.scrollIntoView({ block: 'nearest' }); editNote(el); }
+  }
+
+  // which part of the chart a point is over: the last one that starts above it
+  function anchorAt(clientY, anchors) {
+    let best = anchors[0];
+    anchors.forEach((a) => { if (a.el.getBoundingClientRect().top <= clientY) best = a; });
+    return best;
+  }
+
+  function placeFromRect(note, rect, anchors) {
+    const a = anchorAt(rect.top + 4, anchors);
+    const ar = a.el.getBoundingClientRect();
+    note.at = a.key; note.n = a.n;
+    note.x = Math.max(0, Math.min(0.95, (rect.left - ar.left) / ar.width));
+    note.y = (rect.top - ar.top) / ar.width;
+  }
+
+  $('#btnAddNote').addEventListener('click', () => {
+    const anchors = noteAnchors();
+    const a = anchors.find((x) => x.key === ui.secKey) || anchors[0];
+    if (!a) return;
+    // in the section's heading line, to the right of its name
+    const ar = a.el.getBoundingClientRect();
+    addNote(a, 0.45, a.key === 'top' ? (ar.height + 4) / ar.width : 0);
+  });
+
+  $('#sheet').addEventListener('dblclick', (e) => {
+    if (ui.rec || e.target.closest('.txt-note, [data-ci], .lyric')) return;
+    const anchors = noteAnchors();
+    if (!anchors.length) return;
+    const a = anchorAt(e.clientY, anchors);
+    const ar = a.el.getBoundingClientRect();
+    getSelection().removeAllRanges();
+    addNote(a, (e.clientX - ar.left) / ar.width, (e.clientY - ar.top - 10) / ar.width);
+  });
+
+  // Press on a note: a drag moves it, a click starts editing it.
+  $('#sheet').addEventListener('pointerdown', (e) => {
+    const el = e.target.closest('.txt-note');
+    if (!el || e.target.closest('.txt-note-x') || el.classList.contains('editing') || e.button > 0) return;
+    e.preventDefault();
+    const note = noteById(el.dataset.id);
+    if (!note) return;
+    const x0 = e.clientX, y0 = e.clientY;
+    let dragging = false;
+    el.setPointerCapture(e.pointerId);
+    const move = (ev) => {
+      const dx = ev.clientX - x0, dy = ev.clientY - y0;
+      if (!dragging && Math.hypot(dx, dy) < 4) return;
+      dragging = true;
+      el.classList.add('dragging');
+      el.style.transform = `translate(${dx}px, ${dy}px)`;
+    };
+    const up = () => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up);
+      if (!dragging) { editNote(el); return; }
+      pushUndo({ all: true });
+      placeFromRect(note, el.getBoundingClientRect(), noteAnchors());
+      save();
+      renderChart();
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  });
+
+  $('#sheet').addEventListener('input', (e) => {
+    const el = e.target.closest('.txt-note');
+    const note = el && noteById(el.dataset.id);
+    if (!note) return;
+    note.text = e.target.innerText.replace(/\n$/, '');
+    save();
+  });
+
+  $('#sheet').addEventListener('focusout', (e) => {
+    const el = e.target.closest && e.target.closest('.txt-note');
+    if (!el || !e.target.classList.contains('txt-note-text')) return;
+    const note = noteById(el.dataset.id);
+    el.classList.remove('editing');
+    e.target.contentEditable = 'false';
+    if (note && !note.text.trim()) {
+      song.notes = song.notes.filter((n) => n !== note);
+      el.remove();
+      save();
+    }
+  });
+
+  $('#sheet').addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && e.target.classList.contains('txt-note-text')) { e.stopPropagation(); e.target.blur(); }
+  });
+
+  $('#sheet').addEventListener('click', (e) => {
+    const x = e.target.closest('.txt-note-x');
+    if (!x) return;
+    e.stopPropagation();
+    const id = x.closest('.txt-note').dataset.id;
+    pushUndo({ all: true });
+    song.notes = song.notes.filter((n) => n.id !== id);
+    save();
+    renderChart();
+    toast('Note deleted. Cmd+Z puts it back.');
+  }, true);
 
   /* ---------- rendering the controls ---------- */
 
@@ -238,6 +410,7 @@
     renderSettings();
     renderSongPick();
     renderWarnings();
+    renderOrder();
     renderSecList();
     renderRec();
     renderEditBar();
@@ -639,6 +812,7 @@
     ui.sel = null;
     ui.rec = { key: sec.key, name: sec.name, chords: sec.chords.slice(), words: wordsFor(sec), events: [0], voice: null, lastBar: null };
     transport.start({ song, mi, countIn: song.countIn, blocks: null, onPos: recPos });
+    checkSound();
     if (song.hearChords !== false) ui.rec.voice = engine.chord(sec.chords[0], transport.t0, transport.t0 + 60, transport.out);
     document.body.classList.add('recording');
     renderRec();
@@ -818,6 +992,7 @@
       onPos: playPos,
       onEnd: () => { ui.play = null; highlight(null); clearLights(); renderPlayButtons(); },
     });
+    checkSound();
     renderPlayButtons();
   }
 
@@ -846,6 +1021,7 @@
     stopAll();
     ui.trying = true;
     transport.start({ song, mi, countIn: 0, blocks: null, onPos: lights });
+    checkSound();
     renderPlayButtons();
   }
   function restartBeat() {
@@ -860,7 +1036,7 @@
     const snap = {};
     if (what.rhythms) snap.rhythms = JSON.stringify(song.rhythms);
     if (what.shifts) snap.shifts = { key: what.shifts, value: JSON.stringify((song.lyrics[what.shifts] || {}).shifts || []) };
-    if (what.all) snap.all = JSON.stringify({ text: song.text, rhythms: song.rhythms, lyrics: song.lyrics, own: song.own });
+    if (what.all) snap.all = JSON.stringify({ text: song.text, rhythms: song.rhythms, lyrics: song.lyrics, own: song.own, notes: song.notes });
     undoStack.push(snap);
     if (undoStack.length > 60) undoStack.shift();
   }
@@ -1022,6 +1198,250 @@
     toast(`Made ${name}: same chords and rhythm, ${where}. ${moved ? 'Its words came with it.' : 'Type its words in step 4.'}`);
     $('#step4').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+
+  /* ---------- song order: delete, repeat, drag ---------- */
+
+  // The order lives in the chord text, so every change here rewrites step 1. Each header ([Verse], [Chorus x2])
+  // is one row. The first time a section plays has to carry its chords, so a move or a delete that changes
+  // which time comes first moves the chords there. Rhythms, words and copies follow their section.
+  const nameKey = (n) => n.toLowerCase().replace(/\s+/g, ' ').trim();
+  const TIMES_RE = /\s*(?:[x×]\s*\d+|\(\s*\d+\s*[x×]\s*\))(?=\s*\]|\s*:|\s*$)/i;
+  const headLine = (name, times) => `[${name}${times > 1 ? ` x${times}` : ''}]`;
+
+  function orderBlocks() {
+    const lines = song.text.split(/\r?\n/);
+    const blocks = [], pass = {}, seen = new Set();
+    parsed.formInfo.forEach((info, k) => {
+      const s = parsed.form[k];
+      const p = (pass[s] = (pass[s] || 0) + 1) - 1;
+      let b = blocks[blocks.length - 1];
+      if (!b || b.info !== info) {
+        b = { info, sec: s, key: parsed.sections[s].key, times: info.times, start: info.head === null ? 0 : info.head, passes: [], def: !seen.has(s) };
+        seen.add(s);
+        blocks.push(b);
+      }
+      b.passes.push(p);
+    });
+    const pre = lines.slice(0, blocks.length ? blocks[0].start : lines.length);
+    blocks.forEach((b, i) => {
+      b.lines = lines.slice(b.start, i + 1 < blocks.length ? blocks[i + 1].start : lines.length);
+      // chords typed with no header at the top: give them one so they can move
+      if (b.info.head === null) b.lines.unshift(headLine(b.info.name, 1));
+      while (b.lines.length && !b.lines[b.lines.length - 1].trim()) b.lines.pop();
+    });
+    return { pre, blocks };
+  }
+
+  function canArrange() {
+    if (ui.rec) return false;
+    if (parsed.formLyrics.some(Boolean)) {
+      toast('There are words in your chords. Press "Move the words to step 4" first, then change the order.');
+      return false;
+    }
+    return true;
+  }
+
+  function commitOrder(orig, pre, blocks, msg) {
+    // the name a bare header uses to reach each section (a second "[Verse]" with other chords is "Verse 2")
+    const refName = {};
+    orig.forEach((b) => {
+      if (!b.def) return;
+      const sec = parsed.sections[b.sec];
+      refName[b.key] = sec.key.includes('#') ? sec.name : b.info.name;
+    });
+    const firstDone = new Set();
+    blocks.forEach((b) => {
+      const sec = parsed.sections[b.sec], name = refName[b.key];
+      const first = !firstDone.has(b.key);
+      firstDone.add(b.key);
+      if (first) {
+        if (!b.def || sec.key.includes('#') || b.info.head === null) b.lines = [headLine(name, b.times), ...sec.src];
+      } else if (b.def || !b.lines) {
+        b.lines = [headLine(name, b.times)];
+      }
+    });
+    const out = pre.slice();
+    while (out.length && !out[out.length - 1].trim()) out.pop();
+    blocks.forEach((b) => {
+      if (out.length) out.push('');
+      b.newStart = out.length;
+      out.push(...b.lines);
+    });
+    const text = out.join('\n');
+
+    pushUndo({ all: true });
+
+    // words: each time a section plays keeps the verse it had
+    const passCount = {};
+    orig.forEach((b) => (passCount[b.key] = (passCount[b.key] || 0) + b.passes.length));
+    Object.keys(passCount).forEach((key) => {
+      const e = song.lyrics[key];
+      const order = blocks.filter((b) => b.key === key).flatMap((b) => b.passes);
+      if (!e || !e.verses || !order.length) return;
+      const perm = (arr) => {
+        if (!arr) return arr;
+        const got = order.map((p) => (p === null ? undefined : arr[p])).concat(arr.slice(passCount[key]));
+        while (got.length && got[got.length - 1] === undefined) got.pop();
+        return got.map((x) => x || []);
+      };
+      e.verses = perm(e.verses);
+      if (!e.verses.length) e.verses = [[]];
+      if (e.shifts) e.shifts = perm(e.shifts);
+    });
+
+    // a section whose header changed gets a new key: carry its rhythm, words and copy flag across
+    const np = CD.parseSong(text, song.own);
+    const keyAt = {};
+    np.formInfo.forEach((info, k) => { if (info.head !== null && !(info.head in keyAt)) keyAt[info.head] = np.sections[np.form[k]].key; });
+    const remap = {};
+    blocks.forEach((b) => {
+      const nk = keyAt[b.newStart];
+      if (nk && nk !== b.key && !(b.key in remap)) remap[b.key] = nk;
+    });
+    if (Object.keys(remap).length) {
+      const move = (obj) => {
+        const res = {};
+        for (const k in obj) if (!(k in remap)) res[k] = obj[k];
+        for (const k in remap) if (obj[k]) res[remap[k]] = obj[k];
+        return res;
+      };
+      song.rhythms = move(song.rhythms);
+      song.lyrics = move(song.lyrics);
+      song.own = [...new Set(song.own.map((k) => remap[k] || k))];
+      if (song.notes) song.notes.forEach((n) => { if (remap[n.at]) n.at = remap[n.at]; });
+      if (remap[ui.secKey]) ui.secKey = remap[ui.secKey];
+      if (remap[ui.wordKey]) ui.wordKey = remap[ui.wordKey];
+    }
+
+    song.text = text;
+    $('#chordText').value = song.text;
+    ui.sel = ui.wsel = null;
+    ui.verse = 0;
+    save();
+    refresh();
+    if (msg) toast(msg);
+  }
+
+  function moveBlock(from, to) {
+    if (from === to || !canArrange()) return;
+    const { pre, blocks } = orderBlocks();
+    if (to < 0 || to >= blocks.length) return;
+    const arr = blocks.slice();
+    const [b] = arr.splice(from, 1);
+    arr.splice(to, 0, b);
+    commitOrder(blocks, pre, arr, `Moved ${parsed.sections[b.sec].name}.`);
+  }
+
+  function repeatBlock(i) {
+    if (!canArrange()) return;
+    const { pre, blocks } = orderBlocks();
+    const b = blocks[i];
+    const arr = blocks.slice();
+    arr.splice(i + 1, 0, { info: b.info, sec: b.sec, key: b.key, times: 1, passes: [null], def: false, lines: null });
+    commitOrder(blocks, pre, arr, `${parsed.sections[b.sec].name} plays again right after. Drag it if it goes somewhere else.`);
+  }
+
+  function deleteBlock(i) {
+    if (!canArrange()) return;
+    const { pre, blocks } = orderBlocks();
+    const b = blocks[i];
+    const name = parsed.sections[b.sec].name;
+    const arr = blocks.slice();
+    if (b.times > 1) {
+      const nb = Object.assign({}, b, { times: b.times - 1, passes: b.passes.slice(0, -1), lines: b.lines.slice() });
+      nb.lines[0] = nb.lines[0].replace(TIMES_RE, nb.times > 1 ? ` x${nb.times}` : '');
+      arr[i] = nb;
+    } else {
+      arr.splice(i, 1);
+    }
+    commitOrder(blocks, pre, arr, `Took out ${name}${b.times > 1 ? ' once' : ''}. Cmd+Z puts it back.`);
+  }
+
+  function renderOrder() {
+    const box = $('#orderBox'), list = $('#orderList');
+    const { blocks } = orderBlocks();
+    box.hidden = !blocks.length;
+    list.innerHTML = '';
+    blocks.forEach((b, i) => {
+      const sec = parsed.sections[b.sec];
+      const li = document.createElement('li');
+      li.className = 'order-row';
+      li.dataset.i = i;
+      li.innerHTML = '<button type="button" class="grip">&#8942;&#8942;</button><span class="or-num"></span><span class="or-name"></span><span class="or-chords"></span>'
+        + '<button type="button" class="small" data-act="repeat">Repeat</button><button type="button" class="link danger" data-act="del">Delete</button>';
+      li.querySelector('.grip').setAttribute('aria-label', `Move ${sec.name}. Drag, or use the up and down arrow keys.`);
+      li.querySelector('.or-num').textContent = i + 1;
+      li.querySelector('.or-name').textContent = sec.name + (b.times > 1 ? ` ×${b.times}` : '');
+      const ch = li.querySelector('.or-chords');
+      if (b.def) ch.textContent = sec.chords.slice(0, 8).map(pretty).join('  ') + (sec.chords.length > 8 ? '  ...' : '');
+      else { ch.textContent = 'again'; ch.classList.add('or-again'); }
+      li.querySelector('[data-act="repeat"]').title = `Play ${sec.name} one more time, right after this`;
+      li.querySelector('[data-act="del"]').title = b.times > 1 ? `Play ${sec.name} one time fewer` : `Take this ${sec.name} out of the song`;
+      list.appendChild(li);
+    });
+  }
+
+  $('#orderList').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const i = +btn.closest('.order-row').dataset.i;
+    if (btn.dataset.act === 'repeat') repeatBlock(i);
+    if (btn.dataset.act === 'del') deleteBlock(i);
+  });
+
+  $('#orderList').addEventListener('keydown', (e) => {
+    const grip = e.target.closest('.grip');
+    if (!grip || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const i = +grip.closest('.order-row').dataset.i;
+    const to = i + (e.key === 'ArrowUp' ? -1 : 1);
+    if (to < 0 || to >= $$('#orderList .order-row').length) return;
+    moveBlock(i, to);
+    const g = $$('#orderList .grip')[to];
+    if (g) g.focus();
+  });
+
+  // Drag by the handle: the other rows slide out of the way, and the drop rewrites the order.
+  $('#orderList').addEventListener('pointerdown', (e) => {
+    const grip = e.target.closest('.grip');
+    if (!grip || ui.rec || e.button > 0) return;
+    e.preventDefault();
+    const row = grip.closest('.order-row');
+    const rows = $$('#orderList .order-row');
+    const from = rows.indexOf(row);
+    const step = rows.length > 1 ? rows[1].getBoundingClientRect().top - rows[0].getBoundingClientRect().top : row.offsetHeight;
+    const mids = rows.map((r) => { const m = r.getBoundingClientRect(); return m.top + m.height / 2; });
+    const y0 = e.clientY;
+    let to = from;
+    row.classList.add('dragging');
+    grip.setPointerCapture(e.pointerId);
+    const move = (ev) => {
+      const dy = ev.clientY - y0;
+      row.style.transform = `translateY(${dy}px)`;
+      const y = mids[from] + dy;
+      to = 0;
+      mids.forEach((m, j) => { if (j !== from && y > m) to++; });
+      rows.forEach((r, j) => {
+        if (j === from) return;
+        let sh = 0;
+        if (from < to && j > from && j <= to) sh = -step;
+        if (to < from && j >= to && j < from) sh = step;
+        r.style.transform = sh ? `translateY(${sh}px)` : '';
+      });
+    };
+    const up = () => {
+      grip.removeEventListener('pointermove', move);
+      grip.removeEventListener('pointerup', up);
+      grip.removeEventListener('pointercancel', up);
+      rows.forEach((r) => (r.style.transform = ''));
+      row.classList.remove('dragging');
+      if (to !== from) moveBlock(from, to);
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', up);
+    grip.addEventListener('pointercancel', up);
+  });
 
   function changeLength(d) {
     const sec = currentSec();
@@ -1306,7 +1726,7 @@
   $('#btnCopySec').addEventListener('click', () => { const sec = currentSec(); if (sec) copySection(sec); });
 
   $('#sheet').addEventListener('click', (e) => {
-    if (ui.rec) return;
+    if (ui.rec || e.target.closest('.txt-note')) return;
     const w = e.target.closest('.lyric[data-lci]');
     if (w) {
       const key = w.getAttribute('data-key'), v = +w.getAttribute('data-lv');
@@ -1371,10 +1791,20 @@
     save();
   });
 
+  // Browsers only let sound start from a click or a key, and Safari on a phone only from the end of a touch.
+  // Wake the sound on every one, so a Record started from a touch still plays once the finger lifts.
+  ['pointerdown', 'pointerup', 'click', 'touchend', 'keydown'].forEach((ev) => addEventListener(ev, () => { try { engine.ensure(); } catch (e) {} }, true));
+  // still asleep a moment after Play or Record: say how to wake it instead of staying silent
+  function checkSound() {
+    setTimeout(() => {
+      if (engine.ctx && engine.ctx.state !== 'running' && (ui.rec || ui.play || ui.trying)) toast('No sound yet: click or tap anywhere on the page to let the browser play it.');
+    }, 600);
+  }
+
   function isTyping() {
     const a = document.activeElement;
     if (!a) return false;
-    if (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT') return true;
+    if (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable) return true;
     return a.tagName === 'INPUT' && !/^(range|checkbox|radio|button)$/.test(a.type);
   }
 
