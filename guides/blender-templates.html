@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Blender Templates · LENS 101 Guides</title>
+<meta name="description" content="Ten starter Blender files for LENS 101. See what each one looks like, download it, and change it." />
+<link rel="stylesheet" href="../assets/css/site.css" />
+<style>
+  .tpl-list { display: grid; gap: 40px; margin-top: 36px; }
+  .tpl { background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+  .tpl a.shot { display: block; background: #1e1e1e; }
+  .tpl img { display: block; width: 100%; height: auto; }
+  .tpl-body { padding: 22px 26px 26px; }
+  .tpl-body h2 { margin: 0 0 4px; font-size: 1.5rem; }
+  .tpl-tag { font-size: 0.85rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--blue-deep); }
+  .tpl-body p { margin: 12px 0; line-height: 1.55; }
+  .tpl-body ul { margin: 8px 0 18px; padding-left: 1.2em; line-height: 1.55; }
+  .tpl-dl { display: inline-block; background: var(--ink); color: var(--cream); padding: 10px 18px; border-radius: 999px; text-decoration: none; font-size: 0.95rem; }
+  .tpl-dl:hover { background: var(--blue-deep); }
+  .tpl-new { display: inline-block; background: var(--red); color: #fff; font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; margin-left: 8px; vertical-align: middle; }
+  .toc { columns: 2; margin-top: 18px; line-height: 1.7; }
+  @media (max-width: 640px) { .toc { columns: 1; } }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="../index.html"><span class="badge">LENS 101</span>ENGAGING WITH THE ARTISTIC SPACE</a>
+    <div class="nav-links">
+      <a href="../index.html#gallery">Gallery</a>
+      <a href="exploring-digital-art-making.html">Guides</a>
+    </div>
+  </div>
+</nav>
+
+<article class="piece">
+  <div class="crumb"><a href="../index.html">LENS 101</a> &nbsp;/&nbsp; Guides &nbsp;/&nbsp; <a href="blender.html">Blender</a> &nbsp;/&nbsp; Templates</div>
+  <h1>Blender templates.</h1>
+  <div class="meta">Ten starter files · Blender 4.2 or newer · Free</div>
+
+  <p>
+    Each file is a small scene you can open and change. The pictures are screenshots from inside Blender, so you know what you will see when you open it. Pick one to download, then change something in it.
+  </p>
+  <p>
+    To open a file, download it and double-click it, or use File, Open in Blender. Put your mouse over the 3D view and press Space to play the animation. If Blender asks about running scripts, click Allow. The flower garden needs scripts to move.
+  </p>
+
+  <ol class="toc">
+    <li><a href="#redecorate-the-room">Redecorate the Room</a></li>
+    <li><a href="#primitive-pal">Primitive Pal</a></li>
+    <li><a href="#glowing-name-sign">Glowing Name Sign</a></li>
+    <li><a href="#orbit-system">Orbit System</a></li>
+    <li><a href="#orbit-text">Orbit Text</a></li>
+    <li><a href="#follow-path">Follow the Path</a></li>
+    <li><a href="#letter-tower">Letter Tower</a></li>
+    <li><a href="#flower-garden">Flower Garden</a></li>
+    <li><a href="#cloth-drop">Cloth Drop</a></li>
+    <li><a href="#array-spiral">Array Spiral</a></li>
+  </ol>
+
+  <div class="tpl-list">
+
+    <section class="tpl" id="redecorate-the-room">
+      <a class="shot" href="blender-templates/img/redecorate-the-room.jpg"><img src="blender-templates/img/redecorate-the-room.jpg" alt="Blender screenshot of a small bedroom with a bed, desk, chair, lamp and window" loading="lazy" /></a>
+      <div class="tpl-body">
+        <span class="tpl-tag">Start here · Colors and moving things</span>
+        <h2>Redecorate the Room</h2>
+        <p>A small bedroom with a bed, a desk, a chair, a lamp and a window. Everything is a simple shape, so it is easy to move and color.</p>
+        <ul>
+          <li>Change three colors in the Material tab. Its icon is a red ball.</li>
+          <li>Move two pieces of furniture. Press G to grab, then click to drop.</li>
+          <li>Change the lamp's light color, then press F12 to render.</li>
+        </ul>
+        <a class="tpl-dl" href="blender-templates/files/redecorate-the-room.blend" download>Download redecorate-the-room.blend</a>
+      </div>
+    </section>
+
+    <section class="tpl" id="primitive-pal">
+      <a class="shot" href="blender-templates/img/primitive-pal.jpg"><img src="blender-templates/img/primitive-pal.jpg" alt="Blender screenshot of a single sphere on a lit stage" loading="lazy" /></a>
+      <div class="tpl-body">
+        <span class="tpl-tag">Start here · Building with shapes</span>
+        <h2>Primitive Pal</h2>
+        <p>The file has a lit stage with one sphere. You build a creature out of spheres, cubes and cones.</p>
+        <ul>
+          <li>Press Shift+A to add a shape. Use G, R and S to move, rotate and scale it.</li>
+          <li>Make one thing weird on purpose.</li>
+          <li>If you get stuck, click the eye next to the Example Pal collection to see one we made.</li>
+        </ul>
+        <a class="tpl-dl" href="blender-templates/files/primitive-pal.blend" download>Download primitive-pal.blend</a>
+      </div>
+    </section>
+
+    <section class="tpl" id="glowing-name-sign">
+      <a class="shot" href="blender-templates/img/glowing-name-sign.jpg"><img src="blender-templates/img/glowing-name-sign.jpg" alt="Blender screenshot of pink glowing text that says YOUR NAME on a dark wall" loading="lazy" /></a>
+      <div class="tpl-body">
+        <span class="tpl-tag">Start here · Text and glow</span>
+        <h2>Glowing Name Sign</h2>
+        <p>A neon sign on a dark wall that says YOUR NAME. It should say your name.</p>
+        <ul>
+          <li>Click the text, press Tab, delete the letters, type your name, press Tab again.</li>
+          <li>In the Material tab, change Base Color and Emission Color.</li>
+          <li>Turn Emission Strength up or down and watch the glow change.</li>
+        </ul>
+        <a class="tpl-dl" href="blender-templates/files/glowing-name-sign.blend" download>Download glowing-name-sign.blend</a>
+      </div>
+    </section>
+
+    <section class="tpl" id="orbit-system">
+      <a class="shot" href="blender-templates/img/orbit-system.jpg"><img src="blender-templates/img/orbit-system.jpg" alt="Blender screenshot of glowing letters and colored lights circling a white sphere on a dark grid" loading="lazy" /></a>
+      <div class="tpl-body">
+        <span class="tpl-tag">Animation · Paths</span>
+        <h2>Orbit System</h2>
+        <p>The letters O, R, B, I, T and three colored lights circle a glowing ball. A second camera flies around the outside and keeps looking at the center.</p>
+        <ul>
+          <li>Select a letter and open the Constraints tab. Follow Path is what makes it travel.</li>
+          <li>Change a light's color, or change the Offset to space the letters out.</li>
+          <li>Select Orbit Camera and press Ctrl+Numpad 0 to look through it.</li>
+        </ul>
+        <a class="tpl-dl" href="blender-templates/files/orbit-system.blend" download>Download orbit-system.blend</a>
+      </div>
+    </section>
+
+    <section class="tpl" id="orbit-text">
+      <a class="shot" href="blender-templates/img/orbit-text.jpg"><img src="blender-templates/img/orbit-text.jpg" alt="Blender screenshot of the 3D words LENS 101 on a round stage, with two camera paths and spotlights around it" loading="lazy" /></a>
+      <div class="tpl-body">
+        <span class="tpl-tag">Animation · Cameras and lights <span class="tpl-new">New</span></span>
+        <h2>Orbit Text</h2>
+        <p>Your word stands in 3D on a stage. Two cameras fly around it: one on a circle, one on a tilted oval. Both always look at the word. Four spotlights light it, and two of them spin.</p>
+        <ul>
+          <li>Click the word, press Tab, type your own word, press Tab again.</li>
+          <li>Press Space. The circle camera films the first half, then the camera marker on the timeline switches to the oval camera.</li>
+          <li>Both cameras aim at Look Here, so move it with G and both cameras follow.</li>
+          <li>Select a spotlight and change its color or power in the Light tab, which has a green bulb icon.</li>
+          <li>Select Ellipse Orbit and press S then X to stretch the oval.</li>
+        </ul>
+        <a class="tpl-dl" href="blender-templates/files/orbit-text.blend" download>Download orbit-text.blend</a>
+      </div>
+    </section>
+
+    <section class="tpl" id="follow-path">
+      <a class="shot" href="blender-templates/img/follow-path.jpg"><img src="blender-templates/img/follow-path.jpg" alt="Blender screenshot of a gold monkey head on a pedestal, blue pillars, and curved camera and light paths" loading="lazy" /></a>
+      <div class="tpl-body">
+        <span class="tpl-tag">Animation · Cameras and lights on a path</span>
+        <h2>Follow the Path</h2>
+        <p>The camera rides an oval, two colored spotlights ride a tilted circle, and a paper plane loops a figure 8 around the gold monkey.</p>
+        <ul>
+          <li>Select Camera, open the Constraints tab. Follow Path picks the curve, and Track To keeps it aimed at the monkey.</li>
+          <li>Select Camera Path, press S then X, and drag to make the orbit wider.</li>
+          <li>Paper Plane has Follow Curve ticked, so it turns with the path. If you untick it, the plane slides sideways.</li>
+        </ul>
+        <a class="tpl-dl" href="blender-templates/files/follow-path.blend" download>Download follow-path.blend</a>
+      </div>
+    </section>
+
+    <section class="tpl" id="letter-tower">
+      <a class="shot" href="blender-templates/img/letter-tower.jpg"><img src="blender-templates/img/letter-tower.jpg" alt="Blender screenshot of a red ball knocking over a tower of letter blocks" loading="lazy" /></a>
+      <div class="tpl-body">
+        <span class="tpl-tag">Physics · Gravity and collisions</span>
+        <h2>Letter Tower</h2>
+        <p>A heavy red ball rolls down a ramp and knocks over a tower of letters.</p>
+        <ul>
+          <li>Select the ball, open the Physics tab. Change Mass from 25 to 1 and play again.</li>
+          <li>In the Scene tab, set Gravity Z to -2 for moon physics.</li>
+          <li>If it looks frozen, press Shift+Left Arrow to go back to frame 1, then Space.</li>
+        </ul>
+        <a class="tpl-dl" href="blender-templates/files/letter-tower.blend" download>Download letter-tower.blend</a>
+      </div>
+    </section>
+
+    <section class="tpl" id="flower-garden">
+      <a class="shot" href="blender-templates/img/flower-garden.jpg"><img src="blender-templates/img/flower-garden.jpg" alt="Blender screenshot of a field of simple colorful flowers on green ground" loading="lazy" /></a>
+      <div class="tpl-body">
+        <span class="tpl-tag">Animation · Drivers and color</span>
+        <h2>Flower Garden</h2>
+        <p>The garden has 54 simple flowers. Each flower's petals spin while its stem sways, and every flower can be its own color.</p>
+        <ul>
+          <li>Select any Petals object. In the Object tab, under Viewport Display, change Color.</li>
+          <li>The purple Rotation Z box is a driver. Right click it, Edit Driver, and make the number bigger to spin faster.</li>
+          <li>Select a stem and its flower, press Shift+D to plant another.</li>
+        </ul>
+        <a class="tpl-dl" href="blender-templates/files/flower-garden.blend" download>Download flower-garden.blend</a>
+      </div>
+    </section>
+
+    <section class="tpl" id="cloth-drop">
+      <a class="shot" href="blender-templates/img/cloth-drop.jpg"><img src="blender-templates/img/cloth-drop.jpg" alt="Blender screenshot of a sheet of cloth draped over hidden objects" loading="lazy" /></a>
+      <div class="tpl-body">
+        <span class="tpl-tag">Physics · Cloth</span>
+        <h2>Cloth Drop</h2>
+        <p>A checkered sheet falls over some hidden objects. Select the cloth and press H to see what is under it.</p>
+        <ul>
+          <li>Select Cloth, open the Physics tab. Make Vertex Mass heavier and play again.</li>
+          <li>Set Bending to 50 for cardboard, or 0.1 for silk.</li>
+          <li>The checker pattern lives in the Shading workspace. Change its colors or size.</li>
+        </ul>
+        <a class="tpl-dl" href="blender-templates/files/cloth-drop.blend" download>Download cloth-drop.blend</a>
+      </div>
+    </section>
+
+    <section class="tpl" id="array-spiral">
+      <a class="shot" href="blender-templates/img/array-spiral.jpg"><img src="blender-templates/img/array-spiral.jpg" alt="Blender screenshot of a tall rainbow spiral staircase" loading="lazy" /></a>
+      <div class="tpl-body">
+        <span class="tpl-tag">Modifiers · Array</span>
+        <h2>Array Spiral</h2>
+        <p>One step and one control make a 90 step spiral staircase that twists and breathes.</p>
+        <ul>
+          <li>Select Step and open the Modifiers tab, which has a wrench icon. Change Array Count from 90 to 200.</li>
+          <li>Select Spiral Control and rotate it with R then Z, and the whole staircase turns with it.</li>
+          <li>Scale Spiral Control a little smaller and the spiral shrinks as it climbs.</li>
+        </ul>
+        <a class="tpl-dl" href="blender-templates/files/array-spiral.blend" download>Download array-spiral.blend</a>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="notes">
+    <h2>New to Blender?</h2>
+    <ul class="plain">
+      <li>Watch the first video in the <a href="blender.html">Blender playlist</a> to learn how to move around.</li>
+      <li>Ctrl+Z undoes anything, and on a Mac it is Cmd+Z. Use it a lot.</li>
+      <li>If you get lost in the 3D view, press Home to see everything.</li>
+    </ul>
+  </div>
+</article>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>LENS 101 · Engaging with the Artistic Space</div>
+    <div>Prof. Kramer Gibson · Berklee College of Music</div>
+  </div>
+</footer>
+</body>
+</html>
