@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+<rect width="800" height="500" fill="#151515"/>
+<g fill="none" stroke="#f2efe8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="200" y="50" width="400" height="320" rx="24"/><rect x="225" y="75" width="350" height="270" rx="6" stroke-opacity="0.4"/><path d="M260 290 c60 -120 120 40 180 -60 s80 -40 100 -20" stroke="#c9a7ff" stroke-width="7"/><path d="M560 250 l90 -150 l18 11 l-90 150 l-22 10 z"/></g>
+<text x="40" y="462" fill="#c9a7ff" font-family="Helvetica Neue, Arial, sans-serif" font-size="20" letter-spacing="6">IPAD APP, ONE-TIME PURCHASE</text>
+</svg>

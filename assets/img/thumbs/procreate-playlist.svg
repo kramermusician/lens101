@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+<rect width="800" height="500" fill="#151515"/>
+<g fill="none" stroke="#f2efe8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M340 380 v-170 a60 60 0 0 1 120 0 v170 l-20 -22 l-20 22 l-20 -22 l-20 22 l-20 -22 z" fill="#f2efe8" fill-opacity="0.08"/><circle cx="380" cy="215" r="9" fill="#c9a7ff" stroke="#c9a7ff"/><circle cx="420" cy="215" r="9" fill="#c9a7ff" stroke="#c9a7ff"/><path d="M250 160 q-20 40 0 80" stroke-opacity="0.5"/><path d="M220 140 q-30 60 0 120" stroke-opacity="0.3"/><path d="M550 160 q20 40 0 80" stroke-opacity="0.5"/><path d="M580 140 q30 60 0 120" stroke-opacity="0.3"/><ellipse cx="400" cy="425" rx="70" ry="8" stroke-opacity="0.35"/></g>
+<text x="40" y="462" fill="#c9a7ff" font-family="Helvetica Neue, Arial, sans-serif" font-size="20" letter-spacing="6">16 SHORT ANIMATIONS</text>
+</svg>
