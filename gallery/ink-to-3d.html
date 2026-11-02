@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ink to 3D · LENS 101 Gallery</title>
+<meta name="description" content="Photograph your handwriting and get a 3D model for Blender in under a minute. Nothing is uploaded. By Kramer Gibson." />
+<link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="../index.html"><span class="badge">LENS 101</span>ENGAGING WITH THE ARTISTIC SPACE</a>
+    <div class="nav-links">
+      <a href="../index.html#gallery">Gallery</a>
+      <a href="../guides/procreate-stop-motion.html">Guides</a>
+    </div>
+  </div>
+</nav>
+
+<article class="piece">
+  <div class="crumb"><a href="../index.html">LENS 101</a> &nbsp;/&nbsp; Gallery &nbsp;/&nbsp; Ink to 3D</div>
+  <h1>Ink to 3D, your handwriting as a 3D model.</h1>
+  <div class="meta">Canvas + WebGL · Browser · 2026 · Kramer Gibson</div>
+
+  <p style="margin:18px 0 10px;">
+    <a class="card" href="ink-to-3d/index.html" target="_blank" rel="noopener" style="display:inline-block;padding:18px 26px;">
+      <h3 style="margin:0;">Open Ink to 3D &rsaquo;</h3>
+      <p style="margin:6px 0 0;">Opens in a new tab. Works on a laptop or straight from your phone's camera.</p>
+    </a>
+  </p>
+
+  <div class="notes">
+    <h2>What it is</h2>
+    <p>
+      Write your name big on white paper and take a photo. The page finds the ink, lets you clean it up, and hands you a 3D
+      model of your own handwriting. Drop it into Blender, and you can spin it, light it, and animate it.
+    </p>
+
+    <h2>Start here</h2>
+    <ul class="plain">
+      <li>Use a thick black marker. A thin pen works too, but you will want to push Stroke thickness up.</li>
+      <li>Shoot straight down in even light, with the paper filling most of the photo.</li>
+      <li>Blue is what becomes 3D. Paint to add what it missed, erase smudges, crop away the table.</li>
+      <li>Download the GLB. In Blender: File, Import, glTF 2.0. Your letters stand up, facing the front view.</li>
+      <li>Add a Bevel modifier for soft edges, then go animate.</li>
+    </ul>
+
+    <h2>GLB or OBJ?</h2>
+    <p>
+      Both are 3D models of the same shape. A GLB is one small file that also carries your name and the color you picked, so it
+      opens in Blender looking the way it did in the preview. An OBJ is an older, plain-text format that holds only the shape, with
+      no color. Almost every 3D app can open an OBJ, so it is the backup when something will not take a GLB. For Blender, pick GLB.
+    </p>
+
+    <h2>Your files</h2>
+    <p>
+      Nothing is uploaded. The photo stays in your browser, and the model downloads straight to your computer as a GLB (or an OBJ
+      for other 3D apps).
+    </p>
+
+    <h2>Tools used</h2>
+    <ul class="plain">
+      <li>HTML canvas for reading the photo, marching squares for tracing the ink</li>
+      <li>WebGL for the spinning preview, a hand-written GLB and OBJ writer</li>
+      <li>One file, no libraries, no build step</li>
+    </ul>
+  </div>
+</article>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>LENS 101 · Engaging with the Artistic Space</div>
+    <div>Prof. Kramer Gibson · Berklee College of Music</div>
+  </div>
+</footer>
+
+</body>
+</html>
