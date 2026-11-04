@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Score Sketch</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%226%22 cy=%2212%22 r=%223%22/%3E%3Crect x=%228%22 y=%221%22 width=%221.5%22 height=%2211%22/%3E%3C/svg%3E" />
+<link rel="preload" href="fonts/Bravura.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+
+<div id="bar">
+  <div class="row">
+    <span class="brand">Score Sketch</span>
+    <button data-cmd="new" title="Start a new score (Undo brings the old one back)">New</button>
+    <button data-cmd="open" title="Open a .json score file">Open</button>
+    <button data-cmd="save" title="Save a .json score file (Cmd+S)">Save</button>
+    <button data-cmd="xml" title="Export MusicXML for MuseScore, Noteflight, Sibelius, Finale, Dorico">MusicXML</button>
+    <button data-cmd="link" title="Copy a link that opens this score">Copy link</button>
+    <button data-cmd="print" title="Print, or choose Save as PDF">Print / PDF</button>
+    <span class="sep"></span>
+    <button data-cmd="undo" title="Undo (Cmd+Z)">Undo</button>
+    <button data-cmd="redo" title="Redo (Cmd+Shift+Z)">Redo</button>
+    <span class="sep"></span>
+    <button data-cmd="play" id="playBtn" title="Play from the selected measure (Space)">&#9654; Play</button>
+    <label class="tempo-in" title="Tempo in quarter notes per minute"><span class="mg">&#xE1D5;</span> = <input id="tempo" type="number" min="30" max="300" step="1" /></label>
+    <span class="grow"></span>
+    <button data-cmd="help" id="helpBtn">Keys</button>
+  </div>
+
+  <div class="row">
+    <span class="lbl">Voice</span>
+    <button class="tog" data-cmd="voice" data-v="0" title="Voice 1, stems up (V switches)">1</button>
+    <button class="tog v2b" data-cmd="voice" data-v="1" title="Voice 2, stems down (V switches)">2</button>
+    <span class="sep"></span>
+    <span class="lbl">Length</span>
+    <button class="tog dur" data-cmd="dur" data-d="1920" title="Whole (7)"><span class="mg">&#xE1D2;</span></button>
+    <button class="tog dur" data-cmd="dur" data-d="960" title="Half (6)"><span class="mg">&#xE1D3;</span></button>
+    <button class="tog dur" data-cmd="dur" data-d="480" title="Quarter (5)"><span class="mg">&#xE1D5;</span></button>
+    <button class="tog dur" data-cmd="dur" data-d="240" title="Eighth (4)"><span class="mg">&#xE1D7;</span></button>
+    <button class="tog dur" data-cmd="dur" data-d="120" title="16th (3)"><span class="mg">&#xE1D9;</span></button>
+    <button class="tog dur" data-cmd="dur" data-d="60" title="32nd (2)"><span class="mg">&#xE1DB;</span></button>
+    <button class="tog" data-cmd="dot" id="dotBtn" title="Dot (.)"><span class="dotglyph">&bull;</span></button>
+    <span class="sep"></span>
+    <button data-cmd="acc" data-a="1" title="Sharp (# or =)"><span class="mg">&#xE262;</span></button>
+    <button data-cmd="acc" data-a="-1" title="Flat (-)"><span class="mg">&#xE260;</span></button>
+    <button data-cmd="acc" data-a="0" title="Natural (N)"><span class="mg">&#xE261;</span></button>
+    <button class="tog" data-cmd="tie" id="tieBtn" title="Tie to the next note (T)">Tie</button>
+    <button data-cmd="rest" title="Rest (R)">Rest</button>
+    <span class="sep"></span>
+    <span class="keypad">
+      <button data-cmd="note" data-s="0">C</button><button data-cmd="note" data-s="1">D</button><button data-cmd="note" data-s="2">E</button><button data-cmd="note" data-s="3">F</button><button data-cmd="note" data-s="4">G</button><button data-cmd="note" data-s="5">A</button><button data-cmd="note" data-s="6">B</button>
+    </span>
+    <button data-cmd="oct" data-o="1" title="Octave up (Shift+Up)">8va &uarr;</button>
+    <button data-cmd="oct" data-o="-1" title="Octave down (Shift+Down)">8vb &darr;</button>
+  </div>
+
+  <div class="row">
+    <span class="lbl" id="measLbl">Bar 1</span>
+    <select id="timeSel" title="Time signature from this bar on">
+      <option>4/4</option><option>3/4</option><option>2/4</option><option>2/2</option><option>5/4</option><option>6/4</option>
+      <option>3/8</option><option>6/8</option><option>9/8</option><option>12/8</option><option>5/8</option><option>7/8</option>
+    </select>
+    <select id="keySel" title="Key signature from this bar on"></select>
+    <select id="clefSel" title="Clef"><option value="treble">Treble clef</option><option value="bass">Bass clef</option></select>
+    <button class="tog" data-cmd="rep" data-r="repeatStart" title="Start repeat at this bar">|:</button>
+    <button class="tog" data-cmd="rep" data-r="repeatEnd" title="End repeat at this bar">:|</button>
+    <button class="tog" data-cmd="ending" data-n="1" title="First ending">1.</button>
+    <button class="tog" data-cmd="ending" data-n="2" title="Second ending">2.</button>
+    <button data-cmd="addbar" title="Add an empty bar at the end">+ bar</button>
+    <button data-cmd="delbar" title="Remove an empty bar at the end">&minus; bar</button>
+    <span class="sep"></span>
+    <span class="lbl">Dynamics</span>
+    <button class="tog dyn" data-cmd="dyn" data-y="pp">pp</button><button class="tog dyn" data-cmd="dyn" data-y="p">p</button><button class="tog dyn" data-cmd="dyn" data-y="mp">mp</button><button class="tog dyn" data-cmd="dyn" data-y="mf">mf</button><button class="tog dyn" data-cmd="dyn" data-y="f">f</button><button class="tog dyn" data-cmd="dyn" data-y="ff">ff</button><button class="tog dyn" data-cmd="dyn" data-y="sfz">sfz</button>
+    <button class="tog" data-cmd="hp" data-h="&lt;" title="Crescendo from this note to the next dynamic">cresc &lt;</button>
+    <button class="tog" data-cmd="hp" data-h="&gt;" title="Diminuendo from this note to the next dynamic">dim &gt;</button>
+    <span class="sep"></span>
+    <button data-cmd="text" title="Add a text box">+ Text box</button>
+  </div>
+</div>
+
+<div id="help" hidden>
+  <div class="help-inner">
+    <h2>Keys</h2>
+    <div class="cols">
+      <dl>
+        <dt>A to G</dt><dd>Add that note after the selected one. It lands in the octave closest to the last note.</dd>
+        <dt>R</dt><dd>Add a rest</dd>
+        <dt>Shift + Up / Down</dt><dd>Move the note up or down an octave</dd>
+        <dt>Up / Down</dt><dd>Move the note a half step</dd>
+        <dt># or =, &minus;, N</dt><dd>Sharp, flat, natural</dd>
+        <dt>[ and ]</dt><dd>Shorter, longer</dd>
+        <dt>7 6 5 4 3 2</dt><dd>Whole, half, quarter, eighth, 16th, 32nd for the next notes. With a clicked note, changes that note.</dd>
+        <dt>.</dt><dd>Dot the selected note</dd>
+      </dl>
+      <dl>
+        <dt>T</dt><dd>Tie to the next note</dd>
+        <dt>V</dt><dd>Switch between voice 1 and voice 2</dd>
+        <dt>Left / Right</dt><dd>Select the previous or next note</dd>
+        <dt>Backspace</dt><dd>Delete the selected note</dd>
+        <dt>Space</dt><dd>Play from the selected bar, or stop</dd>
+        <dt>Cmd+Z, Cmd+Shift+Z</dt><dd>Undo, redo</dd>
+        <dt>Click</dt><dd>A note to select it, a bar to jump there, the title or composer to edit</dd>
+      </dl>
+    </div>
+    <p class="tip">Notes you type fill rests in their way and push other notes later. A note too long for the bar is split and tied across the barline for you. Bar settings (time, key, repeats, endings) apply to the bar named on the left of the third row. Your score saves itself in this browser.</p>
+    <button data-cmd="help" class="close">Got it</button>
+  </div>
+</div>
+
+<div id="stage">
+  <div id="page">
+    <header id="head">
+      <div class="title" contenteditable="true" spellcheck="false" data-f="title" data-ph="Title"></div>
+      <div class="subtitle" contenteditable="true" spellcheck="false" data-f="subtitle" data-ph="Subtitle (optional)"></div>
+      <div class="hrow">
+        <div class="tempo-mark" id="tempoMark"></div>
+        <div class="composer" contenteditable="true" spellcheck="false" data-f="composer" data-ph="Composer"></div>
+      </div>
+    </header>
+    <div id="systems"></div>
+    <div id="texts"></div>
+  </div>
+</div>
+
+<div id="status"></div>
+<div id="toast" hidden></div>
+<input type="file" id="file" accept=".json,application/json" hidden />
+<script src="js/app.js"></script>
+</body>
+</html>
