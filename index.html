@@ -21,6 +21,10 @@
       <a href="#cavalry" style="--c:#7be0b0">Cavalry</a>
       <a href="#the-blues" style="--c:#4f7cff">The Blues</a>
   </div>
+  <div class="tools">
+    <button class="search-btn" type="button" aria-label="Search the site"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="lucky-btn" type="button" aria-label="Roll the dice: three random things to try" title="Roll the dice"></button>
+  </div>
 </nav>
 
 <main id="top">
@@ -28,7 +32,12 @@
     <div class="eyebrow">LENS 101 · Fall 2026 · Kramer Gibson · Berklee</div>
     <h1>Engaging with the Artistic&nbsp;Space</h1>
     <p class="lede">A freshman seminar on digital artistry. We treat the tools like instruments. You learn one, outgrow it, pick up the next, and somewhere along the way your voice shows up.</p>
-    <p class="hint">Pick a section to jump there.</p>
+    <div class="search" role="search">
+      <label class="sr" for="site-search">Search the site</label>
+      <input id="site-search" type="search" placeholder="What do you want to make? Try cartoon, beat, font, 3D" autocomplete="off" spellcheck="false" />
+      <div class="search-results" aria-live="polite"></div>
+    </div>
+    <p class="hint">Or pick a section to jump there.</p>
   </header>
 
   <section class="index" aria-label="Sections">
@@ -286,5 +295,7 @@
 </footer>
 
 <script src="assets/js/home.js"></script>
+<script src="assets/js/search-tags.js"></script>
+<script src="assets/js/explore.js"></script>
 </body>
 </html>

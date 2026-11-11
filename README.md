@@ -51,3 +51,10 @@ Palette and tone borrow from the Belafonte itself: cream background, Zissou blue
 - Drop new student work into `gallery/`, one folder per piece, one HTML page per piece.
 - The Procreate guide is the template for other tool guides (Looom, Cavalry, Blender, TouchDesigner). Copy it, swap the videos, keep the three-step framing (tool tour → build-along → crit vocabulary) where it fits.
 - The site is intentionally easy to hand-edit. If we move to a generator later, the content here lifts cleanly into Markdown.
+
+## Explore: the die button and search (added 2026-11-11)
+
+- `assets/js/explore.js` reads every tile off `index.html`, so a new tile is automatically in the dice pool and in search.
+- The die button in the top bar rolls three dice (each face is a tile from the site, picks from three different chapters when it can), then opens the three as large cards. Escape, the X, or a click outside closes it.
+- Search (hero box, the magnifier, or the `/` key) matches titles, tag lines, descriptions, and the extra words in `assets/js/search-tags.js`. It forgives small typos ("animaton") and shows which tag matched.
+- When you add a tile, add a line to `search-tags.js` with the same `href` and a few dozen words a student might type instead of the tool's name ("cartoon" for an animation tool).
