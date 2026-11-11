@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#fff4e0" />
+<title>Jam Box</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect x=%222%22 y=%222%22 width=%2212%22 height=%2212%22 rx=%223%22 fill=%22%23ff6b5b%22/%3E%3Crect x=%2218%22 y=%222%22 width=%2212%22 height=%2212%22 rx=%223%22 fill=%22%2314a99d%22/%3E%3Crect x=%222%22 y=%2218%22 width=%2212%22 height=%2212%22 rx=%223%22 fill=%22%23f2a900%22/%3E%3Crect x=%2218%22 y=%2218%22 width=%2212%22 height=%2212%22 rx=%223%22 fill=%22%238a6cff%22/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+
+<div id="lobby">
+  <div class="lcard">
+    <div class="logo"><span>J</span><span>a</span><span>m</span> <span>B</span><span>o</span><span>x</span></div>
+    <p class="tag">Make a beat with up to four friends. Every tap you make changes every phone in the room.</p>
+    <label class="field">Your name <input id="lName" maxlength="16" autocomplete="off" /></label>
+    <button class="big go" id="lStart">Start a jam</button>
+    <div class="or">or join a friend</div>
+    <div class="joinrow">
+      <input id="lCode" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+      <button class="big" id="lJoin">Join</button>
+    </div>
+    <button class="link" id="lSolo">Just me, no internet needed</button>
+    <p class="phones">&#127911; Everyone wears headphones.</p>
+    <p class="err" id="lErr"></p>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <button class="chip code" id="hCode" title="Share the room link"></button>
+    <div id="hPlayers"></div>
+    <div class="transport">
+      <button class="round play" id="hPlay" title="Space">&#9654;</button>
+      <button class="round rec" id="hRec" title="R: play the pads or keys and they stick">&#9679;</button>
+      <div class="tempo"><button class="mini" id="hSlow">&minus;</button><span id="hBpm">96</span><button class="mini" id="hFast">+</button></div>
+      <button class="mini" id="hMore" title="More">&middot;&middot;&middot;</button>
+    </div>
+  </header>
+  <div id="more" hidden>
+    <button class="chip" id="mSave">Save audio</button>
+    <button class="chip" id="mLeave">Leave the jam</button>
+  </div>
+
+  <nav id="tabs">
+    <button data-tab="d"><b>Drums</b><i class="who"></i></button>
+    <button data-tab="c"><b>Chords</b><i class="who"></i></button>
+    <button data-tab="m1"><b>Voice 1</b><i class="who"></i></button>
+    <button data-tab="m2"><b>Voice 2</b><i class="who"></i></button>
+  </nav>
+
+  <main>
+    <section data-pane="d">
+      <div class="bar">
+        <div class="seg" data-mode="d"><button data-v="grid">Grid</button><button data-v="pads">Pads</button></div>
+        <span class="grow"></span>
+        <button class="chip mute" data-mute="d">Mute</button><button class="chip clear" data-clear="d">Clear</button>
+      </div>
+      <div class="grid" id="gd"></div>
+      <div class="pads" id="pads"></div>
+    </section>
+
+    <section data-pane="c">
+      <div class="bar">
+        <label class="keypick">Key <select id="cKey"></select></label>
+        <div class="seg" id="cMinor"><button data-v="0">Major</button><button data-v="1">Minor</button></div>
+        <span class="grow"></span>
+        <button class="chip mute" data-mute="c">Mute</button><button class="chip clear" data-clear="c">Clear</button>
+      </div>
+      <div class="slots" id="slots"></div>
+      <div class="bar center">
+        <div class="seg" id="cStyle"><button data-v="pad">Pad</button><button data-v="bounce">Bounce</button><button data-v="arp">Arp</button></div>
+      </div>
+      <div class="picker" id="picker" hidden></div>
+    </section>
+
+    <section data-pane="m1"></section>
+    <section data-pane="m2"></section>
+  </main>
+</div>
+
+<template id="voiceTpl">
+  <div class="bar">
+    <div class="seg mode"><button data-v="roll">Piano roll</button><button data-v="keys">Keyboard</button></div>
+    <span class="grow"></span>
+    <button class="chip mute">Mute</button><button class="chip clear">Clear</button>
+  </div>
+  <div class="bar sounds">
+    <div class="seg snd"></div>
+    <div class="oct"><button class="mini down">&minus;</button><span>Octave <b>0</b></span><button class="mini up">+</button></div>
+  </div>
+  <div class="rollwrap"><div class="grid roll"></div></div>
+  <div class="piano"></div>
+</template>
+
+<div id="toast"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

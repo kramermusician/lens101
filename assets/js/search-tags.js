@@ -162,6 +162,13 @@ window.LENS_TAGS = {
     "playback", "hear it", "print", "pdf", "musicxml", "musescore", "noteflight", "sibelius", "finale", "dorico",
     "lead sheet", "homework", "theory", "乐谱", "악보", "partitura"
   ],
+  "gallery/jam-box.html": [
+    "jam box", "jam", "beat", "make a beat", "beat maker", "drum machine", "drums", "step sequencer", "sequencer",
+    "loop", "loops", "groove", "chords", "chord progression", "melody", "piano", "piano roll", "keyboard", "midi",
+    "multiplayer", "with friends", "together", "collab", "collaborate", "band", "phone", "headphones", "record",
+    "tempo", "bpm", "compose", "song", "producer", "music production", "web audio", "game", "fun",
+    "节拍", "비트", "ritmo"
+  ],
   "gallery/speech-silhouette.html": [
     "speech silhouette", "webcam", "camera", "body", "silhouette", "shadow", "dance", "dancing", "movement",
     "performance", "voice", "speech", "speak", "talk", "words", "text", "typography", "kinetic type", "live",
