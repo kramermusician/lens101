@@ -169,6 +169,13 @@ window.LENS_TAGS = {
     "tempo", "bpm", "compose", "song", "producer", "music production", "web audio", "game", "fun",
     "节拍", "비트", "ritmo"
   ],
+  "gallery/polyglot-word-web.html": [
+    "polyglot word web", "word web", "polyglot", "languages", "language learning", "vocabulary", "vocab", "words",
+    "dictionary", "translate", "translation", "conjugation", "verbs", "grammar", "french", "spanish", "korean",
+    "chinese", "mandarin", "japanese", "serbian", "greek", "pinyin", "hangul", "kana", "romaji", "esl",
+    "study", "flashcards", "map", "graph", "network", "explore",
+    "单词", "단어", "単語", "mot", "palabra", "λέξη", "реч"
+  ],
   "gallery/speech-silhouette.html": [
     "speech silhouette", "webcam", "camera", "body", "silhouette", "shadow", "dance", "dancing", "movement",
     "performance", "voice", "speech", "speak", "talk", "words", "text", "typography", "kinetic type", "live",
