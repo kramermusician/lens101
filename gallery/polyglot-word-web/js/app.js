@@ -46,7 +46,7 @@ function ensure(code, cb) {
   if (st) { if (cb) st.waiting.push(cb); return; }
   st = S[code] = { status: 'loading', waiting: cb ? [cb] : [] };
   function done() { var w = st.waiting; st.waiting = []; w.forEach(function (f) { f(st); }); }
-  addScript(DATA + code + '.js?v=202611121349', function () { prepare(code, st); done(); }, function () { st.status = 'missing'; done(); });
+  addScript(DATA + code + '.js?v=202611131625', function () { prepare(code, st); done(); }, function () { st.status = 'missing'; done(); });
 }
 function prepare(code, st) {
   var D = window.PWW && window.PWW[code], Lg = P.langs[code];
@@ -74,7 +74,7 @@ function prepare(code, st) {
 
 // cross.js: the same concept across languages
 var CROSS = null; // {"fr:maison|n": [["es","casa|n"], ...]}
-addScript(DATA + 'cross.js?v=202611121349', function () {
+addScript(DATA + 'cross.js?v=202611131625', function () {
   var C = window.PWW && window.PWW.cross;
   if (!C || !C.groups) return;
   CROSS = {};
@@ -282,10 +282,12 @@ function renderPanel(keepScroll) {
   h += L.body(n);
   panel.innerHTML = h;
   applySec();
+  if (P.speak) P.speak.decorate(panel, n, lang, L);
   panel.scrollTop = keepScroll ? top : 0;
 }
 panel.addEventListener('click', function (ev) {
   if (ev.target.id === 'secToggle') { toggleSec(); return; }
+  if (P.speak && P.speak.handle(ev, current, lang, L)) return;
   var x = ev.target.closest('[data-xl]');
   if (x) { jump(x.getAttribute('data-xl'), x.getAttribute('data-xid')); return; }
   var s = ev.target.closest('[data-switch]');

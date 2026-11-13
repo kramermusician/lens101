@@ -175,6 +175,16 @@
     aside { border-left: 0; border-top: 1px solid var(--line); grid-column: 1; grid-row: 3; }
     #stats, #hint { display: none; }
   }
+  .say { background: none; border: 1px solid var(--line); border-radius: 50%; width: 30px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; color: var(--dim); vertical-align: middle; cursor: pointer; }
+  .say:hover, .say.talking { color: var(--accent); border-color: var(--accent); }
+  .say.talking { animation: saypulse 1s ease-in-out infinite; }
+  @keyframes saypulse { 50% { opacity: .55; } }
+  aside h2 .say { margin-left: 6px; position: relative; top: -3px; }
+  .ex .t .say { float: right; margin: 0 0 4px 8px; width: 26px; height: 26px; }
+  td.sayable { cursor: pointer; }
+  td.sayable:hover, td.sayable.talking { color: var(--accent); }
+  .voicepick { margin-top: 22px; font-size: 12px; color: var(--dim); }
+  .voicepick select { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; margin-left: 6px; }
 </style>
 </head>
 <body>
@@ -215,14 +225,15 @@
 </div>
 
 <!-- No libraries and no network. The data files (data/<lang>.js) are added by js/app.js when a language is picked. -->
-<script src="js/common.js?v=202611121349"></script>
-<script src="js/lang-fr.js?v=202611121349"></script>
-<script src="js/lang-es.js?v=202611121349"></script>
-<script src="js/lang-ko.js?v=202611121349"></script>
-<script src="js/lang-zh.js?v=202611121349"></script>
-<script src="js/lang-ja.js?v=202611121349"></script>
-<script src="js/lang-sr.js?v=202611121349"></script>
-<script src="js/lang-el.js?v=202611121349"></script>
-<script src="js/app.js?v=202611121349"></script>
+<script src="js/common.js?v=202611131625"></script>
+<script src="js/lang-fr.js?v=202611131625"></script>
+<script src="js/lang-es.js?v=202611131625"></script>
+<script src="js/lang-ko.js?v=202611131625"></script>
+<script src="js/lang-zh.js?v=202611131625"></script>
+<script src="js/lang-ja.js?v=202611131625"></script>
+<script src="js/lang-sr.js?v=202611131625"></script>
+<script src="js/lang-el.js?v=202611131625"></script>
+<script src="js/speak.js?v=202611131625"></script>
+<script src="js/app.js?v=202611131625"></script>
 </body>
 </html>
