@@ -4,65 +4,98 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Venn Diagram Generator · Vocabulary Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 <style>
+/* Design notes: colors are the Okabe-Ito colorblind-safe set; levels are never
+   shown by color alone (A1 ●, B1 ■, C1 ▲); text meets WCAG AAA contrast; nothing
+   moves, flashes or animates; Atkinson Hyperlegible was designed for low vision. */
 :root{
-  --cream:#f5f2e9; --cream-dim:#ece7d8; --ink:#163b4e; --ink-soft:#3a5560;
-  --line:rgba(22,59,78,.14); --shadow:0 8px 28px rgba(22,59,78,.12);
-  --a1:#3f8f5f; --b1:#1d7fb0; --c1:#b5452f;
+  --bg:#f6f3ea; --card:#fff; --ink:#111a22; --soft:#3c4a54; --line:#c9c3b4;
+  --a1:#1b6b3a; --b1:#0b4f8a; --c1:#8a2b0a; --focus:#0b4f8a;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--cream);color:var(--ink);font-family:"Helvetica Neue",Arial,sans-serif}
-header{padding:18px 24px 6px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-header h1{margin:0;font-size:26px}
-header .sub{color:var(--ink-soft);font-size:15px}
-.wrap{display:grid;grid-template-columns:320px 1fr 340px;gap:16px;padding:12px 24px 24px;align-items:start}
-@media (max-width:1150px){.wrap{grid-template-columns:1fr}}
-.panel{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px}
-label{display:block;font-size:13px;font-weight:600;margin:12px 0 4px;color:var(--ink-soft)}
-input,select,textarea{width:100%;font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
-.row{display:flex;gap:8px}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Atkinson Hyperlegible","Helvetica Neue",Arial,sans-serif;font-size:18px;line-height:1.45}
+*{transition:none!important;animation:none!important}
+:focus-visible{outline:4px solid var(--focus);outline-offset:3px}
+header{padding:18px 24px 4px;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+header h1{margin:0;font-size:30px}
+header .sub{color:var(--soft);font-size:18px}
+.wrap{display:grid;grid-template-columns:330px 1fr 380px;gap:18px;padding:12px 24px 24px;align-items:start}
+@media (max-width:1200px){.wrap{grid-template-columns:1fr}}
+.panel{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:18px}
+label{display:block;font-size:16px;font-weight:700;margin:14px 0 4px}
+input,select{width:100%;font:inherit;font-size:18px;padding:10px 12px;border:2px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
 .seg{display:flex;gap:6px}
 .seg button{flex:1}
-button{font:inherit;font-size:15px;padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:var(--cream-dim);color:var(--ink);cursor:pointer}
-button.on{background:var(--ink);color:#fff}
-button.go{width:100%;margin-top:14px;background:var(--ink);color:#fff;font-weight:700;font-size:17px;padding:12px}
-button:disabled{opacity:.5;cursor:wait}
-.small{font-size:12px;color:var(--ink-soft);line-height:1.4}
+button{font:inherit;font-size:17px;font-weight:700;min-height:44px;padding:8px 14px;border-radius:10px;border:2px solid var(--ink);background:#fff;color:var(--ink);cursor:pointer}
+button[aria-pressed="true"],button.on{background:var(--ink);color:#fff}
+button.go{width:100%;margin-top:16px;background:var(--ink);color:#fff;font-size:20px;padding:12px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.small{font-size:15px;color:var(--soft)}
 details{margin-top:14px}
-summary{cursor:pointer;font-weight:600;font-size:14px}
-#status{margin-top:10px;font-size:14px;min-height:20px}
-#status.err{color:#b5452f}
-.stage{padding:8px}
-.stage h2{margin:6px 8px 0;font-size:22px}
-.stage .idea{margin:4px 8px 6px;color:var(--ink-soft);font-size:15px}
-svg{width:100%;height:auto;display:block}
+summary{cursor:pointer;font-weight:700;font-size:16px;min-height:32px}
+#status{margin-top:12px;font-size:17px;min-height:22px}
+#status.err{color:#8a1a0a;font-weight:700}
+.stage h2{margin:2px 4px 0;font-size:28px}
+.stage .idea{margin:4px 4px 8px;color:var(--soft);font-size:18px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 4px}
+.bar .lbl{font-weight:700;margin-right:4px}
+svg{width:100%;height:auto;max-height:calc(100vh - 230px);display:block}
 .region{cursor:pointer}
-.region:hover .hl{opacity:.22}
-.hl{fill:#163b4e;opacity:0;transition:opacity .15s}
-.region.sel .hl{opacity:.3}
-.lvl{display:flex;gap:6px;margin:6px 8px;flex-wrap:wrap;align-items:center}
-.chip{display:inline-block;padding:2px 8px;border-radius:99px;color:#fff;font-size:12px;font-weight:700}
-.A1{background:var(--a1)} .B1{background:var(--b1)} .C1{background:var(--c1)}
-.lvl button{font-size:13px;padding:4px 10px}
-.lvl button.off{opacity:.35}
-#detail h3{margin:0 0 4px;font-size:19px}
-#detail .why{color:var(--ink-soft);font-size:14px;margin-bottom:10px}
-.word{border-top:1px solid var(--line);padding:9px 0}
-.word b{font-size:17px}
-.word .pos{color:var(--ink-soft);font-style:italic;font-size:13px;margin-left:4px}
-.word .gloss{font-size:14px;margin-top:2px}
-.word .ex{font-size:14px;color:var(--ink-soft);margin-top:2px}
-.tools{display:flex;gap:8px;flex-wrap:wrap;margin:8px}
-.tools button{font-size:13px;padding:6px 10px}
-.empty{padding:60px 20px;text-align:center;color:var(--ink-soft)}
+.hl{fill:#fff;opacity:0}
+.region:hover .hl{fill:#111a22;opacity:.10}
+.dim .hl{fill:#fff;opacity:.6}
+.dim:hover .hl{fill:#fff;opacity:.45}
+.lv{font-weight:700;white-space:nowrap}
+.lv.A1{color:var(--a1)} .lv.B1{color:var(--b1)} .lv.C1{color:var(--c1)}
+#detail h3{margin:0 0 4px;font-size:24px}
+#detail .why{color:var(--soft);font-size:17px;margin-bottom:8px}
+#detail h4{margin:14px 0 2px;font-size:19px}
+.word{border-top:2px solid var(--line);padding:10px 0}
+.word b{font-size:22px}
+.word .pos{color:var(--soft);font-style:italic;font-size:16px;margin-left:6px}
+.word .gloss{font-size:18px;margin-top:2px}
+.word .ex{font-size:18px;color:var(--soft);margin-top:2px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 4px 0}
+.empty{padding:30px 10px;color:var(--soft);font-size:19px}
+.keys{font-size:15px;color:var(--soft);margin-top:10px}
+kbd{border:2px solid var(--line);border-radius:5px;padding:0 6px;background:#fff;font-family:inherit;font-weight:700}
+#pctl{display:none}
+
+/* ---------- projector mode ---------- */
+body.proj{background:#fff;font-size:26px}
+body.proj header, body.proj #controls, body.proj .tools, body.proj .stage .bar{display:none}
+body.proj .wrap{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:28px;padding:20px 32px 110px;height:100vh;align-items:stretch}
+body.proj .panel{border:none;padding:0;background:#fff}
+body.proj .stage{display:flex;flex-direction:column;min-height:0}
+body.proj .stage h2{font-size:52px;line-height:1.1}
+body.proj .stage .idea{font-size:28px;color:var(--soft)}
+body.proj svg{flex:1;min-height:0;width:100%;height:100%;max-height:none}
+body.proj #detail{overflow:auto;border-left:4px solid var(--line);padding-left:28px}
+body.proj #detail h3{font-size:42px;line-height:1.15}
+body.proj #detail .why{font-size:26px}
+body.proj #detail h4{font-size:32px;margin-top:18px}
+body.proj .word{padding:14px 0;border-top-width:3px}
+body.proj .word b{font-size:46px}
+body.proj .word .pos{font-size:26px}
+body.proj .word .gloss{font-size:30px}
+body.proj .word .ex{font-size:28px}
+body.proj #detail .small{font-size:24px}
+body.proj .empty{font-size:30px;padding:10px 0}
+body.proj .allwords{font-size:38px;font-weight:700;line-height:1.35}
+body.proj #pctl{display:flex;position:fixed;left:0;right:0;bottom:0;gap:12px;padding:14px 32px;background:#fff;border-top:3px solid var(--line);align-items:center;flex-wrap:wrap}
+body.proj #pctl button{font-size:24px;min-height:60px;padding:8px 22px}
+body.proj #pctl .sp{flex:1}
 @media print{
-  header,.wrap>.panel:first-child,.tools,.lvl button{display:none}
+  header,#controls,.tools,.bar,#pctl{display:none!important}
   .wrap{display:block;padding:0}
-  .panel{box-shadow:none;border:none}
+  .panel{border:none}
   #printList{display:block!important}
   #detail{display:none}
 }
-#printList{display:none;columns:2;font-size:11px}
+#printList{display:none;columns:2;font-size:12px}
 #printList h4{margin:8px 0 2px;break-after:avoid}
 </style>
 </head>
@@ -74,10 +107,10 @@ svg{width:100%;height:auto;display:block}
 
 <div class="wrap">
   <!-- controls -->
-  <div class="panel">
-    <label>How many circles?</label>
-    <div class="seg" id="nSeg">
-      <button data-n="2">2</button><button data-n="3" class="on">3</button><button data-n="4">4</button>
+  <div class="panel" id="controls">
+    <label id="nLbl">How many circles?</label>
+    <div class="seg" id="nSeg" role="group" aria-labelledby="nLbl">
+      <button data-n="2" aria-pressed="false">2</button><button data-n="3" aria-pressed="true">3</button><button data-n="4" aria-pressed="false">4</button>
     </div>
 
     <label for="topic">Topic (optional)</label>
@@ -86,9 +119,9 @@ svg{width:100%;height:auto;display:block}
     <div id="labelBox"></div>
     <div class="small">Leave the circle names blank and Claude picks them from the topic.</div>
 
-    <label>Words per level in each section</label>
-    <div class="seg" id="perSeg">
-      <button data-p="2">2</button><button data-p="3" class="on">3</button><button data-p="4">4</button>
+    <label id="perLbl">Words per level in each section</label>
+    <div class="seg" id="perSeg" role="group" aria-labelledby="perLbl">
+      <button data-p="2" aria-pressed="false">2</button><button data-p="3" aria-pressed="true">3</button><button data-p="4" aria-pressed="false">4</button>
     </div>
 
     <label for="model">Model</label>
@@ -99,15 +132,15 @@ svg{width:100%;height:auto;display:block}
 
     <button class="go" id="goBtn">Make the diagram</button>
     <button id="exBtn" style="width:100%;margin-top:8px">See an example (free)</button>
-    <div id="status"></div>
-
+    <div id="status" role="status" aria-live="polite"></div>
     <div class="small" id="quota" style="margin-top:8px"></div>
+
     <details id="keyBox">
       <summary>Teacher key (optional)</summary>
       <label for="key">Anthropic API key</label>
       <input id="key" type="password" placeholder="sk-ant-..." autocomplete="off" />
       <div class="small">Students don't need this. Only add a key on your own device to skip the class limit. It is saved only in this browser and sent only to api.anthropic.com.</div>
-      <button id="forget" style="margin-top:8px;font-size:13px">Forget key</button>
+      <button id="forget" style="margin-top:8px">Forget key</button>
     </details>
 
     <details>
@@ -120,14 +153,16 @@ svg{width:100%;height:auto;display:block}
   <div class="panel stage">
     <h2 id="title">Your diagram shows up here</h2>
     <div class="idea" id="idea"></div>
-    <div class="lvl" id="lvlBar">
-      <span class="small">Show:</span>
-      <button data-l="A1"><span class="chip A1">A1</span></button>
-      <button data-l="B1"><span class="chip B1">B1</span></button>
-      <button data-l="C1"><span class="chip C1">C1</span></button>
+    <div class="bar" id="lvlBar" role="group" aria-label="Which level to show">
+      <span class="lbl">Show:</span>
+      <button data-l="all" aria-pressed="true">All levels</button>
+      <button data-l="A1" aria-pressed="false">● A1</button>
+      <button data-l="B1" aria-pressed="false">■ B1</button>
+      <button data-l="C1" aria-pressed="false">▲ C1</button>
     </div>
     <svg id="svg" viewBox="0 0 1000 760" role="img" aria-label="Venn diagram"></svg>
     <div class="tools">
+      <button id="projBtn" disabled>Projector mode</button>
       <button id="shareBtn" disabled>Copy share link</button>
       <button id="saveBtn" disabled>Save file</button>
       <button id="printBtn" disabled>Print</button>
@@ -136,23 +171,35 @@ svg{width:100%;height:auto;display:block}
   </div>
 
   <!-- detail -->
-  <div class="panel" id="detail">
-    <div class="empty">Tap any section of the diagram to see all its words, with meanings and examples.</div>
-  </div>
+  <div class="panel" id="detail" aria-live="polite"></div>
+</div>
+
+<!-- projector controls -->
+<div id="pctl" role="toolbar" aria-label="Projector controls">
+  <button id="pPrev">◀ Back</button>
+  <button id="pNext">Next ▶</button>
+  <span class="sp"></span>
+  <button data-l="all" aria-pressed="true">All</button>
+  <button data-l="A1" aria-pressed="false">● A1</button>
+  <button data-l="B1" aria-pressed="false">■ B1</button>
+  <button data-l="C1" aria-pressed="false">▲ C1</button>
+  <span class="sp"></span>
+  <button id="pExit">Exit</button>
 </div>
 
 <script>
 "use strict";
 // Class proxy (Cloudflare Worker): holds the key, 50 diagrams a day for everyone.
 const PROXY = "https://venn-diagram-proxy.purple-thunder-7ecd.workers.dev";
-const COLORS = ["#e2a23b","#3bb6e3","#e05a6a","#5fb37a"];
+const COLORS = ["#E69F00","#56B4E9","#009E73","#CC79A7"];   // Okabe-Ito, colorblind-safe
 const LEVELS = ["A1","B1","C1"];
-const state = { n:3, per:3, data:null, show:new Set(LEVELS), sel:null };
+const SYM = {A1:"●",B1:"■",C1:"▲"};
+const INK = {A1:"#1b6b3a",B1:"#0b4f8a",C1:"#8a2b0a"};
+const state = { n:3, per:3, data:null, level:"all", sel:null, proj:false };
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 /* ---------- shapes ---------- */
-// Each shape: {type:'c', cx, cy, r} or ellipse {type:'e', cx, cy, rx, ry, rot}
 function shapesFor(n){
   if(n===2) return [{cx:385,cy:400,rx:270,ry:270,rot:0},{cx:615,cy:400,rx:270,ry:270,rot:0}];
   if(n===3) return [{cx:400,cy:300,rx:235,ry:235,rot:0},{cx:600,cy:300,rx:235,ry:235,rot:0},{cx:500,cy:475,rx:235,ry:235,rot:0}];
@@ -171,10 +218,14 @@ function allRegions(n){
   for(let m=1;m<(1<<n);m++){const s=[];for(let i=0;i<n;i++) if(m&(1<<i)) s.push(i); out.push(s);}
   return out;
 }
-// Find label anchor per region: grid point farthest from the region's edge.
-function anchors(shapes){
-  const step=8, W=1000, H=760, grid={}, pts={};
-  for(let y=0;y<H;y+=step) for(let x=0;x<W;x+=step){
+// Stepping order: each circle alone, then pairs, ... then the middle.
+const stepOrder = n => allRegions(n).sort((a,b)=>a.length-b.length || keyOf(a).localeCompare(keyOf(b))).map(keyOf);
+// Label anchor per region: the grid point farthest from the region's edge.
+const ancCache = {};
+function anchors(n){
+  if(ancCache[n]) return ancCache[n];
+  const shapes=shapesFor(n), step=8, grid={}, pts={};
+  for(let y=0;y<760;y+=step) for(let x=0;x<1000;x+=step){
     let k=""; shapes.forEach((s,i)=>{ if(inside(s,x,y)) k+=i; });
     grid[x+","+y]=k; if(k){(pts[k]=pts[k]||[]).push([x,y]);}
   }
@@ -195,90 +246,155 @@ function anchors(shapes){
     }
     res[k]={x:best[0],y:best[1],r:bd};
   }
-  return res;
+  return ancCache[n]=res;
 }
 const shapeEl = (s,attrs) => `<ellipse cx="${s.cx}" cy="${s.cy}" rx="${s.rx}" ry="${s.ry}" transform="rotate(${s.rot} ${s.cx} ${s.cy})" ${attrs}/>`;
+
+/* ---------- words shown for a region ---------- */
+function shownWords(reg){
+  if(state.level==="all") return LEVELS.map(l=>reg.words.find(w=>w.level===l)).filter(Boolean);
+  return reg.words.filter(w=>w.level===state.level);
+}
 
 /* ---------- render ---------- */
 function render(){
   const d=state.data, svg=$("svg");
   const n = d ? d.circles.length : state.n;
-  const shapes=shapesFor(n), anc=anchors(shapes);
+  const shapes=shapesFor(n), anc=anchors(n), P=state.proj;
   let defs="<defs>";
   shapes.forEach((s,i)=>{
     defs+=`<clipPath id="cp${i}">${shapeEl(s,"")}</clipPath>`;
     defs+=`<mask id="mk${i}"><rect width="1000" height="760" fill="#fff"/>${shapeEl(s,'fill="#000"')}</mask>`;
   });
   defs+="</defs>";
-  let body=shapes.map((s,i)=>shapeEl(s,`fill="${COLORS[i]}" fill-opacity=".28" stroke="${COLORS[i]}" stroke-width="3"`)).join("");
-  // clickable region layers
+  const pills=[];
+  let body=shapes.map((s,i)=>shapeEl(s,`fill="${COLORS[i]}" fill-opacity="${P?.18:.22}"`)).join("");
   for(const sets of allRegions(n)){
     const k=keyOf(sets);
     let inner=`<rect class="hl" width="1000" height="760"/>`;
     for(let i=0;i<n;i++) if(!sets.includes(i)) inner=`<g mask="url(#mk${i})">${inner}</g>`;
     for(const i of sets) inner=`<g clip-path="url(#cp${i})">${inner}</g>`;
-    body+=`<g class="region${state.sel===k?" sel":""}" data-k="${k}">${inner}<rect width="1000" height="760" fill="transparent" style="pointer-events:none"/></g>`;
+    const dim = state.sel && state.sel!==k;
+    body+=`<g class="region${dim?" dim":""}" data-k="${k}" role="button" aria-label="Section ${esc(d?regionName(sets):k)}">${inner}</g>`;
   }
-  // words
+  body+=shapes.map((s,i)=>shapeEl(s,`fill="none" stroke="${COLORS[i]}" stroke-width="${P?7:5}" style="pointer-events:none"`)).join("");
   if(d){
     for(const reg of d.regions){
       const k=keyOf(reg.sets), a=anc[k]; if(!a) continue;
-      let words=LEVELS.filter(l=>state.show.has(l)).map(l=>reg.words.find(w=>w.level===l)).filter(Boolean);
-      if(a.r<34) words=words.slice(0,1);
-      const off = (n===4 && reg.sets.length===1) ? 30 : 0;
-      const fs=Math.max(11,Math.min(20,a.r/3.2));
-      const lineH=fs*1.25, top=a.y+off-(words.length-1)*lineH/2;
-      words.forEach((w,j)=>{
-        const col={A1:"#2d6e47",B1:"#155f86",C1:"#8f3423"}[w.level];
-        body+=`<text x="${a.x}" y="${top+j*lineH}" text-anchor="middle" dominant-baseline="middle" font-size="${fs}" font-weight="700" fill="${col}" style="pointer-events:none;paint-order:stroke" stroke="#fff" stroke-width="3">${esc(w.word)}</text>`;
+      const words=shownWords(reg); if(!words.length) continue;
+      const dim = state.sel && state.sel!==k;
+      const label = w => (state.level==="all"?SYM[w.level]+" ":"")+w.word;
+      const minFs = P?18:11, maxFs = P?40:22;
+      // Lines for a word: phrases longer than 9 letters break at the middle space.
+      const linesOf = t => { if(t.length<=9 || !t.includes(" ")) return [t];
+        const mid=t.length/2; let best=-1; for(let i=0;i<t.length;i++) if(t[i]===" " && (best<0||Math.abs(i-mid)<Math.abs(best-mid))) best=i;
+        return [t.slice(0,best), t.slice(best+1)]; };
+      // Largest font that fits; if none, show fewer words; if not even one fits, a badge.
+      let lines=[], fs=0, total=words.length;
+      for(let k=words.length;k>=1;k--){
+        const ls=words.slice(0,k).map(w=>{ const parts=linesOf(w.word);
+          if(state.level==="all") parts[0]=SYM[w.level]+" "+parts[0];
+          return {w,parts}; });
+        const nLines=ls.reduce((a,x)=>a+x.parts.length,0)+(k<words.length?0.7:0), longest=Math.max(...ls.flatMap(x=>x.parts.map(t=>t.length)));
+        const f=Math.min(maxFs,(1.75*a.r)/(nLines*1.15),(1.8*a.r)/(0.63*longest));
+        if(f>=minFs){ lines=ls; fs=f; break; }
+      }
+      const g = `opacity="${dim?.3:1}" style="pointer-events:none"`;
+      if(!fs){ // too small to read: show a numbered badge; the side panel has the words
+        body+=`<g ${g}><circle cx="${a.x}" cy="${a.y}" r="${P?20:15}" fill="#fff" stroke="#111a22" stroke-width="3"/><text x="${a.x}" y="${a.y}" text-anchor="middle" dominant-baseline="central" font-size="${P?22:16}" font-weight="700" fill="#111a22">${words.length}</text></g>`;
+        continue;
+      }
+      const flat=lines.flatMap(x=>x.parts.map(t=>({t,w:x.w})));
+      const more = total-lines.length;
+      if(more>0) flat.push({t:"+"+more+" more",w:null});
+      const lineH=fs*1.15, top=a.y-(flat.length-1)*lineH/2;
+      body+=`<g ${g}>`;
+      flat.forEach((x,j)=>{
+        const f = x.w ? fs : Math.max(minFs*0.85, fs*0.6);
+        body+=`<text x="${a.x}" y="${top+j*lineH}" text-anchor="middle" dominant-baseline="central" font-size="${f.toFixed(1)}" font-weight="700" fill="${x.w?INK[x.w.level]:"#3c4a54"}" stroke="#fff" stroke-width="${P?6:4}" stroke-linejoin="round" style="paint-order:stroke">${esc(x.t)}</text>`;
       });
+      body+="</g>";
     }
-    // circle names
+    // circle names: dark text on a pill of the circle's color (never colored text on white)
     shapes.forEach((s,i)=>{
-      const top=()=>{const t=s.rot*Math.PI/180,ux=Math.cos(t)*s.rx,uy=Math.sin(t)*s.rx,e=uy<0?1:-1;return [s.cx+e*ux,s.cy+e*uy-16];};
-      const pos = n===4 ? (i===1||i===2 ? top() : [anc[String(i)].x, anc[String(i)].y-40])
-                : n===2 ? [[260,95],[740,95]][i]
-                : [[230,70],[770,70],[500,740]][i];
-      body+=`<text x="${pos[0]}" y="${pos[1]}" text-anchor="middle" font-size="24" font-weight="800" fill="${COLORS[i]}" stroke="#fff" stroke-width="4" style="paint-order:stroke">${esc(d.circles[i].name)}</text>`;
+      let pos;
+      if(n===4){
+        // inner ellipses: name above the top tip; outer ones: below the bottom tip
+        const t=s.rot*Math.PI/180,ux=Math.cos(t)*s.rx,uy=Math.sin(t)*s.rx,e=(uy<0)===(i===1||i===2)?1:-1;
+        pos=[s.cx+e*ux, s.cy+e*uy+(i===1||i===2?-22:22)];
+      } else pos = n===2 ? [[260,95],[740,95]][i] : [[230,62],[770,62],[500,735]][i];
+      const name=d.circles[i].name, fsN=P?32:24, w=name.length*fsN*0.6+28, h=fsN*1.5;
+      pills.push([pos[0]-w/2,pos[1]-h/2,w,h]);
+      body+=`<g style="pointer-events:none"><rect x="${pos[0]-w/2}" y="${pos[1]-h/2}" width="${w}" height="${h}" rx="${h/2}" fill="${COLORS[i]}" stroke="#111a22" stroke-width="2"/><text x="${pos[0]}" y="${pos[1]}" text-anchor="middle" dominant-baseline="central" font-size="${fsN}" font-weight="700" fill="#111a22">${esc(name)}</text></g>`;
     });
   }
+  // crop to what is drawn so the diagram fills the screen
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  const grow=(a,b,c,d)=>{x0=Math.min(x0,a);y0=Math.min(y0,b);x1=Math.max(x1,c);y1=Math.max(y1,d);};
+  shapes.forEach(s=>{const t=s.rot*Math.PI/180,hx=Math.hypot(s.rx*Math.cos(t),s.ry*Math.sin(t)),hy=Math.hypot(s.rx*Math.sin(t),s.ry*Math.cos(t));grow(s.cx-hx,s.cy-hy,s.cx+hx,s.cy+hy);});
+  pills.forEach(r=>grow(r[0],r[1],r[0]+r[2],r[1]+r[3]));
+  const pad=12; svg.setAttribute("viewBox",`${x0-pad} ${y0-pad} ${x1-x0+2*pad} ${y1-y0+2*pad}`);
   svg.innerHTML=defs+body;
-  svg.querySelectorAll(".region").forEach(g=>g.addEventListener("click",()=>select(g.dataset.k)));
+  svg.querySelectorAll(".region").forEach(g=>g.addEventListener("click",()=>select(state.sel===g.dataset.k?null:g.dataset.k)));
 }
 function regionName(sets){
-  const names=sets.map(i=>state.data.circles[i].name);
-  const n=state.data.circles.length;
+  const names=sets.map(i=>state.data.circles[i].name), n=state.data.circles.length;
   if(sets.length===1) return names[0]+" only";
   if(sets.length===n) return "All "+n+": "+names.join(" + ");
   return names.join(" + ");
 }
-function select(k){
-  if(!state.data) return;
-  state.sel=k; render();
-  const reg=state.data.regions.find(r=>keyOf(r.sets)===k);
-  if(!reg){$("detail").innerHTML='<div class="empty">No words for this section.</div>';return;}
-  let h=`<h3>${esc(regionName(reg.sets))}</h3><div class="why">${esc(reg.why)}</div>`;
-  for(const l of LEVELS){
-    if(!state.show.has(l)) continue;
-    for(const w of reg.words.filter(w=>w.level===l)){
-      h+=`<div class="word"><span class="chip ${l}">${l}</span> <b>${esc(w.word)}</b><span class="pos">${esc(w.pos)}</span>
-          <div class="gloss">${esc(w.meaning)}</div><div class="ex">"${esc(w.example)}"</div></div>`;
-    }
+const wordHtml = w => `<div class="word"><span class="lv ${w.level}">${SYM[w.level]} ${w.level}</span> <b>${esc(w.word)}</b><span class="pos">${esc(w.pos)}</span>
+  <div class="gloss">${esc(w.meaning)}</div><div class="ex">"${esc(w.example)}"</div></div>`;
+function detail(){
+  const el=$("detail");
+  if(!state.data){ el.innerHTML='<div class="empty">Make a diagram, or press "See an example".</div>'; return; }
+  if(!state.sel){
+    el.innerHTML = state.proj
+      ? `<div class="empty">Tap a section, or press <kbd>→</kbd> to go through them one at a time.</div>`
+      : `<div class="empty">Tap any section of the diagram to see all its words, with meanings and examples.</div>
+         <div class="keys">For a projector, press <b>Projector mode</b>. Keys: <kbd>→</kbd> <kbd>←</kbd> sections, <kbd>0</kbd>-<kbd>3</kbd> levels, <kbd>Esc</kbd> back.</div>`;
+    return;
   }
-  $("detail").innerHTML=h;
+  const reg=state.data.regions.find(r=>keyOf(r.sets)===state.sel);
+  if(!reg){ el.innerHTML='<div class="empty">No words for this section.</div>'; return; }
+  const order=stepOrder(state.data.circles.length), pos=order.indexOf(state.sel)+1;
+  let h=`<div class="small">Section ${pos} of ${order.length}</div><h3>${esc(regionName(reg.sets))}</h3><div class="why">${esc(reg.why)}</div>`;
+  if(state.level!=="all") h+=reg.words.filter(w=>w.level===state.level).map(wordHtml).join("");
+  else if(state.proj){ // projector + all levels: words only, grouped, so they stay big
+    for(const l of LEVELS) h+=`<h4 class="lv ${l}">${SYM[l]} ${l}</h4><div class="allwords">${reg.words.filter(w=>w.level===l).map(w=>esc(w.word)).join(", ")}</div>`;
+    h+=`<div class="small" style="margin-top:14px;font-size:22px">Pick one level below to see meanings and examples.</div>`;
+  } else h+=LEVELS.map(l=>reg.words.filter(w=>w.level===l).map(wordHtml).join("")).join("");
+  el.innerHTML=h;
+}
+function select(k){ if(!state.data) return; state.sel=k; render(); detail(); }
+function step(dir){
+  if(!state.data) return;
+  const order=stepOrder(state.data.circles.length);
+  let i=order.indexOf(state.sel);
+  i = i<0 ? (dir>0?0:order.length-1) : Math.min(order.length-1, Math.max(0,i+dir));
+  select(order[i]);
+}
+function setLevel(l){
+  state.level=l;
+  document.querySelectorAll("[data-l]").forEach(b=>b.setAttribute("aria-pressed", b.dataset.l===l));
+  render(); detail();
+}
+function setProj(on){
+  state.proj=on; document.body.classList.toggle("proj",on);
+  if(on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+  if(!on && document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+  render(); detail();
 }
 function show(d){
   state.data=d; state.sel=null;
   $("title").textContent=d.title||"Venn diagram";
   $("idea").textContent=d.big_idea||"";
-  ["shareBtn","saveBtn","printBtn"].forEach(b=>$(b).disabled=false);
-  render();
-  $("detail").innerHTML='<div class="empty">Tap any section of the diagram to see all its words, with meanings and examples.</div>';
-  // print list
+  ["shareBtn","saveBtn","printBtn","projBtn"].forEach(b=>$(b).disabled=false);
+  render(); detail();
   let p="";
   for(const reg of d.regions){
     p+=`<h4>${esc(regionName(reg.sets))}</h4>`;
-    for(const w of reg.words) p+=`<div>[${w.level}] <b>${esc(w.word)}</b> (${esc(w.pos)}): ${esc(w.meaning)}</div>`;
+    for(const w of reg.words) p+=`<div>${SYM[w.level]} ${w.level} <b>${esc(w.word)}</b> (${esc(w.pos)}): ${esc(w.meaning)}</div>`;
   }
   $("printList").innerHTML=p;
 }
@@ -287,26 +403,35 @@ function show(d){
 function drawLabelInputs(){
   const old=[...document.querySelectorAll(".lab")].map(i=>i.value);
   let h="";
-  for(let i=0;i<state.n;i++) h+=`<label>Circle ${i+1} <span style="color:${COLORS[i]}">&#9679;</span></label><input class="lab" maxlength="40" value="${esc(old[i]||"")}" placeholder="${["e.g. the city","e.g. the countryside","e.g. the beach","e.g. the mountains"][i]}"/>`;
+  for(let i=0;i<state.n;i++) h+=`<label for="lab${i}">Circle ${i+1} <span aria-hidden="true" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${COLORS[i]};border:2px solid #111a22;vertical-align:-1px"></span></label><input id="lab${i}" class="lab" maxlength="40" value="${esc(old[i]||"")}" placeholder="${["e.g. the city","e.g. the countryside","e.g. the beach","e.g. the mountains"][i]}"/>`;
   $("labelBox").innerHTML=h;
 }
-$("nSeg").addEventListener("click",e=>{
-  const b=e.target.closest("button"); if(!b) return;
-  state.n=+b.dataset.n; $("nSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
-  drawLabelInputs(); if(!state.data) render();
-});
-$("perSeg").addEventListener("click",e=>{
-  const b=e.target.closest("button"); if(!b) return;
-  state.per=+b.dataset.p; $("perSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
-});
-$("lvlBar").addEventListener("click",e=>{
-  const b=e.target.closest("button"); if(!b) return;
-  const l=b.dataset.l; state.show.has(l)?state.show.delete(l):state.show.add(l);
-  b.classList.toggle("off",!state.show.has(l)); render(); if(state.sel) select(state.sel);
+function segPick(segId, attr, cb){
+  $(segId).addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    $(segId).querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x===b));
+    cb(+b.dataset[attr]);
+  });
+}
+segPick("nSeg","n",v=>{ state.n=v; drawLabelInputs(); if(!state.data) render(); });
+segPick("perSeg","p",v=>{ state.per=v; });
+document.querySelectorAll("[data-l]").forEach(b=>b.addEventListener("click",()=>setLevel(b.dataset.l)));
+$("projBtn").addEventListener("click",()=>setProj(true));
+$("pExit").addEventListener("click",()=>setProj(false));
+$("pPrev").addEventListener("click",()=>step(-1));
+$("pNext").addEventListener("click",()=>step(1));
+document.addEventListener("keydown",e=>{
+  if(e.target.closest && e.target.closest("input,select,textarea")) return;
+  if(e.key==="ArrowRight"){ e.preventDefault(); step(1); }
+  else if(e.key==="ArrowLeft"){ e.preventDefault(); step(-1); }
+  else if(e.key==="0") setLevel("all");
+  else if("123".includes(e.key) && e.key.length===1) setLevel(LEVELS[+e.key-1]);
+  else if(e.key==="p" && state.data) setProj(!state.proj);
+  else if(e.key==="Escape"){ if(state.sel) select(null); else if(state.proj) setProj(false); }
 });
 $("key").value=localStorage.getItem("vennKey")||"";
 $("key").addEventListener("change",()=>localStorage.setItem("vennKey",$("key").value.trim()));
-$("forget").addEventListener("click",()=>{localStorage.removeItem("vennKey");$("key").value="";});
+$("forget").addEventListener("click",()=>{localStorage.removeItem("vennKey");$("key").value="";showQuota();});
 $("model").value=localStorage.getItem("vennModel")||"claude-haiku-5-5";
 $("model").addEventListener("change",()=>localStorage.setItem("vennModel",$("model").value));
 
@@ -386,7 +511,7 @@ $("goBtn").addEventListener("click",async()=>{
   const topic=$("topic").value.trim();
   if(!topic && labels.every(l=>!l)){ st.className="err"; st.textContent="Give a topic or name at least one circle."; return; }
   const model=$("model").value, n=state.n;
-  $("goBtn").disabled=true; st.textContent="Claude is building your diagram... (about 20-60 seconds)";
+  $("goBtn").disabled=true; st.textContent="Claude is building your diagram. This takes about 20 to 60 seconds.";
   try{
     const prompt=buildPrompt(n,labels,topic,state.per);
     let res;
@@ -433,16 +558,17 @@ $("fileIn").addEventListener("change",async e=>{
   try{ const d=JSON.parse(await f.text()); show(clean(d,d.circles.length,[])); }
   catch{ $("status").className="err"; $("status").textContent="That file isn't a saved diagram."; }
 });
-
 $("exBtn").addEventListener("click",async()=>{
   try{ const d=await (await fetch("sample.json")).json(); show(clean(d,d.circles.length,[])); }
   catch{ $("status").textContent="Couldn't load the example."; }
 });
+
 drawLabelInputs();
 showQuota();
+detail();
 (async()=>{
-  const m=location.hash.match(/#d=(.+)/);
-  if(m){ try{ const d=await unpack(m[1]); show(clean(d,d.circles.length,[])); }catch{ $("status").textContent="That share link is broken."; } }
+  const m=location.hash.match(/#d=([^&]+)/);
+  if(m){ try{ const d=await unpack(m[1]); show(clean(d,d.circles.length,[])); if(/[#&]p=1/.test(location.hash)) setProj(true); }catch{ $("status").textContent="That share link is broken."; } }
   else render();
 })();
 </script>
