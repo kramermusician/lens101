@@ -101,11 +101,12 @@ svg{width:100%;height:auto;display:block}
     <button id="exBtn" style="width:100%;margin-top:8px">See an example (free)</button>
     <div id="status"></div>
 
+    <div class="small" id="quota" style="margin-top:8px"></div>
     <details id="keyBox">
-      <summary>API key</summary>
+      <summary>Teacher key (optional)</summary>
       <label for="key">Anthropic API key</label>
       <input id="key" type="password" placeholder="sk-ant-..." autocomplete="off" />
-      <div class="small">Saved only in this browser (localStorage) and sent only to api.anthropic.com. Use it on your own device, not a shared one. Students don't need a key: send them a share link.</div>
+      <div class="small">Students don't need this. Only add a key on your own device to skip the class limit. It is saved only in this browser and sent only to api.anthropic.com.</div>
       <button id="forget" style="margin-top:8px;font-size:13px">Forget key</button>
     </details>
 
@@ -142,6 +143,8 @@ svg{width:100%;height:auto;display:block}
 
 <script>
 "use strict";
+// Class proxy (Cloudflare Worker): holds the key, 50 diagrams a day for everyone.
+const PROXY = "";
 const COLORS = ["#e2a23b","#3bb6e3","#e05a6a","#5fb37a"];
 const LEVELS = ["A1","B1","C1"];
 const state = { n:3, per:3, data:null, show:new Set(LEVELS), sel:null };
@@ -362,11 +365,23 @@ function clean(d,n,labels){
   for(const r of d.regions) r.words=(r.words||[]).filter(w=>w&&w.word&&LEVELS.includes(w.level));
   return d;
 }
+async function callProxy(payload){
+  const r=await fetch(PROXY,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){ const e=new Error(j.error||("HTTP "+r.status)); e.tomorrow=j.error==="come back tomorrow"; throw e; }
+  return j;
+}
+async function showQuota(){
+  if(!PROXY || $("key").value.trim()){ $("quota").textContent=""; return; }
+  try{ const j=await (await fetch(PROXY)).json();
+    $("quota").textContent = j.remaining>0 ? `${j.remaining} of ${j.limit} class diagrams left today.` : "Come back tomorrow! The class used all of today's diagrams.";
+  }catch{ $("quota").textContent=""; }
+}
 const PRICE={"claude-haiku-5-5":[0.10,0.50],"claude-sonnet-5-5":[2,10]};
 $("goBtn").addEventListener("click",async()=>{
   const key=$("key").value.trim(); localStorage.setItem("vennKey",key);
   const st=$("status"); st.className="";
-  if(!key){ $("keyBox").open=true; st.className="err"; st.textContent="Add your API key first (under API key)."; return; }
+  if(!key && !PROXY){ $("keyBox").open=true; st.className="err"; st.textContent="Add your API key first."; return; }
   const labels=[...document.querySelectorAll(".lab")].map(i=>i.value.trim());
   const topic=$("topic").value.trim();
   if(!topic && labels.every(l=>!l)){ st.className="err"; st.textContent="Give a topic or name at least one circle."; return; }
@@ -375,7 +390,8 @@ $("goBtn").addEventListener("click",async()=>{
   try{
     const prompt=buildPrompt(n,labels,topic,state.per);
     let res;
-    try{ res=await callClaude(key,model,prompt,true); }
+    if(!key) res=await callProxy({n,labels,topic,per:state.per,model});
+    else try{ res=await callClaude(key,model,prompt,true); }
     catch(e){ if(e.status===400 && /format|schema|output_config/i.test(e.message)) res=await callClaude(key,model,prompt,false); else throw e; }
     const d=clean(res.data,n,labels);
     d.model=model; d.made=new Date().toISOString().slice(0,10);
@@ -383,8 +399,8 @@ $("goBtn").addEventListener("click",async()=>{
     const p=PRICE[model], u=res.usage||{};
     const cost=p?((u.input_tokens||0)*p[0]+(u.output_tokens||0)*p[1])/1e6:0;
     st.textContent=`Done. ${d.regions.reduce((a,r)=>a+r.words.length,0)} words. Cost about $${cost.toFixed(4)}.`;
-  }catch(e){ st.className="err"; st.textContent="Something went wrong: "+e.message; }
-  finally{ $("goBtn").disabled=false; }
+  }catch(e){ st.className="err"; st.textContent=e.tomorrow?"Come back tomorrow! The class used all 50 diagrams for today.":"Something went wrong: "+e.message; }
+  finally{ $("goBtn").disabled=false; showQuota(); }
 });
 
 /* ---------- share / save / load ---------- */
@@ -423,6 +439,7 @@ $("exBtn").addEventListener("click",async()=>{
   catch{ $("status").textContent="Couldn't load the example."; }
 });
 drawLabelInputs();
+showQuota();
 (async()=>{
   const m=location.hash.match(/#d=(.+)/);
   if(m){ try{ const d=await unpack(m[1]); show(clean(d,d.circles.length,[])); }catch{ $("status").textContent="That share link is broken."; } }
