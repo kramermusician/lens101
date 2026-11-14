@@ -144,7 +144,7 @@ svg{width:100%;height:auto;display:block}
 <script>
 "use strict";
 // Class proxy (Cloudflare Worker): holds the key, 50 diagrams a day for everyone.
-const PROXY = "";
+const PROXY = "https://venn-diagram-proxy.purple-thunder-7ecd.workers.dev";
 const COLORS = ["#e2a23b","#3bb6e3","#e05a6a","#5fb37a"];
 const LEVELS = ["A1","B1","C1"];
 const state = { n:3, per:3, data:null, show:new Set(LEVELS), sel:null };
