@@ -58,6 +58,8 @@ svg{width:100%;height:auto;max-height:calc(100vh - 230px);display:block}
 .word .pos{color:var(--soft);font-style:italic;font-size:16px;margin-left:6px}
 .word .gloss{font-size:18px;margin-top:2px}
 .word .ex{font-size:18px;color:var(--soft);margin-top:2px}
+.word .en{font-size:17px;color:var(--soft);margin-left:6px}
+body.proj .word .en{font-size:26px}
 .tools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 4px 0}
 .empty{padding:30px 10px;color:var(--soft);font-size:19px}
 .keys{font-size:15px;color:var(--soft);margin-top:10px}
@@ -123,6 +125,9 @@ body.proj #pctl .sp{flex:1}
     <div class="seg" id="perSeg" role="group" aria-labelledby="perLbl">
       <button data-p="2" aria-pressed="false">2</button><button data-p="3" aria-pressed="true">3</button><button data-p="4" aria-pressed="false">4</button>
     </div>
+
+    <label for="lang">Words in</label>
+    <select id="lang"></select>
 
     <label for="model">Model</label>
     <select id="model">
@@ -195,6 +200,14 @@ const COLORS = ["#E69F00","#56B4E9","#009E73","#CC79A7"];   // Okabe-Ito, colorb
 const LEVELS = ["A1","B1","C1"];
 const SYM = {A1:"●",B1:"■",C1:"▲"};
 const INK = {A1:"#1b6b3a",B1:"#0b4f8a",C1:"#8a2b0a"};
+// Output languages (keep in step with LANGS in venn-diagram-proxy/src/worker.js).
+const LANGS = [["en","English"],["zh-Hans","中文 简体 (Chinese, Simplified)"],["zh-Hant","中文 繁體 (Chinese, Traditional)"],
+  ["ko","한국어 (Korean)"],["ja","日本語 (Japanese)"],["es","Español (Spanish)"],["pt","Português (Portuguese)"],
+  ["fr","Français (French)"],["it","Italiano (Italian)"],["de","Deutsch (German)"],["tr","Türkçe (Turkish)"],["hi","हिन्दी (Hindi)"]];
+const LANG_NAME = {en:"English","zh-Hans":"Chinese (Mandarin, Simplified characters)","zh-Hant":"Chinese (Mandarin, Traditional characters)",
+  ko:"Korean",ja:"Japanese",es:"Spanish",pt:"Portuguese (Brazilian)",fr:"French",it:"Italian",de:"German",tr:"Turkish",hi:"Hindi"};
+// Width of text in "Latin letters": CJK and Hangul characters are about twice as wide.
+const tw = t => [...String(t)].reduce((a,c)=>a+(/[\u1100-\u11ff\u2e80-\u9fff\uac00-\ud7af\uf900-\ufaff\uff00-\uffef]/.test(c)?1.65:1),0);
 const state = { n:3, per:3, data:null, level:"all", sel:null, proj:false };
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -286,7 +299,7 @@ function render(){
       const label = w => (state.level==="all"?SYM[w.level]+" ":"")+w.word;
       const minFs = P?18:11, maxFs = P?40:22;
       // Lines for a word: phrases longer than 9 letters break at the middle space.
-      const linesOf = t => { if(t.length<=9 || !t.includes(" ")) return [t];
+      const linesOf = t => { if(tw(t)<=9 || !t.includes(" ")) return [t];
         const mid=t.length/2; let best=-1; for(let i=0;i<t.length;i++) if(t[i]===" " && (best<0||Math.abs(i-mid)<Math.abs(best-mid))) best=i;
         return [t.slice(0,best), t.slice(best+1)]; };
       // Largest font that fits; if none, show fewer words; if not even one fits, a badge.
@@ -295,7 +308,7 @@ function render(){
         const ls=words.slice(0,k).map(w=>{ const parts=linesOf(w.word);
           if(state.level==="all") parts[0]=SYM[w.level]+" "+parts[0];
           return {w,parts}; });
-        const nLines=ls.reduce((a,x)=>a+x.parts.length,0)+(k<words.length?0.7:0), longest=Math.max(...ls.flatMap(x=>x.parts.map(t=>t.length)));
+        const nLines=ls.reduce((a,x)=>a+x.parts.length,0)+(k<words.length?0.7:0), longest=Math.max(...ls.flatMap(x=>x.parts.map(tw)));
         const f=Math.min(maxFs,(1.75*a.r)/(nLines*1.15),(1.8*a.r)/(0.63*longest));
         if(f>=minFs){ lines=ls; fs=f; break; }
       }
@@ -323,7 +336,7 @@ function render(){
         const t=s.rot*Math.PI/180,ux=Math.cos(t)*s.rx,uy=Math.sin(t)*s.rx,e=(uy<0)===(i===1||i===2)?1:-1;
         pos=[s.cx+e*ux, s.cy+e*uy+(i===1||i===2?-22:22)];
       } else pos = n===2 ? [[260,95],[740,95]][i] : [[230,62],[770,62],[500,735]][i];
-      const name=d.circles[i].name, fsN=P?32:24, w=name.length*fsN*0.6+28, h=fsN*1.5;
+      const name=d.circles[i].name, fsN=P?32:24, w=tw(name)*fsN*0.6+28, h=fsN*1.5;
       pills.push([pos[0]-w/2,pos[1]-h/2,w,h]);
       body+=`<g style="pointer-events:none"><rect x="${pos[0]-w/2}" y="${pos[1]-h/2}" width="${w}" height="${h}" rx="${h/2}" fill="${COLORS[i]}" stroke="#111a22" stroke-width="2"/><text x="${pos[0]}" y="${pos[1]}" text-anchor="middle" dominant-baseline="central" font-size="${fsN}" font-weight="700" fill="#111a22">${esc(name)}</text></g>`;
     });
@@ -334,6 +347,7 @@ function render(){
   shapes.forEach(s=>{const t=s.rot*Math.PI/180,hx=Math.hypot(s.rx*Math.cos(t),s.ry*Math.sin(t)),hy=Math.hypot(s.rx*Math.sin(t),s.ry*Math.cos(t));grow(s.cx-hx,s.cy-hy,s.cx+hx,s.cy+hy);});
   pills.forEach(r=>grow(r[0],r[1],r[0]+r[2],r[1]+r[3]));
   const pad=12; svg.setAttribute("viewBox",`${x0-pad} ${y0-pad} ${x1-x0+2*pad} ${y1-y0+2*pad}`);
+  svg.setAttribute("lang", d?.lang||"en");
   svg.innerHTML=defs+body;
   svg.querySelectorAll(".region").forEach(g=>g.addEventListener("click",()=>select(state.sel===g.dataset.k?null:g.dataset.k)));
 }
@@ -343,8 +357,8 @@ function regionName(sets){
   if(sets.length===n) return "All "+n+": "+names.join(" + ");
   return names.join(" + ");
 }
-const wordHtml = w => `<div class="word"><span class="lv ${w.level}">${SYM[w.level]} ${w.level}</span> <b>${esc(w.word)}</b><span class="pos">${esc(w.pos)}</span>
-  <div class="gloss">${esc(w.meaning)}</div><div class="ex">"${esc(w.example)}"</div></div>`;
+const wordHtml = w => `<div class="word"><span class="lv ${w.level}">${SYM[w.level]} ${w.level}</span> <b lang="${esc(state.data?.lang||"en")}">${esc(w.word)}</b>${w.english?`<span class="en">(${esc(w.english)})</span>`:""}<span class="pos">${esc(w.pos)}</span>
+  <div class="gloss" lang="${esc(state.data?.lang||"en")}">${esc(w.meaning)}</div><div class="ex" lang="${esc(state.data?.lang||"en")}">"${esc(w.example)}"</div></div>`;
 function detail(){
   const el=$("detail");
   if(!state.data){ el.innerHTML='<div class="empty">Make a diagram, or press "See an example".</div>'; return; }
@@ -361,7 +375,7 @@ function detail(){
   let h=`<div class="small">Section ${pos} of ${order.length}</div><h3>${esc(regionName(reg.sets))}</h3><div class="why">${esc(reg.why)}</div>`;
   if(state.level!=="all") h+=reg.words.filter(w=>w.level===state.level).map(wordHtml).join("");
   else if(state.proj){ // projector + all levels: words only, grouped, so they stay big
-    for(const l of LEVELS) h+=`<h4 class="lv ${l}">${SYM[l]} ${l}</h4><div class="allwords">${reg.words.filter(w=>w.level===l).map(w=>esc(w.word)).join(", ")}</div>`;
+    for(const l of LEVELS) h+=`<h4 class="lv ${l}">${SYM[l]} ${l}</h4><div class="allwords" lang="${esc(state.data.lang||"en")}">${reg.words.filter(w=>w.level===l).map(w=>esc(w.word)).join(", ")}</div>`;
     h+=`<div class="small" style="margin-top:14px;font-size:22px">Pick one level below to see meanings and examples.</div>`;
   } else h+=LEVELS.map(l=>reg.words.filter(w=>w.level===l).map(wordHtml).join("")).join("");
   el.innerHTML=h;
@@ -394,7 +408,7 @@ function show(d){
   let p="";
   for(const reg of d.regions){
     p+=`<h4>${esc(regionName(reg.sets))}</h4>`;
-    for(const w of reg.words) p+=`<div>${SYM[w.level]} ${w.level} <b>${esc(w.word)}</b> (${esc(w.pos)}): ${esc(w.meaning)}</div>`;
+    for(const w of reg.words) p+=`<div>${SYM[w.level]} ${w.level} <b>${esc(w.word)}</b>${w.english?" = "+esc(w.english):""} (${esc(w.pos)}): ${esc(w.meaning)}</div>`;
   }
   $("printList").innerHTML=p;
 }
@@ -432,6 +446,9 @@ document.addEventListener("keydown",e=>{
 $("key").value=localStorage.getItem("vennKey")||"";
 $("key").addEventListener("change",()=>localStorage.setItem("vennKey",$("key").value.trim()));
 $("forget").addEventListener("click",()=>{localStorage.removeItem("vennKey");$("key").value="";showQuota();});
+$("lang").innerHTML=LANGS.map(([c,n])=>`<option value="${c}">${esc(n)}</option>`).join("");
+$("lang").value=localStorage.getItem("vennLang")||"en"; if(!$("lang").value) $("lang").value="en";
+$("lang").addEventListener("change",()=>localStorage.setItem("vennLang",$("lang").value));
 $("model").value=localStorage.getItem("vennModel")||"claude-haiku-5-5";
 $("model").addEventListener("change",()=>localStorage.setItem("vennModel",$("model").value));
 
@@ -445,14 +462,19 @@ const SCHEMA={
     regions:{type:"array",items:{type:"object",additionalProperties:false,required:["sets","why","words"],properties:{
       sets:{type:"array",items:{type:"integer"}},
       why:{type:"string"},
-      words:{type:"array",items:{type:"object",additionalProperties:false,required:["word","level","pos","meaning","example"],properties:{
-        word:{type:"string"}, level:{type:"string",enum:LEVELS}, pos:{type:"string"},
+      words:{type:"array",items:{type:"object",additionalProperties:false,required:["word","level","pos","meaning","example","english"],properties:{
+        word:{type:"string"}, english:{type:"string"}, level:{type:"string",enum:LEVELS}, pos:{type:"string"},
         meaning:{type:"string"}, example:{type:"string"}}}}}}}
   }
 };
-function buildPrompt(n,labels,topic,per){
+function langRules(lang){
+  if(lang==="en") return `Set "english" to an empty string for every word.`;
+  const L=LANG_NAME[lang];
+  return `LANGUAGE: every word is a ${L} word, chosen and leveled the way a ${L} teacher would level it for learners of ${L}. Write "title", "big_idea", "why", circle names you choose, each "meaning" and each "example" in ${L}. Keep "meaning" simple ${L} a beginner could read. "pos" stays in English. "english" is a short English translation of the word (1-4 words). If the teacher typed circle names or a topic in English, translate the circle names you return into ${L}.`;
+}
+function buildPrompt(n,labels,topic,per,lang="en"){
   const regs=allRegions(n).map(s=>"["+s.join(",")+"]").join(", ");
-  return `Make a vocabulary Venn diagram for English language learners.
+  return `Make a vocabulary Venn diagram for ${lang==="en"?"English":LANG_NAME[lang]} language learners.
 Number of circles: ${n}
 Topic: ${topic||"(none given)"}
 Circle names: ${labels.map((l,i)=>`circle ${i}: ${l||"(you choose)"}`).join("; ")}
@@ -461,14 +483,15 @@ Return exactly ${2**n-1} regions, one for each of these index sets: ${regs}.
 A region's "sets" lists the circles a word belongs to. A word in [0] belongs to circle 0 and NOT to any other circle. A word in [0,1] belongs to both 0 and 1 and not the rest. Every word must truly fit its region; check each one against every circle.
 In each region give exactly ${per} words at level A1, ${per} at B1 and ${per} at C1 (CEFR). A1 = very common everyday words. B1 = useful intermediate words. C1 = precise, advanced words a strong student would be proud to learn. Prefer single words; short set phrases are fine. No word appears twice in the whole diagram.
 For each word: part of speech (noun, verb, adjective, adverb, phrase), a plain meaning under 15 words written at A2 level, and one natural example sentence under 16 words that shows why it fits this region.
-"why" is one short sentence describing what the region holds. "title" is a short title. "big_idea" is one sentence a teacher could read aloud to start a discussion.`;
+"why" is one short sentence describing what the region holds. "title" is a short title. "big_idea" is one sentence a teacher could read aloud to start a discussion.
+${langRules(lang)}`;
 }
 async function callClaude(key,model,prompt,useSchema){
   const body={model,max_tokens:16000,output_config:{effort:"low"},
-    system:"You are an expert ESL vocabulary teacher. You output only JSON.",
+    system:"You are an expert language vocabulary teacher. You output only JSON.",
     messages:[{role:"user",content:prompt}]};
   if(useSchema) body.output_config.format={type:"json_schema",schema:SCHEMA};
-  else body.messages[0].content+="\nReply with only the JSON object, no code fences. Shape: {title, big_idea, circles:[{name}], regions:[{sets:[int], why, words:[{word, level, pos, meaning, example}]}]}";
+  else body.messages[0].content+="\nReply with only the JSON object, no code fences. Shape: {title, big_idea, circles:[{name}], regions:[{sets:[int], why, words:[{word, level, pos, meaning, example, english}]}]}";
   const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{
     "content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01",
     "anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify(body)});
@@ -481,6 +504,7 @@ async function callClaude(key,model,prompt,useSchema){
   return {data:JSON.parse(m[0]),usage:j.usage};
 }
 function clean(d,n,labels){
+  if(d.lang && d.lang!=="en") labels=[]; // circle names come back translated
   if(!Array.isArray(d.circles)||!Array.isArray(d.regions)) throw new Error("The reply was missing parts. Try again.");
   d.circles=d.circles.slice(0,n);
   for(let i=0;i<n;i++){ d.circles[i]=d.circles[i]||{name:"Circle "+(i+1)}; if(labels[i]) d.circles[i].name=labels[i]; }
@@ -510,14 +534,15 @@ $("goBtn").addEventListener("click",async()=>{
   const labels=[...document.querySelectorAll(".lab")].map(i=>i.value.trim());
   const topic=$("topic").value.trim();
   if(!topic && labels.every(l=>!l)){ st.className="err"; st.textContent="Give a topic or name at least one circle."; return; }
-  const model=$("model").value, n=state.n;
+  const model=$("model").value, n=state.n, lang=$("lang").value;
   $("goBtn").disabled=true; st.textContent="Claude is building your diagram. This takes about 20 to 60 seconds.";
   try{
-    const prompt=buildPrompt(n,labels,topic,state.per);
+    const prompt=buildPrompt(n,labels,topic,state.per,lang);
     let res;
-    if(!key) res=await callProxy({n,labels,topic,per:state.per,model});
+    if(!key) res=await callProxy({n,labels,topic,per:state.per,model,lang});
     else try{ res=await callClaude(key,model,prompt,true); }
     catch(e){ if(e.status===400 && /format|schema|output_config/i.test(e.message)) res=await callClaude(key,model,prompt,false); else throw e; }
+    res.data.lang=lang;
     const d=clean(res.data,n,labels);
     d.model=model; d.made=new Date().toISOString().slice(0,10);
     show(d);
@@ -550,7 +575,7 @@ $("shareBtn").addEventListener("click",async()=>{
 $("saveBtn").addEventListener("click",()=>{
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([JSON.stringify(state.data,null,2)],{type:"application/json"}));
-  a.download=(state.data.title||"venn").toLowerCase().replace(/[^a-z0-9]+/g,"-")+".json"; a.click();
+  a.download=((state.data.title||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"venn-"+(state.data.lang||"en"))+".json"; a.click();
 });
 $("printBtn").addEventListener("click",()=>window.print());
 $("fileIn").addEventListener("change",async e=>{
