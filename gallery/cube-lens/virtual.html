@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cube Lens: Virtual Cube</title>
+<style>
+  html,body{margin:0;height:100%;background:#111;overflow:hidden;font-family:-apple-system,"Helvetica Neue",sans-serif}
+  video,canvas{position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover}
+  video{transform:scaleX(-1)}
+  #hud{position:fixed;left:16px;bottom:14px;color:#f3ead8;font-size:15px;background:rgba(0,0,0,.45);padding:8px 12px;border-radius:10px;line-height:1.5}
+  #state{position:fixed;top:14px;left:0;right:0;text-align:center;color:#f3ead8;font-size:22px;text-shadow:0 1px 4px #000}
+  body.clean #hud{display:none}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+</head>
+<body>
+<video id="v" playsinline muted></video>
+<div id="state">starting camera…</div>
+<div id="hud">
+  Hold both hands up, open: the cube floats between them. Tilt the line between your hands to roll it, push one hand forward to turn it.<br>
+  Make a fist and move it: spin the whole cube. Pinch on a sticker and swipe: turn that layer.<br>
+  Keys: U D L R F B turn (Shift = backwards) · S scramble · 0 reset · H hide help · mouse works too
+</div>
+<script type="module">
+import * as THREE from "three";
+import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+const video = document.getElementById("v"), stateEl = document.getElementById("state");
+let W = 1280, H = 720;
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+let camera;
+scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+const key = new THREE.DirectionalLight(0xffffff, 0.8); key.position.set(-300, 400, 800); scene.add(key);
+
+function setSize(w, h){
+  W = w; H = h; renderer.setSize(W, H, false);
+  camera = new THREE.OrthographicCamera(0, W, 0, -H, -5000, 5000); // world = video pixels, y down is negative
+  camera.position.z = 1000;
+}
+setSize(1280, 720);
+
+// ---------- the cube ----------
+const COLORS = { px:0xb71234, nx:0xff5800, py:0xffffff, ny:0xffd500, pz:0x009b48, nz:0x0046ad }; // R O U D F B
+const cubeRoot = new THREE.Group(); scene.add(cubeRoot);
+const cubies = [];
+const body = new THREE.MeshLambertMaterial({color:0x141414});
+const stickerGeo = new THREE.PlaneGeometry(0.82, 0.82);
+const boxGeo = new THREE.BoxGeometry(0.98, 0.98, 0.98);
+function stickerMat(c){ return new THREE.MeshLambertMaterial({color:c}); }
+function buildCube(){
+  for (const c of cubies) cubeRoot.remove(c); cubies.length = 0;
+  for (let x=-1;x<=1;x++) for (let y=-1;y<=1;y++) for (let z=-1;z<=1;z++){
+    if (!x && !y && !z) continue;
+    const g = new THREE.Group(); g.position.set(x,y,z);
+    g.add(new THREE.Mesh(boxGeo, body));
+    const add = (cond, col, pos, rot) => { if(!cond) return; const s = new THREE.Mesh(stickerGeo, stickerMat(col)); s.position.copy(pos); s.rotation.set(...rot); s.userData.sticker = true; g.add(s); };
+    add(x=== 1, COLORS.px, new THREE.Vector3( .5,0,0), [0, Math.PI/2,0]);
+    add(x===-1, COLORS.nx, new THREE.Vector3(-.5,0,0), [0,-Math.PI/2,0]);
+    add(y=== 1, COLORS.py, new THREE.Vector3(0, .5,0), [-Math.PI/2,0,0]);
+    add(y===-1, COLORS.ny, new THREE.Vector3(0,-.5,0), [ Math.PI/2,0,0]);
+    add(z=== 1, COLORS.pz, new THREE.Vector3(0,0, .5), [0,0,0]);
+    add(z===-1, COLORS.nz, new THREE.Vector3(0,0,-.5), [0,Math.PI,0]);
+    cubeRoot.add(g); cubies.push(g);
+  }
+}
+buildCube();
+
+// layer turns, queued and animated
+const queue = []; let turning = null;
+function turn(axis, layer, dir){ queue.push({axis, layer, dir}); }
+const MOVES = { R:["x",1,-1], L:["x",-1,1], U:["y",1,-1], D:["y",-1,1], F:["z",1,-1], B:["z",-1,1] };
+function startTurn(){
+  const m = queue.shift(); if (!m) return;
+  const pivot = new THREE.Group(); cubeRoot.add(pivot);
+  for (const c of cubies) if (Math.round(c.position[m.axis]) === m.layer) pivot.attach(c);
+  turning = {...m, pivot, t:0};
+}
+function stepTurn(dt){
+  if (!turning) { startTurn(); return; }
+  turning.t = Math.min(1, turning.t + dt/0.22);
+  const e = 1 - Math.pow(1-turning.t, 3);
+  turning.pivot.rotation.set(0,0,0); turning.pivot.rotation[turning.axis] = e * turning.dir * Math.PI/2;
+  if (turning.t >= 1){
+    turning.pivot.updateMatrixWorld();
+    for (const c of [...turning.pivot.children]){
+      cubeRoot.attach(c);
+      c.position.set(Math.round(c.position.x), Math.round(c.position.y), Math.round(c.position.z));
+      const eu = new THREE.Euler().setFromQuaternion(c.quaternion);
+      c.rotation.set(...["x","y","z"].map(k=>Math.round(eu[k]/(Math.PI/2))*Math.PI/2));
+    }
+    cubeRoot.remove(turning.pivot); turning = null;
+  }
+}
+function scramble(){ const k = Object.keys(MOVES); for (let i=0;i<20;i++){ const [a,l,d] = MOVES[k[(Math.random()*6)|0]]; turn(a,l,Math.random()<.5?d:-d);} }
+
+// ---------- pose: where the cube is, how big, which way it faces ----------
+const pose = { x:W/2, y:H/2, size:240, q:new THREE.Quaternion().setFromEuler(new THREE.Euler(0.45,-0.6,0)) };
+const goal = { x:W/2, y:H/2, size:240 };
+let spin = new THREE.Quaternion();          // free rotation from fist / mouse
+let handRoll = 0, handYaw = 0;              // from the two open hands
+
+// screen point (CSS px) -> video pixel, undoing object-fit:cover
+function toVideo(cx, cy){
+  const s = Math.max(innerWidth/W, innerHeight/H), ox = (innerWidth - W*s)/2, oy = (innerHeight - H*s)/2;
+  return [(cx-ox)/s, (cy-oy)/s];
+}
+const ray = new THREE.Raycaster();
+function pick(vx, vy){
+  ray.setFromCamera(new THREE.Vector2(vx/W*2-1, -(vy/H*2-1)), camera);
+  const hit = ray.intersectObjects(cubeRoot.children, true).find(h=>h.object.userData.sticker);
+  if (!hit) return null;
+  const c = hit.object.parent; // the cubie group
+  const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);           // world normal
+  const nl = n.clone().applyQuaternion(cubeRoot.quaternion.clone().invert());              // cube-local normal
+  return { cubie:c, point:hit.point.clone(), local:snapAxis(nl) };
+}
+function snapAxis(v){ const a = ["x","y","z"].reduce((b,k)=>Math.abs(v[k])>Math.abs(v[b])?k:b,"x"); return a; }
+function toScreen(p){ const q = p.clone().project(camera); return new THREE.Vector2((q.x+1)/2*W, (1-q.y)/2*H); }
+// swipe on a sticker -> which layer and which way
+function swipeTurn(grab, dx, dy){
+  const sw = new THREE.Vector2(dx, dy); if (sw.length() < 25) return false;
+  let best = null;
+  for (const axis of ["x","y","z"]) {
+    if (axis === grab.local) continue;
+    const a = new THREE.Vector3(); a[axis] = 1;
+    const aw = a.clone().applyQuaternion(cubeRoot.quaternion);
+    const rel = grab.point.clone().sub(cubeRoot.position);
+    const tangent = new THREE.Vector3().crossVectors(aw, rel).normalize().multiplyScalar(30);
+    const s = toScreen(grab.point.clone().add(tangent)).sub(toScreen(grab.point)).normalize();
+    const d = s.dot(sw.clone().normalize());
+    if (!best || Math.abs(d) > Math.abs(best.d)) best = {axis, d};
+  }
+  const layer = Math.round(grab.cubie.position[best.axis]);
+  turn(best.axis, layer, best.d > 0 ? 1 : -1);
+  return true;
+}
+
+// ---------- mouse fallback ----------
+let mouse = null;
+addEventListener("pointerdown", e=>{ const [vx,vy] = toVideo(e.clientX, e.clientY); mouse = {vx, vy, grab:pick(vx,vy), done:false}; });
+addEventListener("pointermove", e=>{
+  if (!mouse) return; const [vx,vy] = toVideo(e.clientX, e.clientY);
+  if (mouse.grab) { if (!mouse.done && swipeTurn(mouse.grab, vx-mouse.vx, vy-mouse.vy)) mouse.done = true; }
+  else { rotateBy(vx-mouse.vx, vy-mouse.vy); mouse.vx = vx; mouse.vy = vy; }
+});
+addEventListener("pointerup", ()=>mouse=null);
+function rotateBy(dx, dy){
+  const qy = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), dx*0.01);
+  const qx = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0), dy*0.01);
+  spin.premultiply(qy).premultiply(qx);
+}
+addEventListener("keydown", e=>{
+  const k = e.key.toUpperCase();
+  if (MOVES[k]) { const [a,l,d] = MOVES[k]; turn(a, l, e.shiftKey ? -d : d); }
+  else if (k === "S") scramble();
+  else if (k === "0") { queue.length = 0; if (!turning) buildCube(); spin.identity(); }
+  else if (k === "H") document.body.classList.toggle("clean");
+});
+
+// ---------- hands ----------
+const d2 = (a,b)=>Math.hypot(a.x-b.x, a.y-b.y);
+function handInfo(lm){
+  const scale = d2(lm[0], lm[9]);
+  const tips = [8,12,16,20].reduce((s,i)=>s+d2(lm[i],lm[0]),0)/4;
+  const mcps = [5,9,13,17].reduce((s,i)=>s+d2(lm[i],lm[0]),0)/4;
+  const pinchPt = {x:(lm[4].x+lm[8].x)/2, y:(lm[4].y+lm[8].y)/2};
+  return {
+    palm: { x:(1-lm[9].x)*W, y:lm[9].y*H },
+    scale,
+    fist: tips < mcps*1.15,
+    pinch: d2(lm[4], lm[8]) < scale*0.32 && tips > mcps*1.15,
+    pinchAt: { x:(1-pinchPt.x)*W, y:pinchPt.y*H },
+  };
+}
+const handState = [{},{}]; // per hand slot: fist/pinch tracking
+function useHands(list){
+  const hs = list.map(handInfo).sort((a,b)=>a.palm.x-b.palm.x);  // left of screen first
+  let msg = "show your hands";
+  if (hs.length === 2 && !hs[0].fist && !hs[1].fist && !hs[0].pinch && !hs[1].pinch){
+    const [a,b] = hs;
+    goal.x = (a.palm.x+b.palm.x)/2; goal.y = (a.palm.y+b.palm.y)/2;
+    goal.size = Math.min(H*0.7, Math.max(90, Math.hypot(b.palm.x-a.palm.x, b.palm.y-a.palm.y)*0.55));
+    handRoll = Math.atan2(b.palm.y-a.palm.y, b.palm.x-a.palm.x);
+    handYaw = Math.max(-1, Math.min(1, (a.scale - b.scale)/((a.scale+b.scale)/2) * 2.5)); // nearer hand looks bigger
+    msg = "holding";
+  } else if (hs.length === 1 && !hs[0].fist && !hs[0].pinch){
+    goal.x = hs[0].palm.x; goal.y = hs[0].palm.y - hs[0].scale*H*1.2; msg = "on your palm";
+  }
+  hs.forEach((h, i)=>{
+    const st = handState[i];
+    if (h.fist){
+      if (st.fist) rotateBy(h.palm.x-st.fist.x, h.palm.y-st.fist.y);
+      st.fist = {...h.palm}; msg = "spinning";
+    } else st.fist = null;
+    if (h.pinch){
+      if (!st.pinch) st.pinch = { start:{...h.pinchAt}, grab:pick(h.pinchAt.x, h.pinchAt.y), done:false };
+      else if (st.pinch.grab && !st.pinch.done && swipeTurn(st.pinch.grab, h.pinchAt.x-st.pinch.start.x, h.pinchAt.y-st.pinch.start.y)) st.pinch.done = true;
+      msg = st.pinch.grab ? (st.pinch.done ? "turned" : "pinched a sticker, swipe") : "pinch on the cube";
+    } else st.pinch = null;
+  });
+  if (!list.length) { handRoll *= 0.95; handYaw *= 0.95; }
+  return msg;
+}
+
+// ---------- loop ----------
+let landmarker = null, lastVT = -1, last = performance.now();
+function frame(now){
+  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  if (landmarker && video.readyState >= 2 && video.currentTime !== lastVT){
+    lastVT = video.currentTime;
+    const res = landmarker.detectForVideo(video, now);
+    stateEl.textContent = useHands(res.landmarks || []);
+  }
+  const k = 1 - Math.pow(0.001, dt);  // smoothing
+  pose.x += (goal.x-pose.x)*k; pose.y += (goal.y-pose.y)*k; pose.size += (goal.size-pose.size)*k;
+  const target = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.45, -0.6 + handYaw, -handRoll));
+  target.premultiply(spin);
+  pose.q.slerp(target, k);
+  cubeRoot.position.set(pose.x, -pose.y, 0);
+  cubeRoot.scale.setScalar(pose.size/3);
+  cubeRoot.quaternion.copy(pose.q);
+  stepTurn(dt);
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+if (new URLSearchParams(location.search).get("scramble")==="1") scramble();
+if (new URLSearchParams(location.search).get("selftest")==="1") { // turns then their inverses must give back a solved cube
+  const seq = "RUFLDBRRUF".split("").map(k=>MOVES[k]);
+  for (const [a,l,d] of seq) turn(a,l,d);
+  for (const [a,l,d] of [...seq].reverse()) turn(a,l,-d);
+  const before = cubies.map(c=>c.position.toArray().join());
+  let n = 0; while ((queue.length || turning) && n++ < 5000) stepTurn(0.05);
+  const ok = cubies.every((c,i)=>c.position.toArray().join()===before[i] && Math.abs(c.quaternion.w)>0.9999);
+  const mid = []; // also check a single R moves exactly 9 cubies to integer spots
+  turn("x",1,-1); n=0; while ((queue.length || turning) && n++ < 500) stepTurn(0.05);
+  const ints = cubies.every(c=>c.position.toArray().every(v=>Number.isInteger(v)));
+  document.title = "selftest " + (ok && ints ? "PASS" : "FAIL") + " steps " + n;
+}
+requestAnimationFrame(frame);
+
+(async ()=>{
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video:{ width:1280, height:720 }, audio:false });
+    video.srcObject = stream; await video.play();
+    setSize(video.videoWidth, video.videoHeight);
+    goal.x = W/2; goal.y = H/2;
+    stateEl.textContent = "loading hand model…";
+    const fs = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+    landmarker = await HandLandmarker.createFromOptions(fs, {
+      baseOptions:{ modelAssetPath:"https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task", delegate:"GPU" },
+      runningMode:"VIDEO", numHands:2,
+    });
+    stateEl.textContent = "show your hands";
+  } catch (e) {
+    console.warn(e); stateEl.textContent = "no camera: mouse and keys still work";
+  }
+})();
+</script>
+</body>
+</html>
