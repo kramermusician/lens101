@@ -121,7 +121,9 @@ kbd{font:600 13px Archivo,sans-serif;border:1px solid var(--line);border-bottom-
     <div class="seg" id="bars"></div><span class="lab">bars</span>
    </div>
    <div class="grp"><span class="lab">Quantize</span>
-    <select id="quant" aria-label="Quantize"><option value="0">Off</option><option value="0.5">1/8</option><option value="0.25" selected>1/16</option><option value="0.125">1/32</option><option value="0.3333333">1/8 triplet</option></select>
+    <select id="quant" aria-label="Quantize"><option value="0">Off</option><option value="0.5">1/8</option><option value="0.25" selected>1/16</option><option value="0.125">1/32</option><option value="0.3333333">1/8 triplet</option><option value="0.1666667">1/16 triplet</option></select>
+    <select id="qstr" aria-label="Quantize strength" title="How hard hits are pulled to the grid"><option value="1">100%</option><option value="0.75">75%</option><option value="0.5">50%</option></select>
+    <button id="snapAll" title="Snap every recorded hit to the current grid">Snap all</button>
    </div>
    <div class="grp">
     <button id="metro" aria-pressed="true" title="Metronome (G)">Click</button>
@@ -251,7 +253,7 @@ function drawNotation(VF,div,evs,bars,W,grids){
   if(pts[0].t>1e-6)pts.unshift({t:0,x:st.getNoteStartX()+8});
   const xAt=t=>{for(let i=1;i<pts.length;i++)if(pts[i].t>=t-1e-6){const a=pts[i-1],b=pts[i];if(Math.abs(b.t-t)<1e-6)return b.x;return a.x+(b.x-a.x)*(t-a.t)/(b.t-a.t||1)}return pts[pts.length-1].x};
   for(let j=0;j<4;j++){
-   const B=m*4+j,n=grid[B],L=n===3?3:4,syl=L===3?[j+1,'trip','let']:[j+1,'e','+','a'];
+   const B=m*4+j,n=grid[B],L=n===3?3:n===6?6:4,syl=L===3?[j+1,'trip','let']:L===6?[j+1,'la','li','+','la','li']:[j+1,'e','+','a'];
    for(let k=0;k<L;k++){const idx=k*(n/L),hit=slots[B][0][idx]||slots[B][1][idx];
     const tx=document.createElementNS(NS,'text');tx.textContent=syl[k];
     tx.setAttribute('x',xAt(j+k/L).toFixed(1));tx.setAttribute('y',line*LH+30);tx.setAttribute('text-anchor','middle');
@@ -284,7 +286,7 @@ const KITS=[
 const $=id=>document.getElementById(id);
 const SOUNDS=DEF.map(p=>({s:p.s,n:p.n,g:p.g}));
 const defMap=()=>DEF.map(p=>({k:p.k,l:p.l,s:p.s}));
-let S={bpm:90,bars:2,kit:0,metro:true,count:true,q:.25,events:[],map:defMap()};
+let S={bpm:90,bars:2,kit:0,metro:true,count:true,q:.25,qs:1,events:[],map:defMap()};
 try{const s=JSON.parse(localStorage.getItem('fdl1')||'null');if(s)S={...S,...s}}catch(e){}
 if(!Array.isArray(S.map)||S.map.length!==DEF.length)S.map=defMap();
 let PADS=[],keyMap={};
@@ -385,12 +387,13 @@ function padDown(i,accent){
  let pos=(now-loopStart)/spb();const len=beats();
  if(pos<0){if(pos>-.25)pos=0;else return}
  pos%=len;let b=pos,wrap=false;
- if(S.q){b=Math.round(pos/S.q)*S.q;if(b>=len-1e-6){b=0;wrap=true}}
+ if(S.q){const g=Math.round(pos/S.q)*S.q;b=pos+(g-pos)*(S.qs||1);if(b>=len-1e-6){b=0;wrap=true}}
  const skip=wrap?now+(len-pos)*spb():now+(b-pos)*spb();
  S.events.push({p:i,b:+b.toFixed(5),v:vel,take,skip:skip>now+.001?skip:0});
  save();ui();
 }
 function undo(){if(!S.events.length)return;const m=Math.max(...S.events.map(e=>e.take||0));S.events=S.events.filter(e=>(e.take||0)!==m);save();ui()}
+function snapAll(){if(!S.q||!S.events.length)return;const len=beats();S.events=S.events.map(e=>{let b=Math.round(e.b/S.q)*S.q;if(b>=len-1e-6)b=0;return{...e,b:+b.toFixed(5),skip:0}});save();ui()}
 function clearAll(){S.events=[];save();ui()}
 
 /* ---------- UI ---------- */
@@ -444,14 +447,16 @@ function ui(){
  document.querySelectorAll('#bars button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.n===S.bars));
  document.querySelectorAll('.kit').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.k===S.kit));
  document.documentElement.style.setProperty('--acc',KITS[S.kit].acc);
- $('hits').textContent=S.events.length;$('bpm').value=S.bpm;$('bpmL').textContent=S.bpm;$('quant').value=String(S.q);
+ $('hits').textContent=S.events.length;$('bpm').value=S.bpm;$('bpmL').textContent=S.bpm;$('quant').value=([...$('quant').options].find(o=>Math.abs(+o.value-S.q)<1e-4)||{value:'0'}).value;$('qstr').value=String(S.qs||1);$('snapAll').disabled=!S.q;
  $('state').textContent=rec?'● RECORDING':playing?'PLAYING':'STOPPED';
  queueNota();
 }
 $('play').onclick=togglePlay;$('rec').onclick=toggleRec;$('undo').onclick=undo;$('clear').onclick=clearAll;
 $('tdn').onclick=()=>setBpm(S.bpm-1);$('tup').onclick=()=>setBpm(S.bpm+1);
 $('bpm').addEventListener('change',e=>setBpm(e.target.value));
-$('quant').addEventListener('change',e=>{S.q=+e.target.value;save();queueNota()});
+$('quant').addEventListener('change',e=>{S.q=+e.target.value;save();ui()});
+$('qstr').addEventListener('change',e=>{S.qs=+e.target.value;save()});
+$('snapAll').onclick=snapAll;
 $('metro').onclick=()=>{S.metro=!S.metro;ui();save()};$('count').onclick=()=>{S.count=!S.count;ui();save()};
 let taps=[];
 function tap(){const n=performance.now();taps=taps.filter(t=>n-t<2500);taps.push(n);
@@ -489,7 +494,7 @@ function queueNota(){if(notaQueued)return;notaQueued=true;requestAnimationFrame(
 function renderNota(){
  const el=$('nota');notaW=el.clientWidth;notaBoxes=[];
  if(!VF){el.innerHTML='<p class="empty">The notation engine didn’t load. Check your connection and reload.</p>';return}
- const grids=S.q===0.125?[4,3,8]:[4,3];
+ const grids=S.q===0.125?[4,3,8,6]:[4,3,6];
  $('notaGrid').textContent=S.q===0.125?'Hits shown to the nearest 32nd or triplet':'Hits shown to the nearest 16th or triplet';
  const evs=S.events.map(e=>({s:PADS[e.p].s,b:e.b,v:e.v}));
  try{notaBoxes=drawNotation(VF,el,evs,S.bars,Math.max(300,notaW),grids)}catch(err){el.innerHTML='<p class="empty">Couldn’t engrave this loop.</p>';console.error(err)}
